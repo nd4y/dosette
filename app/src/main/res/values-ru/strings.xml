@@ -243,6 +243,11 @@
     <string name="backup_import_title">Импорт</string>
     <string name="backup_import_text">Заменяет все текущие данные содержимым файла. Перед импортом текущие данные автоматически сохраняются внутри приложения.</string>
     <string name="backup_import_action">Импортировать</string>
+    <string name="backup_export_dialog_title">Защитить паролем?</string>
+    <string name="backup_password_hint">Оставьте пустым — экспорт без шифрования. Пароль не восстанавливается: без него файл не прочитать.</string>
+    <string name="backup_password_label">Пароль</string>
+    <string name="backup_password_wrong">Неверный пароль</string>
+    <string name="backup_enter_password">Файл зашифрован — введите пароль</string>
     <string name="backup_confirm_title">Заменить всё?</string>
     <string name="backup_confirm_text">В файле: профилей — %1$d, лекарств — %2$d, записей истории — %3$d, визитов — %4$d. Все текущие данные будут заменены.</string>
     <string name="backup_confirm_action">Заменить</string>

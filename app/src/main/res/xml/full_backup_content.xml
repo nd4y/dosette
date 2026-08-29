@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pre-Android-12 mirror of data_extraction_rules.xml. -->
+<full-backup-content>
+    <exclude
+        domain="database"
+        path="dosette.db" />
+    <exclude
+        domain="database"
+        path="dosette.db-wal" />
+    <exclude
+        domain="database"
+        path="dosette.db-shm" />
+    <exclude
+        domain="file"
+        path="backups/" />
+</full-backup-content>

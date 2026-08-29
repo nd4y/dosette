@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -19,16 +20,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +53,7 @@ fun BackupScreen(
     viewModel: BackupViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var exportDialogOpen by remember { mutableStateOf(false) }
 
     val exportLauncher =
         rememberLauncherForActivityResult(
@@ -60,13 +68,109 @@ fun BackupScreen(
         state = state,
         contentPadding = contentPadding,
         onBack = onBack,
-        onExport = {
-            exportLauncher.launch("dosette-backup-${LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)}.yaml")
-        },
+        onExport = { exportDialogOpen = true },
         onImport = { importLauncher.launch(arrayOf("*/*")) },
         onConfirmImport = viewModel::confirmImport,
         onDismissImport = viewModel::dismissImport,
+        onSubmitPassword = viewModel::submitImportPassword,
         modifier = modifier,
+    )
+
+    if (exportDialogOpen) {
+        ExportPasswordDialog(
+            onConfirm = { password ->
+                exportDialogOpen = false
+                viewModel.setExportPassword(password)
+                val date = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val extension = if (viewModel.exportEncrypted) "yaml.enc" else "yaml"
+                exportLauncher.launch("dosette-backup-$date.$extension")
+            },
+            onDismiss = { exportDialogOpen = false },
+        )
+    }
+}
+
+@Composable
+private fun ExportPasswordDialog(
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.backup_export_dialog_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(R.string.backup_password_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(stringResource(R.string.backup_password_label)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(password) }) {
+                Text(stringResource(R.string.backup_export_action))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun ImportPasswordDialog(
+    error: Boolean,
+    onSubmit: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.backup_password_label)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(R.string.backup_enter_password),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(stringResource(R.string.backup_password_label)) },
+                    singleLine = true,
+                    isError = error,
+                    supportingText =
+                        if (error) {
+                            { Text(stringResource(R.string.backup_password_wrong)) }
+                        } else {
+                            null
+                        },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSubmit(password) }) {
+                Text(stringResource(R.string.backup_import_action))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -79,6 +183,7 @@ fun BackupContent(
     onImport: () -> Unit,
     onConfirmImport: () -> Unit,
     onDismissImport: () -> Unit,
+    onSubmitPassword: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -158,6 +263,14 @@ fun BackupContent(
         ImportConfirmDialog(
             preview = preview,
             onConfirm = onConfirmImport,
+            onDismiss = onDismissImport,
+        )
+    }
+
+    if (state.passwordNeeded) {
+        ImportPasswordDialog(
+            error = state.passwordError,
+            onSubmit = onSubmitPassword,
             onDismiss = onDismissImport,
         )
     }

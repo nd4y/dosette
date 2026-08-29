@@ -237,6 +237,11 @@
     <string name="backup_import_title">Import</string>
     <string name="backup_import_text">Replaces all current data with the file contents. The current data is auto-saved inside the app before the import.</string>
     <string name="backup_import_action">Import</string>
+    <string name="backup_export_dialog_title">Protect with a password?</string>
+    <string name="backup_password_hint">Leave empty to export unencrypted. The password cannot be recovered — losing it makes the file unreadable.</string>
+    <string name="backup_password_label">Password</string>
+    <string name="backup_password_wrong">Wrong password</string>
+    <string name="backup_enter_password">The file is encrypted — enter its password</string>
     <string name="backup_confirm_title">Replace everything?</string>
     <string name="backup_confirm_text">The file contains: profiles — %1$d, medications — %2$d, history records — %3$d, visits — %4$d. All current data will be replaced.</string>
     <string name="backup_confirm_action">Replace</string>

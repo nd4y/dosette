@@ -38,16 +38,32 @@ class BackupManager
         private val engine: ReminderEngine,
         private val clock: Clock,
     ) {
-        suspend fun exportTo(uri: Uri) {
+        /** Non-blank [password] seals the file with [BackupCrypto]. */
+        suspend fun exportTo(
+            uri: Uri,
+            password: String?,
+        ) {
             val yaml = BackupCodec.encode(BackupMapper.toSnapshot(collect(), clock.instant()))
+            val payload =
+                if (password.isNullOrBlank()) {
+                    yaml.toByteArray(Charsets.UTF_8)
+                } else {
+                    BackupCrypto.encrypt(yaml.toByteArray(Charsets.UTF_8), password.toCharArray())
+                }
             context.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
-                stream.write(yaml.toByteArray(Charsets.UTF_8))
+                stream.write(payload)
             } ?: throw BackupFormatException("Cannot open the selected file for writing")
         }
 
+        /** True when the file needs a password before it can be previewed. */
+        fun isEncrypted(uri: Uri): Boolean = BackupCrypto.isEncrypted(readBytes(uri))
+
         /** Parses and fully validates without touching any data. */
-        suspend fun preview(uri: Uri): BackupPreview {
-            val data = BackupMapper.fromSnapshot(BackupCodec.decode(read(uri)))
+        suspend fun preview(
+            uri: Uri,
+            password: String?,
+        ): BackupPreview {
+            val data = BackupMapper.fromSnapshot(BackupCodec.decode(readText(uri, password)))
             return BackupPreview(
                 profiles = data.profiles.size,
                 medications = data.medications.size,
@@ -56,9 +72,12 @@ class BackupManager
             )
         }
 
-        suspend fun importFrom(uri: Uri) {
+        suspend fun importFrom(
+            uri: Uri,
+            password: String?,
+        ) {
             // Parse and validate BEFORE anything is written anywhere.
-            val data = BackupMapper.fromSnapshot(BackupCodec.decode(read(uri)))
+            val data = BackupMapper.fromSnapshot(BackupCodec.decode(readText(uri, password)))
 
             writeAutoBackup()
 
@@ -111,10 +130,27 @@ class BackupManager
             settingsRepository.setLastAutoBackupAt(now)
         }
 
-        private fun read(uri: Uri): String =
+        private fun readBytes(uri: Uri): ByteArray =
             context.contentResolver.openInputStream(uri)?.use { stream ->
-                stream.readBytes().toString(Charsets.UTF_8)
+                stream.readBytes()
             } ?: throw BackupFormatException("Cannot open the selected file")
+
+        private fun readText(
+            uri: Uri,
+            password: String?,
+        ): String {
+            val bytes = readBytes(uri)
+            return if (BackupCrypto.isEncrypted(bytes)) {
+                if (password.isNullOrEmpty()) {
+                    throw BackupFormatException(
+                        "The file is encrypted; a password is required",
+                    )
+                }
+                BackupCrypto.decrypt(bytes, password.toCharArray()).toString(Charsets.UTF_8)
+            } else {
+                bytes.toString(Charsets.UTF_8)
+            }
+        }
 
         companion object {
             const val AUTO_BACKUP_DIR = "backups"
