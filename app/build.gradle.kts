@@ -7,6 +7,22 @@ plugins {
     alias(libs.plugins.room)
     alias(libs.plugins.roborazzi)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.kover)
+}
+
+kover {
+    reports {
+        filters {
+            includes {
+                classes("icu.nd4y.dosette.domain.*")
+            }
+        }
+        verify {
+            rule("domain line coverage") {
+                minBound(90)
+            }
+        }
+    }
 }
 
 // Release builds pass -Pdosette.version=vX.Y.Z (the git tag); local builds fall back to a dev version.
@@ -99,6 +115,7 @@ dependencies {
     implementation(libs.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kaml)
 
@@ -119,6 +136,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
+    testImplementation(libs.konsist)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -19,16 +19,19 @@ import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.UserDoseAction
 import icu.nd4y.dosette.ui.cabinet.formatAmount
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -93,15 +96,30 @@ class TodayViewModel
     ) : ViewModel() {
         private val today: LocalDate get() = clock.instant().atZone(clock.zone).toLocalDate()
 
+        /** Emits today's date and re-emits right after midnight so the screen rolls over. */
+        private val dateTicker =
+            flow {
+                while (true) {
+                    val date = today
+                    emit(date)
+                    val nextMidnight =
+                        date
+                            .plusDays(1)
+                            .atStartOfDay(clock.zone)
+                            .toInstant()
+                    delay(Duration.between(clock.instant(), nextMidnight).toMillis().coerceAtLeast(1_000))
+                }
+            }
+
         val uiState: StateFlow<TodayUiState> =
-            settingsRepository.settings
-                .map { it.activeProfileId }
-                .distinctUntilChanged()
-                .flatMapLatest { profileId ->
+            combine(
+                settingsRepository.settings.map { it.activeProfileId }.distinctUntilChanged(),
+                dateTicker,
+            ) { profileId, date -> profileId to date }
+                .flatMapLatest { (profileId, date) ->
                     if (profileId == null) {
-                        flowOf(TodayUiState(loading = false, date = today))
+                        flowOf(TodayUiState(loading = false, date = date))
                     } else {
-                        val date = today
                         combine(
                             medicationRepository.observeByProfile(profileId),
                             doseLogRepository.observeRange(profileId, date, date),

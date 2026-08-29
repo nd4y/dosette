@@ -71,11 +71,11 @@ class MotionTests {
         state = state.copy(step = WizardStep.SCHEDULE)
         composeRule.mainClock.advanceTimeByFrame()
         composeRule.mainClock.advanceTimeBy(80)
-        composeRule.onRoot().captureRoboImage("$SHOTS/motion_wizard_080ms.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/motion_wizard_080ms.png", roborazziOptions = SHOT_OPTIONS)
         composeRule.mainClock.advanceTimeBy(120)
-        composeRule.onRoot().captureRoboImage("$SHOTS/motion_wizard_200ms.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/motion_wizard_200ms.png", roborazziOptions = SHOT_OPTIONS)
         composeRule.mainClock.advanceTimeBy(1_800)
-        composeRule.onRoot().captureRoboImage("$SHOTS/motion_wizard_end.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/motion_wizard_end.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -101,10 +101,10 @@ class MotionTests {
         done = 3
         composeRule.mainClock.advanceTimeByFrame()
         composeRule.mainClock.advanceTimeBy(80)
-        composeRule.onRoot().captureRoboImage("$SHOTS/motion_ring_080ms.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/motion_ring_080ms.png", roborazziOptions = SHOT_OPTIONS)
         composeRule.mainClock.advanceTimeBy(120)
-        composeRule.onRoot().captureRoboImage("$SHOTS/motion_ring_200ms.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/motion_ring_200ms.png", roborazziOptions = SHOT_OPTIONS)
         composeRule.mainClock.advanceTimeBy(1_800)
-        composeRule.onRoot().captureRoboImage("$SHOTS/motion_ring_end.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/motion_ring_end.png", roborazziOptions = SHOT_OPTIONS)
     }
 }

@@ -254,6 +254,7 @@
     <string name="profile_name_label">Имя</string>
     <string name="profile_delete">Удалить профиль</string>
     <string name="profile_delete_warning">Все лекарства, история и визиты этого профиля будут удалены безвозвратно.</string>
+    <string name="action_edit">Изменить</string>
     <string name="action_delete">Удалить</string>
     <string name="action_cancel">Отмена</string>
 
