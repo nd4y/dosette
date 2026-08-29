@@ -77,6 +77,26 @@ fun MedEditScreen(
         return
     }
 
+    MedEditContent(
+        state = state,
+        contentPadding = contentPadding,
+        onUpdate = viewModel::update,
+        onNext = viewModel::next,
+        onBack = { if (!viewModel.back()) onBackOut() },
+        modifier = modifier,
+    )
+}
+
+/** Stateless body — rendered directly by screenshot tests. */
+@Composable
+fun MedEditContent(
+    state: MedEditUiState,
+    contentPadding: PaddingValues,
+    onUpdate: ((MedEditUiState) -> MedEditUiState) -> Unit,
+    onNext: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier =
             modifier
@@ -84,7 +104,7 @@ fun MedEditScreen(
                 .padding(contentPadding)
                 .padding(horizontal = 20.dp),
     ) {
-        WizardHeader(state = state, onBack = { if (!viewModel.back()) onBackOut() })
+        WizardHeader(state = state, onBack = onBack)
 
         AnimatedContent(targetState = state.step, label = "wizard-step") { step ->
             Column(
@@ -102,10 +122,10 @@ fun MedEditScreen(
                     modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
                 )
                 when (step) {
-                    WizardStep.BASICS -> BasicsStep(state, viewModel::update)
-                    WizardStep.SCHEDULE -> ScheduleStep(state, viewModel::update)
-                    WizardStep.TIMES -> TimesStep(state, viewModel::update)
-                    WizardStep.STOCK -> StockStep(state, viewModel::update)
+                    WizardStep.BASICS -> BasicsStep(state, onUpdate)
+                    WizardStep.SCHEDULE -> ScheduleStep(state, onUpdate)
+                    WizardStep.TIMES -> TimesStep(state, onUpdate)
+                    WizardStep.STOCK -> StockStep(state, onUpdate)
                     WizardStep.REVIEW -> ReviewStep(state)
                 }
             }
@@ -116,11 +136,11 @@ fun MedEditScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(vertical = 16.dp),
         ) {
-            TextButton(onClick = { if (!viewModel.back()) onBackOut() }) {
+            TextButton(onClick = onBack) {
                 Text(stringResource(R.string.action_back))
             }
             Button(
-                onClick = viewModel::next,
+                onClick = onNext,
                 enabled = state.canProceed,
                 colors =
                     ButtonDefaults.buttonColors(

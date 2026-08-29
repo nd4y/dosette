@@ -1,6 +1,7 @@
 package icu.nd4y.dosette.ui.cabinet
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,12 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,14 +55,122 @@ fun CabinetScreen(
     viewModel: CabinetViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    CabinetContent(
+        state = state,
+        contentPadding = contentPadding,
+        onAddMedication = onAddMedication,
+        onOpenMedication = onOpenMedication,
+        modifier = modifier,
+    )
+}
 
-    Box(modifier = modifier.fillMaxSize()) {
+/** Stateless body — rendered directly by screenshot tests. */
+@Composable
+fun CabinetContent(
+    state: CabinetUiState,
+    contentPadding: PaddingValues,
+    onAddMedication: () -> Unit,
+    onOpenMedication: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val filter: (MedCard) -> Boolean = { card ->
+        !searchOpen || query.isBlank() || card.name.contains(query.trim(), ignoreCase = true)
+    }
+    val shownState =
+        state.copy(
+            active = state.active.filter(filter),
+            archived = state.archived.filter(filter),
+        )
+
+    Column(modifier = modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
+        CabinetHeader(
+            searchOpen = searchOpen,
+            query = query,
+            onQueryChange = { query = it },
+            onToggleSearch = {
+                searchOpen = !searchOpen
+                if (!searchOpen) query = ""
+            },
+        )
+        CabinetBody(
+            state = shownState,
+            bottomPadding = contentPadding.calculateBottomPadding(),
+            onAddMedication = onAddMedication,
+            onOpenMedication = onOpenMedication,
+        )
+    }
+}
+
+@Composable
+private fun CabinetHeader(
+    searchOpen: Boolean,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onToggleSearch: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.cabinet_title),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .size(44.dp)
+                        .background(
+                            if (searchOpen) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainer
+                            },
+                            CircleShape,
+                        ).clickable(onClick = onToggleSearch),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = SearchIcon,
+                    contentDescription = stringResource(R.string.cabinet_search),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+        AnimatedVisibility(visible = searchOpen) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = { Text(stringResource(R.string.cabinet_search_hint)) },
+                singleLine = true,
+                shape = MaterialTheme.shapes.large,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CabinetBody(
+    state: CabinetUiState,
+    bottomPadding: Dp,
+    onAddMedication: () -> Unit,
+    onOpenMedication: (String) -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
         if (!state.loading && state.active.isEmpty() && state.archived.isEmpty()) {
             EmptyState(
                 icon = DosetteIcons.Pill,
                 title = stringResource(R.string.cabinet_empty_title),
                 subtitle = stringResource(R.string.cabinet_empty_subtitle),
-                modifier = Modifier.padding(contentPadding),
+                modifier = Modifier.padding(bottom = bottomPadding),
             )
         } else {
             var archivedExpanded by rememberSaveable { mutableStateOf(false) }
@@ -66,8 +179,8 @@ fun CabinetScreen(
                     PaddingValues(
                         start = 20.dp,
                         end = 20.dp,
-                        top = contentPadding.calculateTopPadding() + 8.dp,
-                        bottom = contentPadding.calculateBottomPadding() + 96.dp,
+                        top = 8.dp,
+                        bottom = bottomPadding + 96.dp,
                     ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -99,28 +212,28 @@ fun CabinetScreen(
                     .align(Alignment.BottomEnd)
                     .padding(
                         end = 20.dp,
-                        bottom = contentPadding.calculateBottomPadding() + 20.dp,
+                        bottom = bottomPadding + 20.dp,
                     ),
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AddFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LargeFloatingActionButton(
+    FloatingActionButton(
         onClick = onClick,
+        shape = RoundedCornerShape(22.dp),
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = modifier,
+        modifier = modifier.size(64.dp),
     ) {
         Icon(
             imageVector = PlusIcon,
             contentDescription = stringResource(R.string.cabinet_add),
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(26.dp),
         )
     }
 }
@@ -250,6 +363,17 @@ private val PlusIcon: ImageVector by lazy {
         lineToRelative(0f, 14f)
         moveTo(5f, 12f)
         lineToRelative(14f, 0f)
+    }
+}
+
+private val SearchIcon: ImageVector by lazy {
+    strokeGlyph("Search", strokeWidth = 2f) {
+        moveTo(11f, 5f)
+        arcToRelative(6f, 6f, 0f, isMoreThanHalf = true, isPositiveArc = true, 0f, 12f)
+        arcToRelative(6f, 6f, 0f, isMoreThanHalf = true, isPositiveArc = true, 0f, -12f)
+        close()
+        moveTo(20f, 20f)
+        lineToRelative(-4.2f, -4.2f)
     }
 }
 

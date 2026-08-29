@@ -30,6 +30,8 @@
 
     <string name="cabinet_title">Аптечка</string>
     <string name="cabinet_add">Добавить лекарство</string>
+    <string name="cabinet_search">Поиск</string>
+    <string name="cabinet_search_hint">Поиск по названию</string>
     <string name="cabinet_archived">Архив</string>
     <string name="cabinet_empty_title">Пока пусто</string>
     <string name="cabinet_empty_subtitle">Добавьте первое лекарство кнопкой «+»</string>

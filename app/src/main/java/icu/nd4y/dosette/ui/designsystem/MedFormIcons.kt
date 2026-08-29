@@ -32,8 +32,9 @@ object MedFormIcons {
             arcToRelative(8f, 8f, 0f, isMoreThanHalf = true, isPositiveArc = true, 0f, 16f)
             arcToRelative(8f, 8f, 0f, isMoreThanHalf = true, isPositiveArc = true, 0f, -16f)
             close()
-            moveTo(6.5f, 12f)
-            lineToRelative(11f, 0f)
+            // Score line, deliberately not touching the rim.
+            moveTo(8.5f, 12f)
+            lineToRelative(7f, 0f)
         }
     }
 

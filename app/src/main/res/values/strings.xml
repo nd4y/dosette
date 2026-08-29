@@ -32,6 +32,8 @@
 
     <string name="cabinet_title">Meds</string>
     <string name="cabinet_add">Add medication</string>
+    <string name="cabinet_search">Search</string>
+    <string name="cabinet_search_hint">Search by name</string>
     <string name="cabinet_archived">Archived</string>
     <string name="cabinet_empty_title">Nothing here yet</string>
     <string name="cabinet_empty_subtitle">Add your first medication with the + button</string>
