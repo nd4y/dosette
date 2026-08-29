@@ -57,6 +57,7 @@ import icu.nd4y.dosette.ui.common.TimeFormat
 import icu.nd4y.dosette.ui.common.currentLocale
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
 import icu.nd4y.dosette.ui.designsystem.MedPalette
+import icu.nd4y.dosette.ui.designsystem.rememberDirectionalMotion
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -106,7 +107,12 @@ fun MedEditContent(
     ) {
         WizardHeader(state = state, onBack = onBack)
 
-        AnimatedContent(targetState = state.step, label = "wizard-step") { step ->
+        val stepMotion = rememberDirectionalMotion()
+        AnimatedContent(
+            targetState = state.step,
+            transitionSpec = { stepMotion.transform(forward = targetState.ordinal > initialState.ordinal) },
+            label = "wizard-step",
+        ) { step ->
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier =

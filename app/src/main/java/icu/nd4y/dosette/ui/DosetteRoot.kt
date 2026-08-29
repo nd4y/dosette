@@ -1,9 +1,11 @@
 package icu.nd4y.dosette.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -20,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -31,6 +35,7 @@ import icu.nd4y.dosette.ui.backup.BackupScreen
 import icu.nd4y.dosette.ui.cabinet.CabinetScreen
 import icu.nd4y.dosette.ui.calendar.CalendarScreen
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
+import icu.nd4y.dosette.ui.designsystem.rememberDirectionalMotion
 import icu.nd4y.dosette.ui.meddetail.MedDetailScreen
 import icu.nd4y.dosette.ui.mededit.MedEditScreen
 import icu.nd4y.dosette.ui.more.MoreScreen
@@ -95,114 +100,141 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
             }
         },
     ) { padding ->
-        when (tabs[selectedTab]) {
-            DosetteTab.Cabinet -> {
-                NavDisplay(
-                    backStack = cabinetBackStack,
-                    onBack = { cabinetBackStack.removeLastOrNull() },
-                    entryDecorators =
-                        listOf(
-                            rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator(),
-                        ),
-                    entryProvider =
-                        entryProvider {
-                            entry<CabinetKey> {
-                                CabinetScreen(
-                                    contentPadding = padding,
-                                    onAddMedication = { cabinetBackStack.add(MedEditKey()) },
-                                    onOpenMedication = { id -> cabinetBackStack.add(MedDetailKey(id)) },
-                                )
-                            }
-                            entry<MedEditKey> {
-                                MedEditScreen(
-                                    contentPadding = padding,
-                                    onDone = { cabinetBackStack.removeLastOrNull() },
-                                    onBackOut = { cabinetBackStack.removeLastOrNull() },
-                                )
-                            }
-                            entry<MedDetailKey> { key ->
-                                MedDetailScreen(
-                                    medicationId = key.medicationId,
-                                    contentPadding = padding,
-                                    onBack = { cabinetBackStack.removeLastOrNull() },
-                                )
-                            }
-                        },
-                )
-            }
+        val tabMotion = rememberDirectionalMotion()
+        AnimatedContent(
+            targetState = selectedTab,
+            transitionSpec = { tabMotion.transform(forward = targetState > initialState) },
+            label = "tab",
+        ) { tabIndex ->
+            TabContent(
+                tab = tabs[tabIndex],
+                padding = padding,
+                cabinetBackStack = cabinetBackStack,
+                moreBackStack = moreBackStack,
+            )
+        }
+    }
+}
 
-            DosetteTab.Today -> {
-                TodayScreen(contentPadding = padding)
-            }
+@Composable
+private fun TabContent(
+    tab: DosetteTab,
+    padding: PaddingValues,
+    cabinetBackStack: NavBackStack<NavKey>,
+    moreBackStack: NavBackStack<NavKey>,
+) {
+    val navMotion = rememberDirectionalMotion()
+    when (tab) {
+        DosetteTab.Cabinet -> {
+            NavDisplay(
+                backStack = cabinetBackStack,
+                onBack = { cabinetBackStack.removeLastOrNull() },
+                transitionSpec = { navMotion.transform(forward = true) },
+                popTransitionSpec = { navMotion.transform(forward = false) },
+                entryDecorators =
+                    listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator(),
+                    ),
+                entryProvider =
+                    entryProvider {
+                        entry<CabinetKey> {
+                            CabinetScreen(
+                                contentPadding = padding,
+                                onAddMedication = { cabinetBackStack.add(MedEditKey()) },
+                                onOpenMedication = { id -> cabinetBackStack.add(MedDetailKey(id)) },
+                            )
+                        }
+                        entry<MedEditKey> {
+                            MedEditScreen(
+                                contentPadding = padding,
+                                onDone = { cabinetBackStack.removeLastOrNull() },
+                                onBackOut = { cabinetBackStack.removeLastOrNull() },
+                            )
+                        }
+                        entry<MedDetailKey> { key ->
+                            MedDetailScreen(
+                                medicationId = key.medicationId,
+                                contentPadding = padding,
+                                onBack = { cabinetBackStack.removeLastOrNull() },
+                            )
+                        }
+                    },
+            )
+        }
 
-            DosetteTab.Calendar -> {
-                CalendarScreen(contentPadding = padding)
-            }
+        DosetteTab.Today -> {
+            TodayScreen(contentPadding = padding)
+        }
 
-            DosetteTab.More -> {
-                NavDisplay(
-                    backStack = moreBackStack,
-                    onBack = { moreBackStack.removeLastOrNull() },
-                    entryDecorators =
-                        listOf(
-                            rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator(),
-                        ),
-                    entryProvider =
-                        entryProvider {
-                            entry<MoreKey> {
-                                MoreScreen(
-                                    contentPadding = padding,
-                                    onOpenProfiles = { moreBackStack.add(ProfilesKey) },
-                                    onOpenSettings = { moreBackStack.add(SettingsKey) },
-                                    onOpenAppointments = { moreBackStack.add(AppointmentsKey) },
-                                    onOpenStats = { moreBackStack.add(StatsKey) },
-                                    onOpenBackup = { moreBackStack.add(BackupKey) },
-                                )
-                            }
-                            entry<BackupKey> {
-                                BackupScreen(
-                                    contentPadding = padding,
-                                    onBack = { moreBackStack.removeLastOrNull() },
-                                )
-                            }
-                            entry<AppointmentsKey> {
-                                AppointmentsScreen(
-                                    contentPadding = padding,
-                                    onBack = { moreBackStack.removeLastOrNull() },
-                                    onAdd = { moreBackStack.add(AppointmentEditKey()) },
-                                    onOpen = { id -> moreBackStack.add(AppointmentEditKey(id)) },
-                                )
-                            }
-                            entry<AppointmentEditKey> { key ->
-                                AppointmentEditScreen(
-                                    appointmentId = key.appointmentId,
-                                    contentPadding = padding,
-                                    onDone = { moreBackStack.removeLastOrNull() },
-                                )
-                            }
-                            entry<StatsKey> {
-                                StatsScreen(
-                                    contentPadding = padding,
-                                    onBack = { moreBackStack.removeLastOrNull() },
-                                )
-                            }
-                            entry<SettingsKey> {
-                                SettingsScreen(
-                                    contentPadding = padding,
-                                    onBack = { moreBackStack.removeLastOrNull() },
-                                )
-                            }
-                            entry<ProfilesKey> {
-                                ProfilesScreen(
-                                    contentPadding = padding,
-                                    onBack = { moreBackStack.removeLastOrNull() },
-                                )
-                            }
-                        },
-                )
-            }
+        DosetteTab.Calendar -> {
+            CalendarScreen(contentPadding = padding)
+        }
+
+        DosetteTab.More -> {
+            NavDisplay(
+                backStack = moreBackStack,
+                onBack = { moreBackStack.removeLastOrNull() },
+                transitionSpec = { navMotion.transform(forward = true) },
+                popTransitionSpec = { navMotion.transform(forward = false) },
+                entryDecorators =
+                    listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator(),
+                    ),
+                entryProvider =
+                    entryProvider {
+                        entry<MoreKey> {
+                            MoreScreen(
+                                contentPadding = padding,
+                                onOpenProfiles = { moreBackStack.add(ProfilesKey) },
+                                onOpenSettings = { moreBackStack.add(SettingsKey) },
+                                onOpenAppointments = { moreBackStack.add(AppointmentsKey) },
+                                onOpenStats = { moreBackStack.add(StatsKey) },
+                                onOpenBackup = { moreBackStack.add(BackupKey) },
+                            )
+                        }
+                        entry<BackupKey> {
+                            BackupScreen(
+                                contentPadding = padding,
+                                onBack = { moreBackStack.removeLastOrNull() },
+                            )
+                        }
+                        entry<AppointmentsKey> {
+                            AppointmentsScreen(
+                                contentPadding = padding,
+                                onBack = { moreBackStack.removeLastOrNull() },
+                                onAdd = { moreBackStack.add(AppointmentEditKey()) },
+                                onOpen = { id -> moreBackStack.add(AppointmentEditKey(id)) },
+                            )
+                        }
+                        entry<AppointmentEditKey> { key ->
+                            AppointmentEditScreen(
+                                appointmentId = key.appointmentId,
+                                contentPadding = padding,
+                                onDone = { moreBackStack.removeLastOrNull() },
+                            )
+                        }
+                        entry<StatsKey> {
+                            StatsScreen(
+                                contentPadding = padding,
+                                onBack = { moreBackStack.removeLastOrNull() },
+                            )
+                        }
+                        entry<SettingsKey> {
+                            SettingsScreen(
+                                contentPadding = padding,
+                                onBack = { moreBackStack.removeLastOrNull() },
+                            )
+                        }
+                        entry<ProfilesKey> {
+                            ProfilesScreen(
+                                contentPadding = padding,
+                                onBack = { moreBackStack.removeLastOrNull() },
+                            )
+                        }
+                    },
+            )
         }
     }
 }

@@ -125,6 +125,12 @@
     <string name="today_taken_of">Принято %1$d из %2$d</string>
     <string name="today_next_dose">Следующий приём — %1$s</string>
     <string name="today_all_done">На сегодня всё отмечено</string>
+    <plurals name="today_pending_left">
+        <item quantity="one">Не отмечен %d приём</item>
+        <item quantity="few">Не отмечены %d приёма</item>
+        <item quantity="many">Не отмечено %d приёмов</item>
+        <item quantity="other">Не отмечено %d приёма</item>
+    </plurals>
     <string name="today_empty_title">Приёмов на сегодня нет</string>
     <string name="today_empty_subtitle">Добавьте лекарство с расписанием на вкладке «Аптечка»</string>
     <string name="slot_morning">Утро</string>

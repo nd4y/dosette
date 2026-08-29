@@ -1,5 +1,6 @@
 package icu.nd4y.dosette.ui.designsystem
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -20,8 +22,9 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Day-progress ring from the Today mockup: one rounded segment per planned
- * dose, filled as doses are acted on. Falls back to a plain track when
- * nothing is planned.
+ * dose, filled as doses are acted on. The fill animates with the Expressive
+ * spatial spring — a freshly acted segment sweeps in instead of popping.
+ * Falls back to a plain track when nothing is planned.
  */
 @Composable
 fun SegmentedRing(
@@ -34,6 +37,11 @@ fun SegmentedRing(
     strokeWidth: Dp = 8.dp,
     center: (@Composable () -> Unit)? = null,
 ) {
+    val animatedDone by animateFloatAsState(
+        targetValue = done.toFloat(),
+        animationSpec = spatialSpec(),
+        label = "ring-done",
+    )
     Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
@@ -58,7 +66,7 @@ fun SegmentedRing(
             val sweep = 360f / total - gap
             repeat(total) { index ->
                 drawArc(
-                    color = if (index < done) doneColor else trackColor,
+                    color = trackColor,
                     startAngle = -90f + index * (sweep + gap),
                     sweepAngle = sweep,
                     useCenter = false,
@@ -66,6 +74,19 @@ fun SegmentedRing(
                     size = arcSize,
                     style = stroke,
                 )
+                // Fraction of this segment that is filled right now.
+                val fillFraction = (animatedDone - index).coerceIn(0f, 1f)
+                if (fillFraction > 0f) {
+                    drawArc(
+                        color = doneColor,
+                        startAngle = -90f + index * (sweep + gap),
+                        sweepAngle = sweep * fillFraction,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = stroke,
+                    )
+                }
             }
         }
         center?.invoke()

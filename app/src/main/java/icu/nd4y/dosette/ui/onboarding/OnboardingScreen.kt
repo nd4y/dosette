@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
@@ -64,6 +65,14 @@ fun OnboardingScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             notificationsGranted = granted
         }
+
+    // The battery dialog is a separate activity: re-read both states when
+    // the screen comes back to the foreground so the cards flip to "granted".
+    LifecycleResumeEffect(Unit) {
+        notificationsGranted = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        batteryExempt = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+        onPauseOrDispose { }
+    }
 
     OnboardingContent(
         notificationsGranted = notificationsGranted,

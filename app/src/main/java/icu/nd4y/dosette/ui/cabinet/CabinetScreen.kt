@@ -186,7 +186,11 @@ private fun CabinetBody(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(state.active, key = { it.id }) { card ->
-                    MedCardRow(card = card, onClick = { onOpenMedication(card.id) })
+                    MedCardRow(
+                        card = card,
+                        onClick = { onOpenMedication(card.id) },
+                        modifier = Modifier.animateItem(),
+                    )
                 }
                 if (state.archived.isNotEmpty()) {
                     item(key = "archived-header") {

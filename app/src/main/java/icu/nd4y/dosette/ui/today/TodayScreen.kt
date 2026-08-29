@@ -1,5 +1,10 @@
 package icu.nd4y.dosette.ui.today
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,6 +48,7 @@ import icu.nd4y.dosette.ui.designsystem.EmptyState
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
 import icu.nd4y.dosette.ui.designsystem.RingCenterLabel
 import icu.nd4y.dosette.ui.designsystem.SegmentedRing
+import icu.nd4y.dosette.ui.designsystem.effectsSpec
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 import java.time.format.DateTimeFormatter
 
@@ -107,10 +114,25 @@ fun TodayContent(
             }
             doses.forEach { dose ->
                 item(key = "dose-${dose.key.encode()}") {
-                    if (dose.status == DoseUiStatus.PENDING) {
-                        PendingDoseCard(dose = dose, onTake = { onTake(dose) }, onSkip = { onSkip(dose) })
-                    } else {
-                        ActedDoseRow(dose)
+                    val fade = effectsSpec<Float>()
+                    AnimatedContent(
+                        targetState = dose,
+                        contentKey = { it.status },
+                        transitionSpec = {
+                            (fadeIn(fade) togetherWith fadeOut(fade)) using SizeTransform(clip = false)
+                        },
+                        label = "dose",
+                        modifier = Modifier.animateItem(),
+                    ) { animatedDose ->
+                        if (animatedDose.status == DoseUiStatus.PENDING) {
+                            PendingDoseCard(
+                                dose = animatedDose,
+                                onTake = { onTake(animatedDose) },
+                                onSkip = { onSkip(animatedDose) },
+                            )
+                        } else {
+                            ActedDoseRow(animatedDose)
+                        }
                     }
                 }
             }
@@ -183,11 +205,22 @@ private fun HeroCard(state: TodayUiState) {
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
+                val pending = state.doses.count { it.status == DoseUiStatus.PENDING }
                 Text(
                     text =
-                        state.nextDoseTime?.let {
-                            stringResource(R.string.today_next_dose, it.format(TimeFormat))
-                        } ?: stringResource(R.string.today_all_done),
+                        when {
+                            state.nextDoseTime != null -> {
+                                stringResource(R.string.today_next_dose, state.nextDoseTime.format(TimeFormat))
+                            }
+
+                            pending > 0 -> {
+                                pluralStringResource(R.plurals.today_pending_left, pending, pending)
+                            }
+
+                            else -> {
+                                stringResource(R.string.today_all_done)
+                            }
+                        },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                 )
