@@ -1,5 +1,6 @@
 package icu.nd4y.dosette.ui.stats
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -24,7 +25,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.ui.designsystem.MedPalette
+import icu.nd4y.dosette.ui.designsystem.slowSpatialSpec
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 
 @Composable
@@ -201,6 +207,15 @@ private fun StreakCard(days: Int) {
     }
 }
 
+/** Animates 0 -> value on first composition, then follows value changes. */
+@Composable
+private fun animatedProgress(value: Float): Float {
+    var target by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(value) { target = value }
+    val animated by animateFloatAsState(target, slowSpatialSpec(), label = "progress")
+    return animated
+}
+
 @Composable
 private fun MedStatRow(med: MedStat) {
     val palette = MedPalette.resolve(med.colorSeed, isSystemInDarkTheme())
@@ -238,12 +253,12 @@ private fun MedStatRow(med: MedStat) {
                         RoundedCornerShape(4.dp),
                     ),
         ) {
-            val fraction = (med.percent ?: 0) / 100f
+            val fraction = animatedProgress((med.percent ?: 0) / 100f)
             if (fraction > 0f) {
                 Box(
                     modifier =
                         Modifier
-                            .fillMaxWidth(fraction)
+                            .fillMaxWidth(fraction.coerceIn(0f, 1f))
                             .height(8.dp)
                             .background(palette.onContainer, RoundedCornerShape(4.dp)),
                 )
@@ -259,6 +274,7 @@ private fun PercentRing(
     trackColor: Color,
     center: @Composable () -> Unit,
 ) {
+    val animatedPercent = animatedProgress((percent ?: 0).toFloat())
     Box(modifier = Modifier.size(104.dp), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 10.dp.toPx()
@@ -279,7 +295,7 @@ private fun PercentRing(
                 size = arcSize,
                 style = stroke,
             )
-            val sweep = (percent ?: 0) * 3.6f
+            val sweep = (animatedPercent * 3.6f).coerceIn(0f, 360f)
             if (sweep > 0f) {
                 drawArc(
                     color = color,

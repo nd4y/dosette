@@ -1,5 +1,6 @@
 package icu.nd4y.dosette.ui.calendar
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +45,7 @@ import icu.nd4y.dosette.domain.stats.AdherenceCalculator.DayStatus
 import icu.nd4y.dosette.ui.common.TimeFormat
 import icu.nd4y.dosette.ui.common.currentLocale
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
+import icu.nd4y.dosette.ui.designsystem.rememberDirectionalMotion
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.TodayDose
@@ -93,7 +95,15 @@ fun CalendarContent(
     ) {
         CalendarHeader(state, onPreviousMonth, onNextMonth)
         WeekdayRow()
-        MonthGrid(state, onSelect)
+        val monthMotion = rememberDirectionalMotion()
+        AnimatedContent(
+            targetState = state,
+            contentKey = { it.month },
+            transitionSpec = { monthMotion.transform(forward = targetState.month > initialState.month) },
+            label = "month",
+        ) { monthState ->
+            MonthGrid(monthState, onSelect)
+        }
         Legend()
         AdherenceCard(state)
     }

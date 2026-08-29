@@ -121,6 +121,10 @@
     <string name="today_taken_of">Taken %1$d of %2$d</string>
     <string name="today_next_dose">Next dose — %1$s</string>
     <string name="today_all_done">Everything is marked for today</string>
+    <plurals name="today_pending_left">
+        <item quantity="one">%d dose left to mark</item>
+        <item quantity="other">%d doses left to mark</item>
+    </plurals>
     <string name="today_empty_title">No doses today</string>
     <string name="today_empty_subtitle">Add a medication with a schedule in the Meds tab</string>
     <string name="slot_morning">Morning</string>
