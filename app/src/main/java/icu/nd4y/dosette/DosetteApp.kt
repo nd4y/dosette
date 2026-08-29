@@ -3,6 +3,7 @@ package icu.nd4y.dosette
 import android.app.Application
 import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
+import icu.nd4y.dosette.data.ProfileBootstrap
 import icu.nd4y.dosette.di.IoDispatcher
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.notifications.Channels
@@ -18,6 +19,9 @@ class DosetteApp : Application() {
     lateinit var engine: ReminderEngine
 
     @Inject
+    lateinit var profileBootstrap: ProfileBootstrap
+
+    @Inject
     @IoDispatcher
     lateinit var ioDispatcher: CoroutineDispatcher
 
@@ -27,8 +31,10 @@ class DosetteApp : Application() {
         // Catch up on anything that became due while the process was dead
         // and make sure the alarm chain is armed.
         CoroutineScope(SupervisorJob() + ioDispatcher).launch {
-            runCatching { engine.processDueEvents() }
-                .onFailure { Log.e("DosetteApp", "startup reconcile failed", it) }
+            runCatching {
+                profileBootstrap.ensureDefaultProfile(getString(R.string.default_profile_name))
+                engine.processDueEvents()
+            }.onFailure { Log.e("DosetteApp", "startup reconcile failed", it) }
         }
     }
 }

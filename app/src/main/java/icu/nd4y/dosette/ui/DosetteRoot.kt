@@ -1,6 +1,9 @@
 package icu.nd4y.dosette.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,11 +25,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
 import icu.nd4y.dosette.R
+import icu.nd4y.dosette.ui.cabinet.CabinetScreen
+import icu.nd4y.dosette.ui.calendar.CalendarScreen
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
+import icu.nd4y.dosette.ui.meddetail.MedDetailScreen
+import icu.nd4y.dosette.ui.mededit.MedEditScreen
+import icu.nd4y.dosette.ui.navigation.CabinetKey
+import icu.nd4y.dosette.ui.navigation.MedDetailKey
+import icu.nd4y.dosette.ui.navigation.MedEditKey
 import icu.nd4y.dosette.ui.theme.DosetteTheme
+import icu.nd4y.dosette.ui.today.TodayScreen
 
 private enum class DosetteTab(
     @StringRes val label: Int,
@@ -40,32 +55,87 @@ private enum class DosetteTab(
 
 @Composable
 fun DosetteRoot(modifier: Modifier = Modifier) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(DosetteTab.Cabinet.ordinal) }
     val tabs = DosetteTab.entries
+
+    val cabinetBackStack = rememberNavBackStack(CabinetKey)
+    val bottomBarVisible =
+        selectedTab != DosetteTab.Cabinet.ordinal || cabinetBackStack.size <= 1
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar {
-                tabs.forEachIndexed { index, tab ->
-                    NavigationBarItem(
-                        selected = index == selectedTab,
-                        onClick = { selectedTab = index },
-                        icon = { Icon(tab.icon, contentDescription = null) },
-                        label = { Text(stringResource(tab.label)) },
-                    )
+            AnimatedVisibility(
+                visible = bottomBarVisible,
+                enter = slideInVertically { it },
+                exit = slideOutVertically { it },
+            ) {
+                NavigationBar {
+                    tabs.forEachIndexed { index, tab ->
+                        NavigationBarItem(
+                            selected = index == selectedTab,
+                            onClick = { selectedTab = index },
+                            icon = { Icon(tab.icon, contentDescription = null) },
+                            label = { Text(stringResource(tab.label)) },
+                        )
+                    }
                 }
             }
         },
     ) { padding ->
-        PlaceholderScreen(
-            labelRes = tabs[selectedTab].label,
-            icon = tabs[selectedTab].icon,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-        )
+        when (tabs[selectedTab]) {
+            DosetteTab.Cabinet -> {
+                NavDisplay(
+                    backStack = cabinetBackStack,
+                    onBack = { cabinetBackStack.removeLastOrNull() },
+                    entryDecorators =
+                        listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator(),
+                        ),
+                    entryProvider =
+                        entryProvider {
+                            entry<CabinetKey> {
+                                CabinetScreen(
+                                    contentPadding = padding,
+                                    onAddMedication = { cabinetBackStack.add(MedEditKey()) },
+                                    onOpenMedication = { id -> cabinetBackStack.add(MedDetailKey(id)) },
+                                )
+                            }
+                            entry<MedEditKey> {
+                                MedEditScreen(
+                                    contentPadding = padding,
+                                    onDone = { cabinetBackStack.removeLastOrNull() },
+                                    onBackOut = { cabinetBackStack.removeLastOrNull() },
+                                )
+                            }
+                            entry<MedDetailKey> { key ->
+                                MedDetailScreen(
+                                    medicationId = key.medicationId,
+                                    contentPadding = padding,
+                                    onBack = { cabinetBackStack.removeLastOrNull() },
+                                )
+                            }
+                        },
+                )
+            }
+
+            DosetteTab.Today -> {
+                TodayScreen(contentPadding = padding)
+            }
+
+            DosetteTab.Calendar -> {
+                CalendarScreen(contentPadding = padding)
+            }
+
+            DosetteTab.More -> {
+                PlaceholderScreen(
+                    labelRes = DosetteTab.More.label,
+                    icon = DosetteTab.More.icon,
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
+            }
+        }
     }
 }
 
@@ -100,7 +170,7 @@ private fun PlaceholderScreen(
     }
 }
 
-@Preview(showBackground = true)
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
 @Composable
 private fun DosetteRootPreview() {
     DosetteTheme(dynamicColor = false) {

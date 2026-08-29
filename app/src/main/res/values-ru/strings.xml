@@ -25,4 +25,133 @@
     <string name="notification_low_stock_title">Запас на исходе: %1$s</string>
     <string name="notification_low_stock_text">Осталось %1$s</string>
     <string name="notification_appointment_time">Сегодня в %1$s</string>
+
+    <string name="default_profile_name">Я</string>
+
+    <string name="cabinet_title">Аптечка</string>
+    <string name="cabinet_add">Добавить лекарство</string>
+    <string name="cabinet_search">Поиск</string>
+    <string name="cabinet_search_hint">Поиск по названию</string>
+    <string name="cabinet_archived">Архив</string>
+    <string name="cabinet_empty_title">Пока пусто</string>
+    <string name="cabinet_empty_subtitle">Добавьте первое лекарство кнопкой «+»</string>
+
+    <plurals name="times_per_day">
+        <item quantity="one">%d раз в день</item>
+        <item quantity="few">%d раза в день</item>
+        <item quantity="many">%d раз в день</item>
+        <item quantity="other">%d раза в день</item>
+    </plurals>
+    <plurals name="days_per_week">
+        <item quantity="one">%d день в неделю</item>
+        <item quantity="few">%d дня в неделю</item>
+        <item quantity="many">%d дней в неделю</item>
+        <item quantity="other">%d дня в неделю</item>
+    </plurals>
+    <string name="schedule_every_n_days">Каждые %d дн.</string>
+    <string name="schedule_every_other_day">Через день</string>
+    <string name="schedule_cycle_summary">%1$d дн. приёма / %2$d перерыва</string>
+    <string name="schedule_as_needed">По необходимости</string>
+
+    <string name="stock_left">осталось %s</string>
+    <plurals name="stock_days_left">
+        <item quantity="one">хватит на %d день</item>
+        <item quantity="few">хватит на %d дня</item>
+        <item quantity="many">хватит на %d дней</item>
+        <item quantity="other">хватит на %d дня</item>
+    </plurals>
+    <string name="stock_low">пора купить</string>
+    <string name="stock_untracked">запас не отслеживается</string>
+
+    <string name="wizard_new_med">Новое лекарство</string>
+    <string name="wizard_step_of">Шаг %1$d из %2$d · %3$s</string>
+    <string name="wizard_step_basics">Основное</string>
+    <string name="wizard_step_schedule">Расписание</string>
+    <string name="wizard_step_times">Время и дозы</string>
+    <string name="wizard_step_stock">Запас</string>
+    <string name="wizard_step_review">Проверка</string>
+    <string name="wizard_headline_basics">Что принимаете?</string>
+    <string name="wizard_headline_schedule">Как принимать?</string>
+    <string name="wizard_headline_times">Когда и сколько?</string>
+    <string name="wizard_headline_stock">Следить за запасом?</string>
+    <string name="wizard_headline_review">Всё верно?</string>
+
+    <string name="field_name">Название</string>
+    <string name="field_strength">Дозировка</string>
+    <string name="field_strength_unit">Ед.</string>
+    <string name="field_instructions">Указания, например «с едой»</string>
+    <string name="field_color">Цвет</string>
+
+    <string name="form_tablet">Таблетки</string>
+    <string name="form_capsule">Капсулы</string>
+    <string name="form_injection">Инъекции</string>
+    <string name="form_drops">Капли</string>
+    <string name="form_liquid">Жидкость</string>
+    <string name="form_inhaler">Ингалятор</string>
+    <string name="form_ointment">Мазь</string>
+    <string name="form_spray">Спрей</string>
+    <string name="form_other">Другое</string>
+
+    <string name="schedule_type_daily">Каждый день</string>
+    <string name="schedule_type_daily_hint">одно и то же время ежедневно</string>
+    <string name="schedule_type_weekdays">По дням недели</string>
+    <string name="schedule_type_weekdays_hint">выберите дни приёма</string>
+    <string name="schedule_type_every_n">Каждые несколько дней</string>
+    <string name="schedule_type_every_n_hint">например, через день</string>
+    <string name="schedule_type_cycle">Циклами</string>
+    <string name="schedule_type_cycle_hint">например, 21 день приёма и 7 перерыва</string>
+    <string name="schedule_type_prn">По необходимости</string>
+    <string name="schedule_type_prn_hint">без расписания и напоминаний</string>
+    <string name="interval_days_label">Интервал, дней</string>
+    <string name="cycle_on_label">Дней приёма</string>
+    <string name="cycle_off_label">Дней перерыва</string>
+
+    <string name="times_add">Добавить время</string>
+    <string name="times_amount">Доза</string>
+    <string name="times_remove">Убрать</string>
+
+    <string name="stock_track_switch">Отслеживать запас</string>
+    <string name="stock_track_hint">Напомним, когда будет пора купить ещё</string>
+    <string name="variant_title">Фасовка %1$d</string>
+    <string name="variant_strength">Дозировка 1 шт</string>
+    <string name="variant_stock">В наличии, шт</string>
+    <string name="variant_threshold">Напомнить при, шт</string>
+    <string name="variant_refill">Пополнять на, шт</string>
+    <string name="variant_add">Добавить фасовку</string>
+    <string name="variant_default_hint">Первая фасовка списывается по умолчанию при приёме</string>
+
+    <string name="review_schedule">Расписание</string>
+    <string name="review_stock">Запас</string>
+    <string name="review_variant_line">%1$s %2$s — %3$s шт</string>
+
+    <string name="today_taken_of">Принято %1$d из %2$d</string>
+    <string name="today_next_dose">Следующий приём — %1$s</string>
+    <string name="today_all_done">На сегодня всё отмечено</string>
+    <string name="today_empty_title">Приёмов на сегодня нет</string>
+    <string name="today_empty_subtitle">Добавьте лекарство с расписанием на вкладке «Аптечка»</string>
+    <string name="slot_morning">Утро</string>
+    <string name="slot_afternoon">День</string>
+    <string name="slot_evening">Вечер</string>
+    <string name="slot_night">Ночь</string>
+    <string name="slot_all_done">все приняты</string>
+    <string name="dose_taken_at">принято в %1$s</string>
+    <string name="dose_skipped_label">пропущено</string>
+    <string name="dose_missed_label">не принято</string>
+    <string name="today_prn_section">По необходимости</string>
+    <string name="prn_take">Отметить приём</string>
+
+    <string name="legend_full">всё принято</string>
+    <string name="legend_partial">частично</string>
+    <string name="legend_missed">пропущено</string>
+    <string name="legend_today">сегодня</string>
+    <string name="calendar_month_adherence">Соблюдение за %1$s</string>
+    <string name="calendar_prev_month">Предыдущий месяц</string>
+    <string name="calendar_next_month">Следующий месяц</string>
+    <string name="mark_taken">Отметить принятым</string>
+    <string name="mark_skipped">Отметить пропущенным</string>
+
+    <string name="action_next">Далее</string>
+    <string name="action_back">Назад</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_close">Закрыть</string>
 </resources>
