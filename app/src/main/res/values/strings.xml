@@ -136,6 +136,16 @@
     <string name="today_prn_section">As needed</string>
     <string name="prn_take">Log intake</string>
 
+    <string name="legend_full">all taken</string>
+    <string name="legend_partial">partial</string>
+    <string name="legend_missed">missed</string>
+    <string name="legend_today">today</string>
+    <string name="calendar_month_adherence">Adherence in %1$s</string>
+    <string name="calendar_prev_month">Previous month</string>
+    <string name="calendar_next_month">Next month</string>
+    <string name="mark_taken">Mark as taken</string>
+    <string name="mark_skipped">Mark as skipped</string>
+
     <string name="action_next">Next</string>
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>

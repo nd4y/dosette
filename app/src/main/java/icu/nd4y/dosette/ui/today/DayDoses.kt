@@ -1,0 +1,59 @@
+package icu.nd4y.dosette.ui.today
+
+import icu.nd4y.dosette.data.repository.MedicationDetails
+import icu.nd4y.dosette.domain.model.DoseKind
+import icu.nd4y.dosette.domain.model.DoseLog
+import icu.nd4y.dosette.domain.model.DoseStatus
+import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.domain.schedule.OccurrenceGenerator
+import icu.nd4y.dosette.ui.cabinet.formatAmount
+import java.time.LocalDate
+import java.time.ZoneId
+
+/**
+ * Planned occurrences of [date] merged with the day's logs — the single
+ * source for both the Today timeline and the calendar day sheet.
+ */
+fun buildDayDoses(
+    date: LocalDate,
+    meds: List<MedicationDetails>,
+    logs: List<DoseLog>,
+    zone: ZoneId,
+): List<TodayDose> {
+    val active = meds.filter { !it.medication.isArchived }
+    val logByKey =
+        logs
+            .filter { it.kind == DoseKind.SCHEDULED && it.time != null && it.date == date }
+            .associateBy { OccurrenceKey(it.medicationId, it.date, requireNotNull(it.time)) }
+
+    return active
+        .flatMap { med ->
+            OccurrenceGenerator
+                .occurrencesOn(med.schedulesActiveOn(date), date)
+                .map { occurrence ->
+                    val log = logByKey[occurrence.key]
+                    TodayDose(
+                        medicationId = med.medication.id,
+                        date = date,
+                        time = occurrence.time,
+                        name = med.medication.name,
+                        strengthText =
+                            med.medication.strengthValue?.let {
+                                "${formatAmount(it)} ${med.medication.strengthUnit.orEmpty()}".trim()
+                            },
+                        amountText = formatAmount(occurrence.amount),
+                        instructions = med.medication.instructions,
+                        form = med.medication.form,
+                        colorSeed = med.medication.colorSeed,
+                        status =
+                            when (log?.status) {
+                                DoseStatus.TAKEN -> DoseUiStatus.TAKEN
+                                DoseStatus.SKIPPED -> DoseUiStatus.SKIPPED
+                                DoseStatus.MISSED -> DoseUiStatus.MISSED
+                                null -> DoseUiStatus.PENDING
+                            },
+                        actedTime = log?.actedAt?.atZone(zone)?.toLocalTime(),
+                    )
+                }
+        }.sortedBy { it.time }
+}

@@ -115,43 +115,7 @@ class TodayViewModel
             logs: List<DoseLog>,
         ): TodayUiState {
             val active = meds.filter { !it.medication.isArchived }
-            val logByKey =
-                logs
-                    .filter { it.kind == DoseKind.SCHEDULED && it.time != null }
-                    .associateBy { OccurrenceKey(it.medicationId, it.date, requireNotNull(it.time)) }
-
-            val doses =
-                active
-                    .flatMap { med ->
-                        OccurrenceGenerator
-                            .occurrencesOn(med.schedulesActiveOn(date), date)
-                            .map { occurrence ->
-                                val log = logByKey[occurrence.key]
-                                TodayDose(
-                                    medicationId = med.medication.id,
-                                    date = date,
-                                    time = occurrence.time,
-                                    name = med.medication.name,
-                                    strengthText =
-                                        med.medication.strengthValue?.let {
-                                            "${formatAmount(it)} ${med.medication.strengthUnit.orEmpty()}".trim()
-                                        },
-                                    amountText = formatAmount(occurrence.amount),
-                                    instructions = med.medication.instructions,
-                                    form = med.medication.form,
-                                    colorSeed = med.medication.colorSeed,
-                                    status =
-                                        when (log?.status) {
-                                            DoseStatus.TAKEN -> DoseUiStatus.TAKEN
-                                            DoseStatus.SKIPPED -> DoseUiStatus.SKIPPED
-                                            DoseStatus.MISSED -> DoseUiStatus.MISSED
-                                            null -> DoseUiStatus.PENDING
-                                        },
-                                    actedTime =
-                                        log?.actedAt?.atZone(clock.zone)?.toLocalTime(),
-                                )
-                            }
-                    }.sortedBy { it.time }
+            val doses = buildDayDoses(date, meds, logs, clock.zone)
 
             val prn =
                 active

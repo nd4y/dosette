@@ -140,6 +140,16 @@
     <string name="today_prn_section">По необходимости</string>
     <string name="prn_take">Отметить приём</string>
 
+    <string name="legend_full">всё принято</string>
+    <string name="legend_partial">частично</string>
+    <string name="legend_missed">пропущено</string>
+    <string name="legend_today">сегодня</string>
+    <string name="calendar_month_adherence">Соблюдение за %1$s</string>
+    <string name="calendar_prev_month">Предыдущий месяц</string>
+    <string name="calendar_next_month">Следующий месяц</string>
+    <string name="mark_taken">Отметить принятым</string>
+    <string name="mark_skipped">Отметить пропущенным</string>
+
     <string name="action_next">Далее</string>
     <string name="action_back">Назад</string>
     <string name="action_save">Сохранить</string>
