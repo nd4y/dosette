@@ -5,13 +5,13 @@ Offline medication tracker for Android. Material 3 Expressive, no accounts, no n
 ## Features
 
 - **Medications with flexible schedules**: fixed times, weekdays, every-N-days, cycles (X on / Y off), as-needed.
-- **Persistent reminders**: the notification cannot be dismissed for good — swiping it away silently re-posts it, and the alert repeats on a configurable interval until the dose is marked taken or skipped. Snooze and a configurable missed-dose grace window included.
+- **Persistent reminders**: the notification cannot be dismissed for good — swiping it away silently re-posts it in place, and the alert repeats on a configurable interval until the dose is marked taken or skipped. Snooze for a chosen duration or **until you get home / to work** (geofence + Wi-Fi recognition, configured in Settings → Places), with a configurable missed-dose grace window.
 - **Package variants with per-variant stock**: a 150 mg dose can be taken as one 150 mg capsule or two 75 mg ones — each package form keeps its own stock pool and is decremented correctly.
 - **History and adherence**: a calendar with per-day status dots (statuses editable retroactively), 30-day adherence stats with per-medication breakdown and a no-miss streak.
 - **Stock tracking** with low-stock notifications and refill amounts.
 - **Multiple profiles** — family members in one app, reminders fire for everyone.
 - **Doctor appointments** with reminders (1 day / 2 h / 30 min before).
-- **Full backup as versioned YAML** — export/import through any documents provider (local file, Google Drive). Import validates the file, previews the contents and auto-saves the current data first.
+- **Full backup as versioned YAML** — export/import through any documents provider (local file, Google Drive), optionally **password-encrypted** (PBKDF2 + AES-256-GCM, `.yaml.enc`). Import validates the file, previews the contents and auto-saves the current data first. The medication database is excluded from Android's cloud backup — data leaves the device only as your own (optionally encrypted) export.
 - English and Russian UI, light and dark themes, Material You dynamic color.
 
 ## Install
@@ -32,6 +32,10 @@ The backup is a single YAML file, schema version 1: `settings`, then `profiles[]
 (`2026-08-29`), times are `HH:mm`, timestamps are ISO-8601 instants. Import is strict: unknown keys,
 unknown enum values and dangling references are rejected before anything is written, and the previous
 data is kept as an automatic backup inside the app (last 5).
+
+With a password the same YAML is sealed as `MAGIC | salt(16) | nonce(12) | AES-256-GCM(payload)`
+with a key derived via PBKDF2-HMAC-SHA256 (600k iterations); the file gets the `.yaml.enc`
+extension. The password is not stored anywhere — losing it makes the file unreadable.
 
 ## Design
 
