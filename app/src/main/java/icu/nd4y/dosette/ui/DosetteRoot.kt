@@ -33,6 +33,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.ui.cabinet.CabinetScreen
+import icu.nd4y.dosette.ui.calendar.CalendarScreen
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.meddetail.MedDetailScreen
 import icu.nd4y.dosette.ui.mededit.MedEditScreen
@@ -124,11 +125,7 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
             }
 
             DosetteTab.Calendar -> {
-                PlaceholderScreen(
-                    labelRes = DosetteTab.Calendar.label,
-                    icon = DosetteTab.Calendar.icon,
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                )
+                CalendarScreen(contentPadding = padding)
             }
 
             DosetteTab.More -> {

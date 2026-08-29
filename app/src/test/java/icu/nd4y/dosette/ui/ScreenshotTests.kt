@@ -7,10 +7,14 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import icu.nd4y.dosette.domain.model.MedicationForm
+import icu.nd4y.dosette.domain.stats.AdherenceCalculator
 import icu.nd4y.dosette.ui.cabinet.CabinetContent
 import icu.nd4y.dosette.ui.cabinet.CabinetUiState
 import icu.nd4y.dosette.ui.cabinet.MedCard
 import icu.nd4y.dosette.ui.cabinet.ScheduleBrief
+import icu.nd4y.dosette.ui.calendar.CalendarContent
+import icu.nd4y.dosette.ui.calendar.CalendarDay
+import icu.nd4y.dosette.ui.calendar.CalendarUiState
 import icu.nd4y.dosette.ui.mededit.MedEditContent
 import icu.nd4y.dosette.ui.mededit.MedEditUiState
 import icu.nd4y.dosette.ui.mededit.VariantDraft
@@ -296,6 +300,55 @@ class ScreenshotTests {
                 }
             }
         }
+    }
+
+    private val calendarState: CalendarUiState =
+        run {
+            val month = java.time.YearMonth.of(2026, 8)
+            val today = LocalDate.parse("2026-08-29")
+            val gridStart = LocalDate.parse("2026-07-27")
+            val partialDays = setOf(5, 15, 26)
+            val days =
+                (0 until 42).map { offset ->
+                    val date = gridStart.plusDays(offset.toLong())
+                    val inMonth = java.time.YearMonth.from(date) == month
+                    val status =
+                        when {
+                            !inMonth || date >= today -> null
+                            date.dayOfMonth == 11 -> AdherenceCalculator.DayStatus.ALL_MISSED
+                            date.dayOfMonth in partialDays -> AdherenceCalculator.DayStatus.PARTIAL
+                            else -> AdherenceCalculator.DayStatus.COMPLETE
+                        }
+                    CalendarDay(date = date, inMonth = inMonth, isToday = date == today, status = status)
+                }
+            CalendarUiState(
+                loading = false,
+                month = month,
+                days = days,
+                monthAdherencePercent = 92,
+            )
+        }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun calendarLight() {
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    CalendarContent(
+                        state = calendarState,
+                        contentPadding = screenPadding,
+                        onPreviousMonth = {},
+                        onNextMonth = {},
+                        onSelect = {},
+                        onMark = { _, _ -> },
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("$SHOTS/calendar_light.png")
     }
 
     @Test
