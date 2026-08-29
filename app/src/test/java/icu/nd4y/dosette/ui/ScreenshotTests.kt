@@ -7,9 +7,12 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import icu.nd4y.dosette.data.settings.AppSettings
+import icu.nd4y.dosette.domain.model.Appointment
 import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.Profile
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator
+import icu.nd4y.dosette.ui.appointments.AppointmentsContent
+import icu.nd4y.dosette.ui.appointments.AppointmentsUiState
 import icu.nd4y.dosette.ui.cabinet.CabinetContent
 import icu.nd4y.dosette.ui.cabinet.CabinetUiState
 import icu.nd4y.dosette.ui.cabinet.MedCard
@@ -23,6 +26,9 @@ import icu.nd4y.dosette.ui.mededit.VariantDraft
 import icu.nd4y.dosette.ui.mededit.WizardStep
 import icu.nd4y.dosette.ui.more.MoreContent
 import icu.nd4y.dosette.ui.settings.SettingsContent
+import icu.nd4y.dosette.ui.stats.MedStat
+import icu.nd4y.dosette.ui.stats.StatsContent
+import icu.nd4y.dosette.ui.stats.StatsUiState
 import icu.nd4y.dosette.ui.theme.DosetteTheme
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
@@ -402,6 +408,8 @@ class ScreenshotTests {
                         contentPadding = screenPadding,
                         onOpenProfiles = {},
                         onOpenSettings = {},
+                        onOpenAppointments = {},
+                        onOpenStats = {},
                     )
                 }
             }
@@ -434,6 +442,89 @@ class ScreenshotTests {
             }
         }
         composeRule.onRoot().captureRoboImage("$SHOTS/settings_light.png")
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun appointmentsLight() {
+        val appointments =
+            listOf(
+                Appointment(
+                    id = "a1",
+                    profileId = "p1",
+                    title = "Терапевт",
+                    doctorName = "Иванова А. П.",
+                    location = "Поликлиника №3",
+                    date = LocalDate.parse("2026-09-02"),
+                    time = LocalTime.of(9, 30),
+                    notes = null,
+                    reminderOffsetsMin = listOf(1440, 120),
+                    createdAt = java.time.Instant.parse("2026-08-20T00:00:00Z"),
+                ),
+                Appointment(
+                    id = "a2",
+                    profileId = "p1",
+                    title = "Кардиолог",
+                    doctorName = null,
+                    location = "МЦ «Здоровье»",
+                    date = LocalDate.parse("2026-09-15"),
+                    time = LocalTime.of(14, 0),
+                    notes = null,
+                    reminderOffsetsMin = listOf(120),
+                    createdAt = java.time.Instant.parse("2026-08-25T00:00:00Z"),
+                ),
+            )
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    AppointmentsContent(
+                        state = AppointmentsUiState(loading = false, upcoming = appointments),
+                        contentPadding = screenPadding,
+                        onBack = {},
+                        onAdd = {},
+                        onOpen = {},
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("$SHOTS/appointments_light.png")
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun statsLight() {
+        val state =
+            StatsUiState(
+                loading = false,
+                percent = 92,
+                taken = 138,
+                missed = 12,
+                skipped = 4,
+                streakDays = 6,
+                meds =
+                    listOf(
+                        MedStat("m1", "Метформин", 0, taken = 56, missed = 2),
+                        MedStat("m2", "Лизиноприл", 1, taken = 27, missed = 3),
+                        MedStat("m3", "Аторвастатин", 2, taken = 24, missed = 5),
+                        MedStat("m4", "Витамин D", 3, taken = 31, missed = 2),
+                    ),
+            )
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    StatsContent(
+                        state = state,
+                        contentPadding = screenPadding,
+                        onBack = {},
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("$SHOTS/stats_light.png")
     }
 
     @Test

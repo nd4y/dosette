@@ -42,6 +42,8 @@ fun MoreScreen(
     contentPadding: PaddingValues,
     onOpenProfiles: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAppointments: () -> Unit,
+    onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MoreViewModel = hiltViewModel(),
 ) {
@@ -52,6 +54,8 @@ fun MoreScreen(
         contentPadding = contentPadding,
         onOpenProfiles = onOpenProfiles,
         onOpenSettings = onOpenSettings,
+        onOpenAppointments = onOpenAppointments,
+        onOpenStats = onOpenStats,
         modifier = modifier,
     )
 }
@@ -62,6 +66,8 @@ fun MoreContent(
     contentPadding: PaddingValues,
     onOpenProfiles: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAppointments: () -> Unit,
+    onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -94,16 +100,16 @@ fun MoreContent(
                     icon = AppointmentsIcon,
                     title = stringResource(R.string.more_appointments),
                     subtitle = null,
-                    enabled = false,
-                    onClick = {},
+                    enabled = true,
+                    onClick = onOpenAppointments,
                 )
                 Divider()
                 MoreRow(
                     icon = StatsIcon,
                     title = stringResource(R.string.more_stats),
                     subtitle = null,
-                    enabled = false,
-                    onClick = {},
+                    enabled = true,
+                    onClick = onOpenStats,
                 )
                 Divider()
                 MoreRow(

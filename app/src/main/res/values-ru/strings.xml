@@ -180,6 +180,38 @@
     <string name="settings_battery_warn">Разрешите работу без оптимизации батареи, чтобы напоминания приходили вовремя</string>
     <string name="settings_battery_action">Разрешить</string>
 
+    <string name="appointments_title">Визиты к врачу</string>
+    <string name="appointments_empty">Предстоящих визитов нет. Добавьте визит — напоминание придёт заранее.</string>
+    <string name="appointments_add">Добавить визит</string>
+    <string name="appointment_new_title">Новый визит</string>
+    <string name="appointment_edit_title">Визит</string>
+    <string name="appointment_field_title">Название, например Терапевт</string>
+    <string name="appointment_field_doctor">Врач</string>
+    <string name="appointment_field_location">Место</string>
+    <string name="appointment_field_date">Дата</string>
+    <string name="appointment_field_time">Время</string>
+    <string name="appointment_field_notes">Заметки</string>
+    <string name="appointment_remind">Напомнить</string>
+    <string name="appointment_offset_30m">за 30 мин</string>
+    <string name="appointment_offset_2h">за 2 ч</string>
+    <string name="appointment_offset_1d">за день</string>
+    <string name="appointment_delete">Удалить визит</string>
+    <string name="appointment_delete_warning">Визит и его напоминания будут удалены.</string>
+
+    <string name="stats_title">Статистика</string>
+    <string name="stats_window">Последние 30 дней</string>
+    <string name="stats_taken">Принято: %1$d</string>
+    <string name="stats_missed">Пропущено: %1$d</string>
+    <string name="stats_skipped">Отменено: %1$d</string>
+    <plurals name="stats_streak_days">
+        <item quantity="one">%d день без пропусков</item>
+        <item quantity="few">%d дня без пропусков</item>
+        <item quantity="many">%d дней без пропусков</item>
+        <item quantity="other">%d дня без пропусков</item>
+    </plurals>
+    <string name="stats_by_med">По лекарствам</string>
+    <string name="stats_empty">Пока нет данных — статистика появится после отметок приёмов.</string>
+
     <string name="profiles_title">Профили</string>
     <string name="profiles_add">Добавить профиль</string>
     <string name="profiles_active">активный</string>
