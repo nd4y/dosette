@@ -160,21 +160,21 @@ class ScreenshotTests {
     @Config(sdk = [34], qualifiers = RU_PIXEL7)
     fun cabinetLight() {
         cabinet(CabinetUiState(loading = false, active = cards))
-        composeRule.onRoot().captureRoboImage("$SHOTS/cabinet_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/cabinet_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
     @Config(sdk = [34], qualifiers = RU_PIXEL7_NIGHT)
     fun cabinetDark() {
         cabinet(CabinetUiState(loading = false, active = cards))
-        composeRule.onRoot().captureRoboImage("$SHOTS/cabinet_dark.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/cabinet_dark.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
     @Config(sdk = [34], qualifiers = RU_PIXEL7)
     fun cabinetEmpty() {
         cabinet(CabinetUiState(loading = false))
-        composeRule.onRoot().captureRoboImage("$SHOTS/cabinet_empty_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/cabinet_empty_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -190,7 +190,7 @@ class ScreenshotTests {
                 colorSeed = 5,
             ),
         )
-        composeRule.onRoot().captureRoboImage("$SHOTS/wizard_basics_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/wizard_basics_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -208,7 +208,7 @@ class ScreenshotTests {
                 weekdays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY),
             ),
         )
-        composeRule.onRoot().captureRoboImage("$SHOTS/wizard_schedule_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/wizard_schedule_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     private fun todayDose(
@@ -362,21 +362,30 @@ class ScreenshotTests {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("$SHOTS/calendar_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/calendar_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
     @Config(sdk = [34], qualifiers = RU_PIXEL7)
     fun todayLight() {
         today(todayState)
-        composeRule.onRoot().captureRoboImage("$SHOTS/today_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/today_light.png", roborazziOptions = SHOT_OPTIONS)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun todayBigFont() {
+        // Large system font: the layout must survive fontScale 1.3 without clipping.
+        org.robolectric.RuntimeEnvironment.setFontScale(1.3f)
+        today(todayState)
+        composeRule.onRoot().captureRoboImage("$SHOTS/today_bigfont.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
     @Config(sdk = [34], qualifiers = RU_PIXEL7_NIGHT)
     fun todayDark() {
         today(todayState)
-        composeRule.onRoot().captureRoboImage("$SHOTS/today_dark.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/today_dark.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     private val profileFixtures =
@@ -419,7 +428,7 @@ class ScreenshotTests {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("$SHOTS/more_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/more_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -446,7 +455,7 @@ class ScreenshotTests {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("$SHOTS/settings_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/settings_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -469,7 +478,7 @@ class ScreenshotTests {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("$SHOTS/backup_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/backup_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -490,7 +499,7 @@ class ScreenshotTests {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("$SHOTS/onboarding_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/onboarding_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -538,7 +547,7 @@ class ScreenshotTests {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("$SHOTS/appointments_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/appointments_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -573,7 +582,7 @@ class ScreenshotTests {
                 }
             }
         }
-        composeRule.onRoot().captureRoboImage("$SHOTS/stats_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/stats_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -595,6 +604,6 @@ class ScreenshotTests {
                     ),
             ),
         )
-        composeRule.onRoot().captureRoboImage("$SHOTS/wizard_stock_light.png")
+        composeRule.onRoot().captureRoboImage("$SHOTS/wizard_stock_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 }

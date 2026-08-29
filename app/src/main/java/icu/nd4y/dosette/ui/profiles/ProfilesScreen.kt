@@ -37,7 +37,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.domain.model.Profile
@@ -196,7 +196,7 @@ private fun ProfileRow(
             IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = EditIcon,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.action_edit),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp),
                 )

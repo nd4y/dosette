@@ -26,8 +26,11 @@ jobs:
       - name: Static checks
         run: ./gradlew spotlessCheck :app:detekt --stacktrace
 
-      - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest --stacktrace
+      - name: Unit tests and screenshot verify
+        run: ./gradlew :app:verifyRoborazziDebug --stacktrace
+
+      - name: Coverage gate
+        run: ./gradlew :app:koverVerify --stacktrace
 
       - name: Android lint
         run: ./gradlew :app:lint --stacktrace
@@ -40,4 +43,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: reports
-          path: '**/build/reports/**'
+          path: |
+            **/build/reports/**
+            **/build/outputs/roborazzi/**
+            app/src/test/screenshots/*_compare.png

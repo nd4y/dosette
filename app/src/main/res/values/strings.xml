@@ -246,6 +246,7 @@
     <string name="profile_name_label">Name</string>
     <string name="profile_delete">Delete profile</string>
     <string name="profile_delete_warning">All medications, history and appointments of this profile will be deleted permanently.</string>
+    <string name="action_edit">Edit</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
 
