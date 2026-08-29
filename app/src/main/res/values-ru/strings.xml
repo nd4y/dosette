@@ -5,8 +5,6 @@
     <string name="tab_cabinet">Аптечка</string>
     <string name="tab_more">Ещё</string>
 
-    <string name="placeholder_wip">В разработке</string>
-
     <string name="channel_dose_alerts">Напоминания о приёме</string>
     <string name="channel_dose_silent">Постоянное напоминание (без звука)</string>
     <string name="channel_appointments">Визиты к врачу</string>
@@ -149,6 +147,47 @@
     <string name="calendar_next_month">Следующий месяц</string>
     <string name="mark_taken">Отметить принятым</string>
     <string name="mark_skipped">Отметить пропущенным</string>
+
+    <string name="more_profiles">Профили</string>
+    <string name="more_appointments">Визиты к врачу</string>
+    <string name="more_stats">Статистика</string>
+    <string name="more_backup">Экспорт и импорт</string>
+    <string name="more_backup_hint">YAML-бэкап — файл или Google Drive</string>
+    <string name="more_settings">Настройки</string>
+    <string name="more_settings_hint">напоминания, тема, язык</string>
+    <string name="more_about">О приложении</string>
+    <string name="coming_soon_badge">скоро</string>
+
+    <string name="settings_title">Настройки</string>
+    <string name="settings_reminders_section">Напоминания</string>
+    <string name="settings_nag_interval">Интервал повтора</string>
+    <string name="settings_nag_interval_hint">Сигнал повторяется, пока приём не отмечен</string>
+    <string name="settings_nag_off">Выкл</string>
+    <string name="settings_min_fmt">%1$d мин</string>
+    <string name="settings_snooze">Отсрочка</string>
+    <string name="settings_grace">Считать пропущенным</string>
+    <string name="settings_grace_fmt">через %1$d мин</string>
+    <string name="settings_appearance_section">Внешний вид</string>
+    <string name="settings_theme">Тема</string>
+    <string name="theme_system">Как в системе</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="settings_dynamic_color">Динамический цвет</string>
+    <string name="settings_dynamic_color_hint">палитра из обоев (Material You)</string>
+    <string name="settings_language">Язык</string>
+    <string name="language_system">Системный</string>
+    <string name="settings_battery_ok">Исключение из оптимизации батареи включено — напоминания приходят вовремя</string>
+    <string name="settings_battery_warn">Разрешите работу без оптимизации батареи, чтобы напоминания приходили вовремя</string>
+    <string name="settings_battery_action">Разрешить</string>
+
+    <string name="profiles_title">Профили</string>
+    <string name="profiles_add">Добавить профиль</string>
+    <string name="profiles_active">активный</string>
+    <string name="profile_name_label">Имя</string>
+    <string name="profile_delete">Удалить профиль</string>
+    <string name="profile_delete_warning">Все лекарства, история и визиты этого профиля будут удалены безвозвратно.</string>
+    <string name="action_delete">Удалить</string>
+    <string name="action_cancel">Отмена</string>
 
     <string name="action_next">Далее</string>
     <string name="action_back">Назад</string>

@@ -6,7 +6,9 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.domain.model.MedicationForm
+import icu.nd4y.dosette.domain.model.Profile
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator
 import icu.nd4y.dosette.ui.cabinet.CabinetContent
 import icu.nd4y.dosette.ui.cabinet.CabinetUiState
@@ -19,6 +21,8 @@ import icu.nd4y.dosette.ui.mededit.MedEditContent
 import icu.nd4y.dosette.ui.mededit.MedEditUiState
 import icu.nd4y.dosette.ui.mededit.VariantDraft
 import icu.nd4y.dosette.ui.mededit.WizardStep
+import icu.nd4y.dosette.ui.more.MoreContent
+import icu.nd4y.dosette.ui.settings.SettingsContent
 import icu.nd4y.dosette.ui.theme.DosetteTheme
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
@@ -363,6 +367,73 @@ class ScreenshotTests {
     fun todayDark() {
         today(todayState)
         composeRule.onRoot().captureRoboImage("$SHOTS/today_dark.png")
+    }
+
+    private val profileFixtures =
+        listOf(
+            Profile(
+                id = "p1",
+                name = "Андрей",
+                colorSeed = 0,
+                avatarKey = null,
+                sortOrder = 0,
+                createdAt = java.time.Instant.parse("2026-08-01T00:00:00Z"),
+            ),
+            Profile(
+                id = "p2",
+                name = "Мама",
+                colorSeed = 2,
+                avatarKey = null,
+                sortOrder = 1,
+                createdAt = java.time.Instant.parse("2026-08-02T00:00:00Z"),
+            ),
+        )
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun moreLight() {
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    MoreContent(
+                        profiles = profileFixtures,
+                        contentPadding = screenPadding,
+                        onOpenProfiles = {},
+                        onOpenSettings = {},
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("$SHOTS/more_light.png")
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun settingsLight() {
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    SettingsContent(
+                        settings = AppSettings(),
+                        batteryExempt = false,
+                        contentPadding = screenPadding,
+                        onBack = {},
+                        onNagInterval = {},
+                        onSnooze = {},
+                        onGrace = {},
+                        onTheme = {},
+                        onDynamicColor = {},
+                        onLanguage = {},
+                        onRequestExemption = {},
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("$SHOTS/settings_light.png")
     }
 
     @Test

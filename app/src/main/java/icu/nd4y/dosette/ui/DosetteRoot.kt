@@ -4,14 +4,9 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -21,11 +16,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -37,9 +30,15 @@ import icu.nd4y.dosette.ui.calendar.CalendarScreen
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.meddetail.MedDetailScreen
 import icu.nd4y.dosette.ui.mededit.MedEditScreen
+import icu.nd4y.dosette.ui.more.MoreScreen
 import icu.nd4y.dosette.ui.navigation.CabinetKey
 import icu.nd4y.dosette.ui.navigation.MedDetailKey
 import icu.nd4y.dosette.ui.navigation.MedEditKey
+import icu.nd4y.dosette.ui.navigation.MoreKey
+import icu.nd4y.dosette.ui.navigation.ProfilesKey
+import icu.nd4y.dosette.ui.navigation.SettingsKey
+import icu.nd4y.dosette.ui.profiles.ProfilesScreen
+import icu.nd4y.dosette.ui.settings.SettingsScreen
 import icu.nd4y.dosette.ui.theme.DosetteTheme
 import icu.nd4y.dosette.ui.today.TodayScreen
 
@@ -59,8 +58,13 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
     val tabs = DosetteTab.entries
 
     val cabinetBackStack = rememberNavBackStack(CabinetKey)
+    val moreBackStack = rememberNavBackStack(MoreKey)
     val bottomBarVisible =
-        selectedTab != DosetteTab.Cabinet.ordinal || cabinetBackStack.size <= 1
+        when (tabs[selectedTab]) {
+            DosetteTab.Cabinet -> cabinetBackStack.size <= 1
+            DosetteTab.More -> moreBackStack.size <= 1
+            else -> true
+        }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -129,43 +133,38 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
             }
 
             DosetteTab.More -> {
-                PlaceholderScreen(
-                    labelRes = DosetteTab.More.label,
-                    icon = DosetteTab.More.icon,
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                NavDisplay(
+                    backStack = moreBackStack,
+                    onBack = { moreBackStack.removeLastOrNull() },
+                    entryDecorators =
+                        listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator(),
+                        ),
+                    entryProvider =
+                        entryProvider {
+                            entry<MoreKey> {
+                                MoreScreen(
+                                    contentPadding = padding,
+                                    onOpenProfiles = { moreBackStack.add(ProfilesKey) },
+                                    onOpenSettings = { moreBackStack.add(SettingsKey) },
+                                )
+                            }
+                            entry<SettingsKey> {
+                                SettingsScreen(
+                                    contentPadding = padding,
+                                    onBack = { moreBackStack.removeLastOrNull() },
+                                )
+                            }
+                            entry<ProfilesKey> {
+                                ProfilesScreen(
+                                    contentPadding = padding,
+                                    onBack = { moreBackStack.removeLastOrNull() },
+                                )
+                            }
+                        },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(
-    @StringRes labelRes: Int,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp),
-            )
-            Text(
-                text = stringResource(labelRes),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.placeholder_wip),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
