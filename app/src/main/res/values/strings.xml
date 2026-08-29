@@ -7,8 +7,6 @@
     <string name="tab_cabinet">Meds</string>
     <string name="tab_more">More</string>
 
-    <string name="placeholder_wip">Coming soon</string>
-
     <string name="channel_dose_alerts">Dose reminders</string>
     <string name="channel_dose_silent">Persistent reminder (silent)</string>
     <string name="channel_appointments">Appointments</string>
@@ -145,6 +143,47 @@
     <string name="calendar_next_month">Next month</string>
     <string name="mark_taken">Mark as taken</string>
     <string name="mark_skipped">Mark as skipped</string>
+
+    <string name="more_profiles">Profiles</string>
+    <string name="more_appointments">Doctor visits</string>
+    <string name="more_stats">Statistics</string>
+    <string name="more_backup">Export and import</string>
+    <string name="more_backup_hint">YAML backup — file or Google Drive</string>
+    <string name="more_settings">Settings</string>
+    <string name="more_settings_hint">reminders, theme, language</string>
+    <string name="more_about">About</string>
+    <string name="coming_soon_badge">soon</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_reminders_section">Reminders</string>
+    <string name="settings_nag_interval">Repeat interval</string>
+    <string name="settings_nag_interval_hint">The alert repeats until the dose is marked</string>
+    <string name="settings_nag_off">Off</string>
+    <string name="settings_min_fmt">%1$d min</string>
+    <string name="settings_snooze">Snooze duration</string>
+    <string name="settings_grace">Count as missed</string>
+    <string name="settings_grace_fmt">after %1$d min</string>
+    <string name="settings_appearance_section">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">Same as system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_dynamic_color_hint">palette from the wallpaper (Material You)</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System</string>
+    <string name="settings_battery_ok">Battery optimization exemption is on — reminders arrive on time</string>
+    <string name="settings_battery_warn">Allow running without battery optimization so reminders arrive on time</string>
+    <string name="settings_battery_action">Allow</string>
+
+    <string name="profiles_title">Profiles</string>
+    <string name="profiles_add">Add profile</string>
+    <string name="profiles_active">active</string>
+    <string name="profile_name_label">Name</string>
+    <string name="profile_delete">Delete profile</string>
+    <string name="profile_delete_warning">All medications, history and appointments of this profile will be deleted permanently.</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
 
     <string name="action_next">Next</string>
     <string name="action_back">Back</string>

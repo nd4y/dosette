@@ -16,3 +16,12 @@ data class MedEditKey(
     /** null = create a new medication. */
     val medicationId: String? = null,
 ) : NavKey
+
+@Serializable
+data object MoreKey : NavKey
+
+@Serializable
+data object SettingsKey : NavKey
+
+@Serializable
+data object ProfilesKey : NavKey
