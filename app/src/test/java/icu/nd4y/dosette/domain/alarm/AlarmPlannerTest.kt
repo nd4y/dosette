@@ -3,6 +3,7 @@ package icu.nd4y.dosette.domain.alarm
 import com.google.common.truth.Truth.assertThat
 import icu.nd4y.dosette.domain.model.Appointment
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.ReminderPhase
 import icu.nd4y.dosette.domain.model.ReminderState
 import icu.nd4y.dosette.domain.nag.NagSettings
@@ -31,6 +32,7 @@ class AlarmPlannerTest {
         lastAlertAt: Instant = now.minusSeconds(300),
         nagCount: Int = 0,
         snoozedUntil: Instant? = null,
+        snoozedUntilPlace: PlaceId? = null,
     ) = ReminderState(
         occurrenceKey = OccurrenceKey("m1", LocalDate.parse("2026-08-29"), LocalTime.of(8, 0)),
         medicationId = "m1",
@@ -38,10 +40,30 @@ class AlarmPlannerTest {
         scheduledAt = scheduledAt,
         phase = phase,
         snoozedUntil = snoozedUntil,
+        snoozedUntilPlace = snoozedUntilPlace,
+        graceAnchor = scheduledAt,
         nagCount = nagCount,
         firstNotifiedAt = scheduledAt,
         lastAlertAt = lastAlertAt,
     )
+
+    @Test
+    fun `a place snooze plans only the poll fallback`() {
+        val plan =
+            AlarmPlanner.nextAlarm(
+                now,
+                zone,
+                AlarmObligations(
+                    emptyList(),
+                    listOf(state(phase = ReminderPhase.SNOOZED, snoozedUntilPlace = PlaceId.HOME)),
+                    emptyList(),
+                ),
+                settings,
+            )
+
+        assertThat(plan.reason).isEqualTo(AlarmReason.PLACE_POLL)
+        assertThat(plan.at).isEqualTo(now.plusSeconds(15 * 60))
+    }
 
     @Test
     fun `with nothing pending the housekeeping alarm remains`() {

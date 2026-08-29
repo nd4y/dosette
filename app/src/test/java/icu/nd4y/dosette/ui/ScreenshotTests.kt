@@ -308,7 +308,9 @@ class ScreenshotTests {
                         contentPadding = screenPadding,
                         onTake = {},
                         onSkip = {},
+                        onSnooze = { _, _ -> },
                         onTakePrn = {},
+                        onSelectProfile = {},
                     )
                 }
             }
@@ -450,6 +452,8 @@ class ScreenshotTests {
                         onTheme = {},
                         onDynamicColor = {},
                         onLanguage = {},
+                        onPlaceAction = { _, _ -> },
+                        onPlaceClear = {},
                         onRequestExemption = {},
                     )
                 }

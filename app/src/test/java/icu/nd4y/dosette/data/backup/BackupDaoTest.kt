@@ -72,6 +72,8 @@ class BackupDaoTest {
                     scheduledAt = testInstant,
                     phase = "ACTIVE",
                     snoozedUntil = null,
+                    snoozedUntilPlace = null,
+                    graceAnchor = testInstant,
                     nagCount = 1,
                     firstNotifiedAt = testInstant,
                     lastAlertAt = testInstant,

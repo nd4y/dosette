@@ -3,6 +3,8 @@ package icu.nd4y.dosette.data.db
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import icu.nd4y.dosette.data.db.dao.AppointmentDao
 import icu.nd4y.dosette.data.db.dao.BackupDao
 import icu.nd4y.dosette.data.db.dao.DoseLogDao
@@ -31,7 +33,7 @@ import icu.nd4y.dosette.data.db.entity.ScheduleTimeEntity
         AppointmentEntity::class,
         ReminderStateEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -54,5 +56,17 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "dosette.db"
+
+        /** v2: place-snooze columns on reminder_states; graceAnchor backfills from scheduledAt. */
+        val MIGRATION_1_2 =
+            object : Migration(1, 2) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE reminder_states ADD COLUMN snoozedUntilPlace TEXT")
+                    db.execSQL(
+                        "ALTER TABLE reminder_states ADD COLUMN graceAnchor INTEGER NOT NULL DEFAULT 0",
+                    )
+                    db.execSQL("UPDATE reminder_states SET graceAnchor = scheduledAt")
+                }
+            }
     }
 }

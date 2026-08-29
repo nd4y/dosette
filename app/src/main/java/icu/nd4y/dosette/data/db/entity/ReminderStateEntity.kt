@@ -18,6 +18,10 @@ data class ReminderStateEntity(
     val scheduledAt: Instant,
     val phase: String,
     val snoozedUntil: Instant?,
+    /** [icu.nd4y.dosette.domain.model.PlaceId] name when snoozed until a place. */
+    val snoozedUntilPlace: String?,
+    /** Start of the missed-grace window; equals scheduledAt unless a place-snooze moved it. */
+    val graceAnchor: Instant,
     val nagCount: Int,
     val firstNotifiedAt: Instant,
     val lastAlertAt: Instant,

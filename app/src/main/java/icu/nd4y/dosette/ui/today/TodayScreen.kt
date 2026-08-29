@@ -6,6 +6,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -41,11 +44,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
+import icu.nd4y.dosette.domain.model.PlaceId
+import icu.nd4y.dosette.domain.nag.SnoozeTarget
 import icu.nd4y.dosette.ui.common.TimeFormat
 import icu.nd4y.dosette.ui.common.currentLocale
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.EmptyState
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
+import icu.nd4y.dosette.ui.designsystem.MedPalette
 import icu.nd4y.dosette.ui.designsystem.RingCenterLabel
 import icu.nd4y.dosette.ui.designsystem.SegmentedRing
 import icu.nd4y.dosette.ui.designsystem.effectsSpec
@@ -64,7 +70,9 @@ fun TodayScreen(
         contentPadding = contentPadding,
         onTake = viewModel::take,
         onSkip = viewModel::skip,
+        onSnooze = viewModel::snooze,
         onTakePrn = viewModel::takePrn,
+        onSelectProfile = viewModel::selectProfile,
         modifier = modifier,
     )
 }
@@ -76,12 +84,15 @@ fun TodayContent(
     contentPadding: PaddingValues,
     onTake: (TodayDose) -> Unit,
     onSkip: (TodayDose) -> Unit,
+    onSnooze: (TodayDose, SnoozeTarget) -> Unit,
     onTakePrn: (PrnMed) -> Unit,
+    onSelectProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (!state.loading && state.doses.isEmpty() && state.prn.isEmpty()) {
         Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
             TodayHeader(state)
+            ProfileChips(state, onSelectProfile)
             EmptyState(
                 icon = DosetteIcons.Today,
                 title = stringResource(R.string.today_empty_title),
@@ -105,6 +116,9 @@ fun TodayContent(
         modifier = modifier.fillMaxSize(),
     ) {
         item(key = "header") { TodayHeader(state) }
+        if (state.profiles.size > 1) {
+            item(key = "profiles") { ProfileChips(state, onSelectProfile) }
+        }
         item(key = "hero") { HeroCard(state) }
 
         DaySlot.entries.forEach { slot ->
@@ -127,8 +141,10 @@ fun TodayContent(
                         if (animatedDose.status == DoseUiStatus.PENDING) {
                             PendingDoseCard(
                                 dose = animatedDose,
+                                snoozePlaces = state.snoozePlaces,
                                 onTake = { onTake(animatedDose) },
                                 onSkip = { onSkip(animatedDose) },
+                                onSnooze = { target -> onSnooze(animatedDose, target) },
                             )
                         } else {
                             ActedDoseRow(animatedDose)
@@ -367,10 +383,74 @@ private fun StatusCircle(status: DoseUiStatus) {
 }
 
 @Composable
+private fun ProfileChips(
+    state: TodayUiState,
+    onSelectProfile: (String) -> Unit,
+) {
+    if (state.profiles.size < 2) return
+    val dark = isSystemInDarkTheme()
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(bottom = 8.dp),
+    ) {
+        state.profiles.forEach { profile ->
+            val selected = profile.id == state.activeProfileId
+            val palette = MedPalette.resolve(profile.colorSeed, dark)
+            Surface(
+                onClick = { onSelectProfile(profile.id) },
+                shape = RoundedCornerShape(if (selected) 14.dp else 20.dp),
+                color =
+                    if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerLow
+                    },
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier =
+                            Modifier
+                                .size(22.dp)
+                                .background(palette.container, CircleShape),
+                    ) {
+                        Text(
+                            text = profile.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = palette.onContainer,
+                        )
+                    }
+                    Text(
+                        text = profile.name,
+                        style = MaterialTheme.typography.labelLarge,
+                        color =
+                            if (selected) {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PendingDoseCard(
     dose: TodayDose,
+    snoozePlaces: Set<PlaceId>,
     onTake: () -> Unit,
     onSkip: () -> Unit,
+    onSnooze: (SnoozeTarget) -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -401,15 +481,22 @@ private fun PendingDoseCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TakeSplitButton(onTake = onTake, onSkip = onSkip)
+            TakeSplitButton(
+                snoozePlaces = snoozePlaces,
+                onTake = onTake,
+                onSkip = onSkip,
+                onSnooze = onSnooze,
+            )
         }
     }
 }
 
 @Composable
 private fun TakeSplitButton(
+    snoozePlaces: Set<PlaceId>,
     onTake: () -> Unit,
     onSkip: () -> Unit,
+    onSnooze: (SnoozeTarget) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -448,6 +535,33 @@ private fun TakeSplitButton(
                         onSkip()
                     },
                 )
+                SNOOZE_MINUTE_CHOICES.forEach { minutes ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.snooze_for_min, minutes)) },
+                        onClick = {
+                            menuOpen = false
+                            onSnooze(SnoozeTarget.ForMinutes(minutes))
+                        },
+                    )
+                }
+                if (PlaceId.HOME in snoozePlaces) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.snooze_until_home)) },
+                        onClick = {
+                            menuOpen = false
+                            onSnooze(SnoozeTarget.UntilPlace(PlaceId.HOME))
+                        },
+                    )
+                }
+                if (PlaceId.WORK in snoozePlaces) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.snooze_until_work)) },
+                        onClick = {
+                            menuOpen = false
+                            onSnooze(SnoozeTarget.UntilPlace(PlaceId.WORK))
+                        },
+                    )
+                }
             }
         }
     }
@@ -525,6 +639,8 @@ private val SkipIcon: ImageVector by lazy {
         lineToRelative(12f, 0f)
     }
 }
+
+private val SNOOZE_MINUTE_CHOICES = listOf(10, 30, 60)
 
 private val ChevronDown: ImageVector by lazy {
     strokeGlyph("ChevronDown", strokeWidth = 2.6f) {

@@ -7,8 +7,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import icu.nd4y.dosette.domain.model.PlaceConfig
+import icu.nd4y.dosette.domain.model.PlaceId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,7 +33,10 @@ data class AppSettings(
     val lowStockNotifyEnabled: Boolean = true,
     val onboardingDone: Boolean = false,
     val lastAutoBackupAt: Instant? = null,
-)
+    val places: Map<PlaceId, PlaceConfig> = emptyMap(),
+) {
+    fun place(id: PlaceId): PlaceConfig? = places[id]?.takeIf { it.isConfigured }
+}
 
 interface SettingsRepository {
     val settings: Flow<AppSettings>
@@ -57,6 +63,12 @@ interface SettingsRepository {
 
     suspend fun setLastAutoBackupAt(value: Instant?)
 
+    /** null clears the place. */
+    suspend fun setPlace(
+        id: PlaceId,
+        config: PlaceConfig?,
+    )
+
     /** Backup import: replaces everything atomically. */
     suspend fun replaceAll(settings: AppSettings)
 }
@@ -79,6 +91,8 @@ class SettingsRepositoryImpl
             val LOW_STOCK_NOTIFY = booleanPreferencesKey("low_stock_notify")
             val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
             val LAST_AUTO_BACKUP_AT = longPreferencesKey("last_auto_backup_at")
+
+            fun place(id: PlaceId) = stringPreferencesKey("place_${id.name.lowercase()}")
         }
 
         private val defaults = AppSettings()
@@ -97,6 +111,15 @@ class SettingsRepositoryImpl
                     lowStockNotifyEnabled = p[Keys.LOW_STOCK_NOTIFY] ?: defaults.lowStockNotifyEnabled,
                     onboardingDone = p[Keys.ONBOARDING_DONE] ?: defaults.onboardingDone,
                     lastAutoBackupAt = p[Keys.LAST_AUTO_BACKUP_AT]?.let(Instant::ofEpochMilli),
+                    places =
+                        PlaceId.entries
+                            .mapNotNull { id ->
+                                p[Keys.place(id)]?.let { raw ->
+                                    runCatching {
+                                        id to Json.decodeFromString(PlaceConfig.serializer(), raw)
+                                    }.getOrNull()
+                                }
+                            }.toMap(),
                 )
             }
 
@@ -152,6 +175,19 @@ class SettingsRepositoryImpl
             }
         }
 
+        override suspend fun setPlace(
+            id: PlaceId,
+            config: PlaceConfig?,
+        ) {
+            dataStore.edit { p ->
+                if (config == null) {
+                    p.remove(Keys.place(id))
+                } else {
+                    p[Keys.place(id)] = Json.encodeToString(PlaceConfig.serializer(), config)
+                }
+            }
+        }
+
         override suspend fun replaceAll(settings: AppSettings) {
             dataStore.edit { p ->
                 p.clear()
@@ -166,6 +202,9 @@ class SettingsRepositoryImpl
                 p[Keys.LOW_STOCK_NOTIFY] = settings.lowStockNotifyEnabled
                 p[Keys.ONBOARDING_DONE] = settings.onboardingDone
                 settings.lastAutoBackupAt?.let { p[Keys.LAST_AUTO_BACKUP_AT] = it.toEpochMilli() }
+                settings.places.forEach { (id, config) ->
+                    p[Keys.place(id)] = Json.encodeToString(PlaceConfig.serializer(), config)
+                }
             }
         }
     }

@@ -99,6 +99,19 @@ private class FakeNotifier : ReminderNotifier {
     override fun cancelAll() = Unit
 }
 
+private class FakePlaceMonitor : icu.nd4y.dosette.reminders.places.PlaceMonitor {
+    var currentlyAt = false
+    var synced: Map<icu.nd4y.dosette.domain.model.PlaceId, icu.nd4y.dosette.domain.model.PlaceConfig> = emptyMap()
+
+    override fun isCurrentlyAt(config: icu.nd4y.dosette.domain.model.PlaceConfig): Boolean = currentlyAt
+
+    override fun syncGeofences(
+        places: Map<icu.nd4y.dosette.domain.model.PlaceId, icu.nd4y.dosette.domain.model.PlaceConfig>,
+    ) {
+        synced = places
+    }
+}
+
 private class FakeSettingsRepository : SettingsRepository {
     val state = MutableStateFlow(AppSettings())
 
@@ -125,6 +138,11 @@ private class FakeSettingsRepository : SettingsRepository {
     override suspend fun setOnboardingDone(value: Boolean) = Unit
 
     override suspend fun setLastAutoBackupAt(value: Instant?) = Unit
+
+    override suspend fun setPlace(
+        id: icu.nd4y.dosette.domain.model.PlaceId,
+        config: icu.nd4y.dosette.domain.model.PlaceConfig?,
+    ) = Unit
 
     override suspend fun replaceAll(settings: AppSettings) = Unit
 }
@@ -169,6 +187,7 @@ class ReminderEngineTest {
                 profileRepository = ProfileRepositoryImpl(db.profileDao()),
                 notifier = notifier,
                 alarmScheduler = AlarmScheduler(ApplicationProvider.getApplicationContext()),
+                placeMonitor = FakePlaceMonitor(),
                 clock = clock,
             )
         runTest {

@@ -1,9 +1,13 @@
 package icu.nd4y.dosette.ui.settings
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -43,12 +48,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.ThemeMode
+import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 
 @Composable
@@ -65,6 +74,38 @@ fun SettingsScreen(
         mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
     }
 
+    // Place actions need runtime location permission before they can read
+    // coordinates or the Wi-Fi name; the pending action survives the dialog.
+    var pendingPlaceAction by remember { mutableStateOf<Pair<PlaceId, PlaceAction>?>(null) }
+
+    fun executePlaceAction(
+        id: PlaceId,
+        action: PlaceAction,
+    ) {
+        when (action) {
+            PlaceAction.USE_LOCATION -> {
+                LocationServices
+                    .getFusedLocationProviderClient(context)
+                    .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                    .addOnSuccessListener { location ->
+                        location?.let { viewModel.setPlaceFromLocation(id, it.latitude, it.longitude) }
+                    }
+            }
+
+            PlaceAction.USE_WIFI -> {
+                viewModel.bindCurrentWifi(id)
+            }
+        }
+    }
+
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val pending = pendingPlaceAction
+            pendingPlaceAction = null
+            if (granted && pending != null) executePlaceAction(pending.first, pending.second)
+        }
+
     SettingsContent(
         settings = settings,
         batteryExempt = batteryExempt,
@@ -76,6 +117,23 @@ fun SettingsScreen(
         onTheme = viewModel::setTheme,
         onDynamicColor = viewModel::setDynamicColor,
         onLanguage = viewModel::setLanguage,
+        onPlaceAction = { id, action ->
+            val hasPermission =
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED
+            if (hasPermission) {
+                executePlaceAction(id, action)
+            } else {
+                pendingPlaceAction = id to action
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    ),
+                )
+            }
+        },
+        onPlaceClear = viewModel::clearPlace,
         onRequestExemption = {
             // ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS is legitimate
             // off-Play; falls back to the general settings list.
@@ -96,6 +154,8 @@ fun SettingsScreen(
     )
 }
 
+enum class PlaceAction { USE_LOCATION, USE_WIFI }
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsContent(
@@ -109,6 +169,8 @@ fun SettingsContent(
     onTheme: (ThemeMode) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onLanguage: (AppLanguage) -> Unit,
+    onPlaceAction: (PlaceId, PlaceAction) -> Unit,
+    onPlaceClear: (PlaceId) -> Unit,
     onRequestExemption: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -201,7 +263,132 @@ fun SettingsContent(
             LanguageRow(current = settings.language, onSelect = onLanguage)
         }
 
+        PlacesSection(
+            settings = settings,
+            onPlaceAction = onPlaceAction,
+            onPlaceClear = onPlaceClear,
+        )
+
         BatteryBanner(exempt = batteryExempt, onRequest = onRequestExemption)
+    }
+}
+
+@Composable
+private fun PlacesSection(
+    settings: AppSettings,
+    onPlaceAction: (PlaceId, PlaceAction) -> Unit,
+    onPlaceClear: (PlaceId) -> Unit,
+) {
+    var dialogFor by remember { mutableStateOf<PlaceId?>(null) }
+
+    SettingsCard(title = stringResource(R.string.settings_places_section)) {
+        Text(
+            text = stringResource(R.string.settings_places_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PlaceRow(
+            label = stringResource(R.string.place_home),
+            config = settings.places[PlaceId.HOME],
+            onClick = { dialogFor = PlaceId.HOME },
+        )
+        CardDivider()
+        PlaceRow(
+            label = stringResource(R.string.place_work),
+            config = settings.places[PlaceId.WORK],
+            onClick = { dialogFor = PlaceId.WORK },
+        )
+    }
+
+    dialogFor?.let { place ->
+        AlertDialog(
+            onDismissRequest = { dialogFor = null },
+            title = {
+                Text(
+                    stringResource(
+                        if (place == PlaceId.HOME) R.string.place_home else R.string.place_work,
+                    ),
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = {
+                        dialogFor = null
+                        onPlaceAction(place, PlaceAction.USE_LOCATION)
+                    }) { Text(stringResource(R.string.place_use_location)) }
+                    TextButton(onClick = {
+                        dialogFor = null
+                        onPlaceAction(place, PlaceAction.USE_WIFI)
+                    }) { Text(stringResource(R.string.place_use_wifi)) }
+                    if (settings.places[place]?.isConfigured == true) {
+                        TextButton(onClick = {
+                            dialogFor = null
+                            onPlaceClear(place)
+                        }) {
+                            Text(
+                                stringResource(R.string.place_clear),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    Text(
+                        text = stringResource(R.string.place_background_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { dialogFor = null }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlaceRow(
+    label: String,
+    config: icu.nd4y.dosette.domain.model.PlaceConfig?,
+    onClick: () -> Unit,
+) {
+    val status =
+        when {
+            config == null || !config.isConfigured -> {
+                stringResource(R.string.place_not_set)
+            }
+
+            else -> {
+                listOfNotNull(
+                    if (config.hasGeo) stringResource(R.string.place_geo_set) else null,
+                    config.wifiSsid?.let { stringResource(R.string.place_wifi_set, it) },
+                ).joinToString(" · ")
+            }
+        }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = status,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Icon(
+            imageVector = ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 

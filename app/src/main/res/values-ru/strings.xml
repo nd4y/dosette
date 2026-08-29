@@ -165,6 +165,22 @@
     <string name="more_about">О приложении</string>
     <string name="coming_soon_badge">скоро</string>
 
+    <string name="snooze_for_min">Отложить на %1$d мин</string>
+    <string name="snooze_until_home">Отложить до дома</string>
+    <string name="snooze_until_work">Отложить до работы</string>
+
+    <string name="settings_places_section">Места</string>
+    <string name="settings_places_hint">Нужны для \u0022отложить до дома / работы\u0022</string>
+    <string name="place_home">Дом</string>
+    <string name="place_work">Работа</string>
+    <string name="place_not_set">не задано</string>
+    <string name="place_geo_set">геопозиция задана</string>
+    <string name="place_wifi_set">Wi-Fi %1$s</string>
+    <string name="place_use_location">Задать по текущему местоположению</string>
+    <string name="place_use_wifi">Привязать текущий Wi-Fi</string>
+    <string name="place_clear">Очистить</string>
+    <string name="place_permission_rationale">Для координат и имени Wi-Fi нужно разрешение на геолокацию</string>
+    <string name="place_background_hint">Разрешите геолокацию \u0022всегда\u0022 в настройках системы, чтобы приход на место будил напоминания в фоне</string>
     <string name="settings_title">Настройки</string>
     <string name="settings_reminders_section">Напоминания</string>
     <string name="settings_nag_interval">Интервал повтора</string>
