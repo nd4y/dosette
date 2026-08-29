@@ -131,6 +131,7 @@ private fun TabContent(
                 onBack = { cabinetBackStack.removeLastOrNull() },
                 transitionSpec = { navMotion.transform(forward = true) },
                 popTransitionSpec = { navMotion.transform(forward = false) },
+                predictivePopTransitionSpec = { navMotion.transform(forward = false) },
                 entryDecorators =
                     listOf(
                         rememberSaveableStateHolderNavEntryDecorator(),
@@ -177,6 +178,7 @@ private fun TabContent(
                 onBack = { moreBackStack.removeLastOrNull() },
                 transitionSpec = { navMotion.transform(forward = true) },
                 popTransitionSpec = { navMotion.transform(forward = false) },
+                predictivePopTransitionSpec = { navMotion.transform(forward = false) },
                 entryDecorators =
                     listOf(
                         rememberSaveableStateHolderNavEntryDecorator(),

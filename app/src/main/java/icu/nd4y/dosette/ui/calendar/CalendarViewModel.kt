@@ -133,6 +133,10 @@ class CalendarViewModel
             month.value = month.value.plusMonths(1)
         }
 
+        fun showMonth(target: YearMonth) {
+            month.value = target
+        }
+
         fun select(date: LocalDate?) {
             selectedDate.value = date
         }

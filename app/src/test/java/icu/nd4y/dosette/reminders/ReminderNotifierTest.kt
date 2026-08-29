@@ -54,12 +54,25 @@ class ReminderNotifierTest {
     }
 
     @Test
-    fun `silent repost lands on the low-importance channel with the same id`() {
+    fun `silent repost stays on the alert channel but is muted`() {
         notifier.postReminder(payload, alert = true)
         notifier.postReminder(payload, alert = false)
 
+        // Same channel keeps the repost in the alerting section of the shade
+        // (it visually never leaves); GROUP_ALERT_SUMMARY comes from setSilent.
         val notification = postedNotification(NotificationIds.reminder(key))
-        assertThat(NotificationCompat.getChannelId(notification)).isEqualTo(Channels.DOSE_SILENT)
+        assertThat(NotificationCompat.getChannelId(notification)).isEqualTo(Channels.DOSE_ALERTS)
+        assertThat(notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY).isEqualTo(0)
+        assertThat(notification.groupAlertBehavior).isEqualTo(android.app.Notification.GROUP_ALERT_SUMMARY)
+    }
+
+    @Test
+    fun `actions are ordered skip, snooze, take`() {
+        notifier.postReminder(payload, alert = true)
+
+        val notification = postedNotification(NotificationIds.reminder(key))
+        val titles = notification.actions.map { it.title.toString() }
+        assertThat(titles).containsExactly("Skip", "Snooze", "Take").inOrder()
     }
 
     @Test

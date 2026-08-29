@@ -30,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -123,13 +124,13 @@ private fun CabinetHeader(
                 modifier =
                     Modifier
                         .size(44.dp)
+                        .clip(CircleShape)
                         .background(
                             if (searchOpen) {
                                 MaterialTheme.colorScheme.secondaryContainer
                             } else {
                                 MaterialTheme.colorScheme.surfaceContainer
                             },
-                            CircleShape,
                         ).clickable(onClick = onToggleSearch),
                 contentAlignment = Alignment.Center,
             ) {

@@ -8,7 +8,6 @@
     <string name="tab_more">More</string>
 
     <string name="channel_dose_alerts">Dose reminders</string>
-    <string name="channel_dose_silent">Persistent reminder (silent)</string>
     <string name="channel_appointments">Appointments</string>
     <string name="channel_inventory">Refill alerts</string>
     <string name="channel_misc">Other</string>
@@ -145,6 +144,8 @@
     <string name="calendar_month_adherence">Adherence in %1$s</string>
     <string name="calendar_prev_month">Previous month</string>
     <string name="calendar_next_month">Next month</string>
+    <string name="calendar_prev_year">Previous year</string>
+    <string name="calendar_next_year">Next year</string>
     <string name="mark_taken">Mark as taken</string>
     <string name="mark_skipped">Mark as skipped</string>
 

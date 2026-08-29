@@ -2,4 +2,6 @@
 <resources>
     <color name="window_background">#F6FAFA</color>
     <color name="ic_launcher_background">#00696B</color>
+    <!-- Brand seed; tints the notification icon and app-name accent. -->
+    <color name="notification_accent">#00696B</color>
 </resources>
