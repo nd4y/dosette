@@ -35,7 +35,7 @@ object DatabaseModule {
     fun provideDoseLogDao(db: AppDatabase) = db.doseLogDao()
 
     @Provides
-    fun provideInventoryDao(db: AppDatabase) = db.inventoryDao()
+    fun provideMedicationVariantDao(db: AppDatabase) = db.medicationVariantDao()
 
     @Provides
     fun provideAppointmentDao(db: AppDatabase) = db.appointmentDao()

@@ -12,6 +12,8 @@ data class Medication(
     val instructions: String?,
     val colorSeed: Int,
     val iconKey: String,
+    /** Variant consumed by default when the dose is taken. */
+    val defaultVariantId: String?,
     val archivedAt: Instant?,
     val createdAt: Instant,
 ) {

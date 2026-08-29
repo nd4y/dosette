@@ -17,7 +17,12 @@ data class DoseLog(
     val scheduledAt: Instant?,
     val status: DoseStatus,
     val actedAt: Instant?,
+    /** Dose in schedule units (units of the medication's reference strength). */
     val amount: Double,
+    /** Variant the stock was decremented from; null = stock untouched. */
+    val variantId: String?,
+    /** Units of [variantId] consumed, e.g. 2 x 75 mg for a 150 mg dose. */
+    val consumedUnits: Double?,
     val note: String?,
     val updatedAt: Instant,
 )

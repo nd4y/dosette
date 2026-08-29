@@ -1,14 +1,14 @@
 package icu.nd4y.dosette.data.repository
 
-import icu.nd4y.dosette.data.db.dao.InventoryDao
 import icu.nd4y.dosette.data.db.dao.MedicationDao
+import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
 import icu.nd4y.dosette.data.db.dao.ScheduleDao
 import icu.nd4y.dosette.data.db.entity.MedicationWithDetails
 import icu.nd4y.dosette.data.db.timeEntities
 import icu.nd4y.dosette.data.db.toDomain
 import icu.nd4y.dosette.data.db.toEntity
-import icu.nd4y.dosette.domain.model.Inventory
 import icu.nd4y.dosette.domain.model.Medication
+import icu.nd4y.dosette.domain.model.MedicationVariant
 import icu.nd4y.dosette.domain.model.Schedule
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -17,12 +17,18 @@ import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Medication together with its schedule versions and stock. */
+/** Medication together with its schedule versions and package variants. */
 data class MedicationDetails(
     val medication: Medication,
     val schedules: List<Schedule>,
-    val inventory: Inventory?,
+    val variants: List<MedicationVariant>,
 ) {
+    /** Variant consumed by default on Take. */
+    val defaultVariant: MedicationVariant?
+        get() =
+            variants.firstOrNull { it.id == medication.defaultVariantId }
+                ?: variants.minByOrNull { it.sortOrder }
+
     /** Schedule versions active on [date]. */
     fun schedulesActiveOn(date: LocalDate): List<Schedule> =
         schedules.filter { !it.startDate.isAfter(date) && (it.endDate == null || !it.endDate.isBefore(date)) }
@@ -35,6 +41,8 @@ interface MedicationRepository {
 
     suspend fun getAllActive(): List<MedicationDetails>
 
+    suspend fun getDetails(medicationId: String): MedicationDetails?
+
     suspend fun upsert(medication: Medication)
 
     suspend fun addSchedule(schedule: Schedule)
@@ -46,11 +54,27 @@ interface MedicationRepository {
         replacement: Schedule,
     )
 
-    suspend fun upsertInventory(inventory: Inventory)
+    suspend fun upsertVariant(variant: MedicationVariant)
+
+    suspend fun getVariant(variantId: String): MedicationVariant?
+
+    suspend fun deleteVariant(variantId: String)
+
+    /** Atomic, floors at zero, no-op when tracking is disabled. Units are units of the variant. */
+    suspend fun decrementStock(
+        variantId: String,
+        units: Double,
+    )
+
+    /** Undo path: restores the variant's stock. */
+    suspend fun incrementStock(
+        variantId: String,
+        units: Double,
+    )
 
     suspend fun refill(
-        medicationId: String,
-        amount: Double,
+        variantId: String,
+        units: Double,
         at: Instant,
     )
 
@@ -61,7 +85,7 @@ interface MedicationRepository {
 
     suspend fun unarchive(medicationId: String)
 
-    /** Destructive: cascades to schedules, dose logs and inventory. */
+    /** Destructive: cascades to schedules, dose logs and variants. */
     suspend fun delete(medicationId: String)
 }
 
@@ -71,7 +95,7 @@ class MedicationRepositoryImpl
     constructor(
         private val medicationDao: MedicationDao,
         private val scheduleDao: ScheduleDao,
-        private val inventoryDao: InventoryDao,
+        private val variantDao: MedicationVariantDao,
     ) : MedicationRepository {
         override fun observeByProfile(profileId: String): Flow<List<MedicationDetails>> =
             medicationDao.observeByProfile(profileId).map { list -> list.map { it.toDetails() } }
@@ -82,6 +106,15 @@ class MedicationRepositoryImpl
         override suspend fun getAllActive(): List<MedicationDetails> =
             medicationDao.getAllActiveWithDetails().map { it.toDetails() }
 
+        override suspend fun getDetails(medicationId: String): MedicationDetails? {
+            val medication = medicationDao.getById(medicationId) ?: return null
+            return MedicationDetails(
+                medication = medication.toDomain(),
+                schedules = scheduleDao.getByMedication(medicationId).map { it.toDomain() },
+                variants = variantDao.getByMedication(medicationId).map { it.toDomain() },
+            )
+        }
+
         override suspend fun upsert(medication: Medication) = medicationDao.upsert(medication.toEntity())
 
         override suspend fun addSchedule(schedule: Schedule) =
@@ -91,15 +124,35 @@ class MedicationRepositoryImpl
             currentScheduleId: String,
             closeOn: LocalDate,
             replacement: Schedule,
-        ) = scheduleDao.replaceActive(currentScheduleId, closeOn, replacement.toEntity(), replacement.timeEntities())
+        ) = scheduleDao.replaceActive(
+            currentScheduleId,
+            closeOn,
+            replacement.toEntity(),
+            replacement.timeEntities(),
+        )
 
-        override suspend fun upsertInventory(inventory: Inventory) = inventoryDao.upsert(inventory.toEntity())
+        override suspend fun upsertVariant(variant: MedicationVariant) = variantDao.upsert(variant.toEntity())
+
+        override suspend fun getVariant(variantId: String): MedicationVariant? =
+            variantDao.getById(variantId)?.toDomain()
+
+        override suspend fun deleteVariant(variantId: String) = variantDao.delete(variantId)
+
+        override suspend fun decrementStock(
+            variantId: String,
+            units: Double,
+        ) = variantDao.decrement(variantId, units)
+
+        override suspend fun incrementStock(
+            variantId: String,
+            units: Double,
+        ) = variantDao.increment(variantId, units)
 
         override suspend fun refill(
-            medicationId: String,
-            amount: Double,
+            variantId: String,
+            units: Double,
             at: Instant,
-        ) = inventoryDao.refill(medicationId, amount, at)
+        ) = variantDao.refill(variantId, units, at)
 
         override suspend fun archive(
             medicationId: String,
@@ -114,6 +167,6 @@ class MedicationRepositoryImpl
             MedicationDetails(
                 medication = medication.toDomain(),
                 schedules = schedules.map { it.toDomain() },
-                inventory = inventory?.toDomain(),
+                variants = variants.map { it.toDomain() },
             )
     }

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d0bdf74b35aa42a3bd65da321c0f98ba",
+    "identityHash": "2df4f491d72900e5e4c9490009b88eb2",
     "entities": [
       {
         "tableName": "profiles",
@@ -53,7 +53,7 @@
       },
       {
         "tableName": "medications",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `profileId` TEXT NOT NULL, `name` TEXT NOT NULL, `form` TEXT NOT NULL, `strengthValue` REAL, `strengthUnit` TEXT, `instructions` TEXT, `colorSeed` INTEGER NOT NULL, `iconKey` TEXT NOT NULL, `archivedAt` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`profileId`) REFERENCES `profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `profileId` TEXT NOT NULL, `name` TEXT NOT NULL, `form` TEXT NOT NULL, `strengthValue` REAL, `strengthUnit` TEXT, `instructions` TEXT, `colorSeed` INTEGER NOT NULL, `iconKey` TEXT NOT NULL, `defaultVariantId` TEXT, `archivedAt` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`profileId`) REFERENCES `profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -105,6 +105,11 @@
             "columnName": "iconKey",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "defaultVariantId",
+            "columnName": "defaultVariantId",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "archivedAt",
@@ -321,7 +326,7 @@
       },
       {
         "tableName": "dose_logs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `profileId` TEXT NOT NULL, `medicationId` TEXT NOT NULL, `scheduleId` TEXT, `kind` TEXT NOT NULL, `date` TEXT NOT NULL, `timeMinutes` INTEGER, `scheduledAt` INTEGER, `status` TEXT NOT NULL, `actedAt` INTEGER, `amount` REAL NOT NULL, `note` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`medicationId`) REFERENCES `medications`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `profileId` TEXT NOT NULL, `medicationId` TEXT NOT NULL, `scheduleId` TEXT, `kind` TEXT NOT NULL, `date` TEXT NOT NULL, `timeMinutes` INTEGER, `scheduledAt` INTEGER, `status` TEXT NOT NULL, `actedAt` INTEGER, `amount` REAL NOT NULL, `variantId` TEXT, `consumedUnits` REAL, `note` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`medicationId`) REFERENCES `medications`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -384,6 +389,16 @@
             "columnName": "amount",
             "affinity": "REAL",
             "notNull": true
+          },
+          {
+            "fieldPath": "variantId",
+            "columnName": "variantId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "consumedUnits",
+            "columnName": "consumedUnits",
+            "affinity": "REAL"
           },
           {
             "fieldPath": "note",
@@ -449,13 +464,40 @@
         ]
       },
       {
-        "tableName": "inventory",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`medicationId` TEXT NOT NULL, `trackingEnabled` INTEGER NOT NULL, `currentStock` REAL NOT NULL, `lowStockThreshold` REAL, `defaultRefillAmount` REAL, `lastRefillAt` INTEGER, PRIMARY KEY(`medicationId`), FOREIGN KEY(`medicationId`) REFERENCES `medications`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "medication_variants",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `medicationId` TEXT NOT NULL, `label` TEXT, `strengthValue` REAL, `strengthUnit` TEXT, `sortOrder` INTEGER NOT NULL, `trackingEnabled` INTEGER NOT NULL, `currentStock` REAL NOT NULL, `lowStockThreshold` REAL, `defaultRefillAmount` REAL, `lastRefillAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`medicationId`) REFERENCES `medications`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
           {
             "fieldPath": "medicationId",
             "columnName": "medicationId",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "strengthValue",
+            "columnName": "strengthValue",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "strengthUnit",
+            "columnName": "strengthUnit",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -489,9 +531,20 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "medicationId"
+            "id"
           ]
         },
+        "indices": [
+          {
+            "name": "index_medication_variants_medicationId",
+            "unique": false,
+            "columnNames": [
+              "medicationId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_medication_variants_medicationId` ON `${TABLE_NAME}` (`medicationId`)"
+          }
+        ],
         "foreignKeys": [
           {
             "table": "medications",
@@ -667,7 +720,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd0bdf74b35aa42a3bd65da321c0f98ba')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2df4f491d72900e5e4c9490009b88eb2')"
     ]
   }
 }

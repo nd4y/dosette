@@ -60,6 +60,26 @@ object InventoryPolicy {
             perActiveDay * on / (on + off)
         }
 
+    /**
+     * Units of a package variant needed for one dose. The dose is expressed
+     * in units of the medication's reference strength; a 150 mg dose taken
+     * as 75 mg capsules therefore consumes 2 units. Falls back to the plain
+     * dose amount when either strength is unknown.
+     */
+    fun unitsForDose(
+        doseAmount: Double,
+        medicationStrength: Double?,
+        variantStrength: Double?,
+    ): Double {
+        require(doseAmount >= 0) { "negative dose" }
+        if (medicationStrength == null || variantStrength == null) return doseAmount
+        return if (medicationStrength <= 0 || variantStrength <= 0) {
+            doseAmount
+        } else {
+            doseAmount * medicationStrength / variantStrength
+        }
+    }
+
     /** Whole days the stock lasts at the given consumption; null when consumption is zero. */
     fun daysOfSupply(
         stock: Double,

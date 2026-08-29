@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import icu.nd4y.dosette.data.db.entity.DoseLogEntity
-import icu.nd4y.dosette.data.db.entity.InventoryEntity
 import icu.nd4y.dosette.data.db.entity.MedicationEntity
+import icu.nd4y.dosette.data.db.entity.MedicationVariantEntity
 import icu.nd4y.dosette.data.db.entity.ProfileEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleTimeEntity
@@ -40,6 +40,7 @@ fun medicationEntity(
     instructions = null,
     colorSeed = 2,
     iconKey = "capsule",
+    defaultVariantId = null,
     archivedAt = archivedAt,
     createdAt = testInstant,
 )
@@ -97,16 +98,26 @@ fun doseLogEntity(
     status = status,
     actedAt = testInstant,
     amount = 1.0,
+    variantId = null,
+    consumedUnits = null,
     note = null,
     updatedAt = testInstant,
 )
 
-fun inventoryEntity(
+fun variantEntity(
+    id: String = "v1",
     medicationId: String = "m1",
+    strengthValue: Double? = 500.0,
     currentStock: Double = 10.0,
     trackingEnabled: Boolean = true,
-) = InventoryEntity(
+    sortOrder: Int = 0,
+) = MedicationVariantEntity(
+    id = id,
     medicationId = medicationId,
+    label = null,
+    strengthValue = strengthValue,
+    strengthUnit = "mg",
+    sortOrder = sortOrder,
     trackingEnabled = trackingEnabled,
     currentStock = currentStock,
     lowStockThreshold = 5.0,
