@@ -1,7 +1,34 @@
 package icu.nd4y.dosette
 
 import android.app.Application
+import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
+import icu.nd4y.dosette.di.IoDispatcher
+import icu.nd4y.dosette.reminders.ReminderEngine
+import icu.nd4y.dosette.reminders.notifications.Channels
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltAndroidApp
-class DosetteApp : Application()
+class DosetteApp : Application() {
+    @Inject
+    lateinit var engine: ReminderEngine
+
+    @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
+
+    override fun onCreate() {
+        super.onCreate()
+        Channels.ensureCreated(this)
+        // Catch up on anything that became due while the process was dead
+        // and make sure the alarm chain is armed.
+        CoroutineScope(SupervisorJob() + ioDispatcher).launch {
+            runCatching { engine.processDueEvents() }
+                .onFailure { Log.e("DosetteApp", "startup reconcile failed", it) }
+        }
+    }
+}

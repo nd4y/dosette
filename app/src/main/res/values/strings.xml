@@ -8,4 +8,23 @@
     <string name="tab_more">More</string>
 
     <string name="placeholder_wip">Coming soon</string>
+
+    <string name="channel_dose_alerts">Dose reminders</string>
+    <string name="channel_dose_silent">Persistent reminder (silent)</string>
+    <string name="channel_appointments">Appointments</string>
+    <string name="channel_inventory">Refill alerts</string>
+    <string name="channel_misc">Other</string>
+
+    <string name="action_take">Take</string>
+    <string name="action_skip">Skip</string>
+    <string name="action_snooze">Snooze</string>
+
+    <string name="notification_dose_text">Scheduled for %1$s</string>
+    <string name="unit_pieces">%1$s pcs</string>
+    <string name="notification_profile">profile: %1$s</string>
+    <string name="notification_missed_title">Missed: %1$s</string>
+    <string name="notification_missed_text">You can log it later in the calendar</string>
+    <string name="notification_low_stock_title">Running low: %1$s</string>
+    <string name="notification_low_stock_text">%1$s left</string>
+    <string name="notification_appointment_time">Today at %1$s</string>
 </resources>

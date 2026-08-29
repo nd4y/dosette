@@ -12,7 +12,8 @@ complexity:
   LongMethod:
     ignoreAnnotated: ['Composable']
   LongParameterList:
-    ignoreAnnotated: ['Composable']
+    # Inject: DI constructors are wiring, not API surface.
+    ignoreAnnotated: ['Composable', 'Inject']
     ignoreDataClasses: true
     excludes: ['**/test/**', '**/androidTest/**']
   TooManyFunctions:

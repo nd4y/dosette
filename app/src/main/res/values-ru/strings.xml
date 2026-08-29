@@ -6,4 +6,23 @@
     <string name="tab_more">Ещё</string>
 
     <string name="placeholder_wip">В разработке</string>
+
+    <string name="channel_dose_alerts">Напоминания о приёме</string>
+    <string name="channel_dose_silent">Постоянное напоминание (без звука)</string>
+    <string name="channel_appointments">Визиты к врачу</string>
+    <string name="channel_inventory">Запасы</string>
+    <string name="channel_misc">Прочее</string>
+
+    <string name="action_take">Принял</string>
+    <string name="action_skip">Пропустить</string>
+    <string name="action_snooze">Отложить</string>
+
+    <string name="notification_dose_text">Приём в %1$s</string>
+    <string name="unit_pieces">%1$s шт</string>
+    <string name="notification_profile">профиль: %1$s</string>
+    <string name="notification_missed_title">Пропущено: %1$s</string>
+    <string name="notification_missed_text">Можно отметить задним числом в календаре</string>
+    <string name="notification_low_stock_title">Запас на исходе: %1$s</string>
+    <string name="notification_low_stock_text">Осталось %1$s</string>
+    <string name="notification_appointment_time">Сегодня в %1$s</string>
 </resources>
