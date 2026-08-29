@@ -176,6 +176,21 @@
     <string name="settings_battery_warn">Allow running without battery optimization so reminders arrive on time</string>
     <string name="settings_battery_action">Allow</string>
 
+    <string name="onboarding_tagline">Remembers every dose for you</string>
+    <string name="onboarding_feature_reminders_title">Reminders that don\'t get lost</string>
+    <string name="onboarding_feature_reminders_text">The alert repeats until the dose is marked</string>
+    <string name="onboarding_feature_stock_title">Stock and refills</string>
+    <string name="onboarding_feature_stock_text">A heads-up when it\'s time to buy more</string>
+    <string name="onboarding_feature_profiles_title">The whole family</string>
+    <string name="onboarding_feature_profiles_text">Separate profiles, one app</string>
+    <string name="onboarding_notifications_title">Notifications</string>
+    <string name="onboarding_notifications_text">Reminders can\'t work without them</string>
+    <string name="onboarding_battery_title">Battery optimization</string>
+    <string name="onboarding_battery_text">An exemption keeps reminders on time</string>
+    <string name="onboarding_allow">Allow</string>
+    <string name="onboarding_granted">Allowed</string>
+    <string name="onboarding_start">Get started</string>
+
     <string name="appointments_title">Doctor visits</string>
     <string name="appointments_empty">No upcoming visits. Add one — a reminder will arrive in time.</string>
     <string name="appointments_add">Add visit</string>

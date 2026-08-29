@@ -7,6 +7,7 @@ import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -16,10 +17,13 @@ class MainViewModel
     constructor(
         settingsRepository: SettingsRepository,
     ) : ViewModel() {
-        val settings: StateFlow<AppSettings> =
-            settingsRepository.settings.stateIn(
-                viewModelScope,
-                SharingStarted.Eagerly,
-                AppSettings(),
-            )
+        /** null until DataStore emits — prevents an onboarding flash for existing users. */
+        val settings: StateFlow<AppSettings?> =
+            settingsRepository.settings
+                .map<AppSettings, AppSettings?> { it }
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.Eagerly,
+                    null,
+                )
     }

@@ -25,6 +25,7 @@ import icu.nd4y.dosette.ui.mededit.MedEditUiState
 import icu.nd4y.dosette.ui.mededit.VariantDraft
 import icu.nd4y.dosette.ui.mededit.WizardStep
 import icu.nd4y.dosette.ui.more.MoreContent
+import icu.nd4y.dosette.ui.onboarding.OnboardingContent
 import icu.nd4y.dosette.ui.settings.SettingsContent
 import icu.nd4y.dosette.ui.stats.MedStat
 import icu.nd4y.dosette.ui.stats.StatsContent
@@ -442,6 +443,27 @@ class ScreenshotTests {
             }
         }
         composeRule.onRoot().captureRoboImage("$SHOTS/settings_light.png")
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun onboardingLight() {
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    OnboardingContent(
+                        notificationsGranted = false,
+                        batteryExempt = false,
+                        onRequestNotifications = {},
+                        onRequestBattery = {},
+                        onStart = {},
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("$SHOTS/onboarding_light.png")
     }
 
     @Test

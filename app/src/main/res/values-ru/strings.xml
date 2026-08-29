@@ -180,6 +180,21 @@
     <string name="settings_battery_warn">Разрешите работу без оптимизации батареи, чтобы напоминания приходили вовремя</string>
     <string name="settings_battery_action">Разрешить</string>
 
+    <string name="onboarding_tagline">Помнит о каждом приёме за вас</string>
+    <string name="onboarding_feature_reminders_title">Напоминания, которые не теряются</string>
+    <string name="onboarding_feature_reminders_text">Сигнал повторяется, пока приём не отмечен</string>
+    <string name="onboarding_feature_stock_title">Запасы и пополнение</string>
+    <string name="onboarding_feature_stock_text">Предупредит, когда пора купить ещё</string>
+    <string name="onboarding_feature_profiles_title">Вся семья</string>
+    <string name="onboarding_feature_profiles_text">Отдельные профили в одном приложении</string>
+    <string name="onboarding_notifications_title">Уведомления</string>
+    <string name="onboarding_notifications_text">Без них напоминания не работают</string>
+    <string name="onboarding_battery_title">Оптимизация батареи</string>
+    <string name="onboarding_battery_text">Исключение сохраняет точность напоминаний</string>
+    <string name="onboarding_allow">Разрешить</string>
+    <string name="onboarding_granted">Разрешено</string>
+    <string name="onboarding_start">Начать</string>
+
     <string name="appointments_title">Визиты к врачу</string>
     <string name="appointments_empty">Предстоящих визитов нет. Добавьте визит — напоминание придёт заранее.</string>
     <string name="appointments_add">Добавить визит</string>
