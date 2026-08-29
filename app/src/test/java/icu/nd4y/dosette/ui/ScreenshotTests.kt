@@ -478,6 +478,7 @@ class ScreenshotTests {
                         onImport = {},
                         onConfirmImport = {},
                         onDismissImport = {},
+                        onSubmitPassword = {},
                     )
                 }
             }

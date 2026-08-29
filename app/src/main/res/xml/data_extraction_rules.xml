@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Medication data must not land in the Google cloud backup: the database
+  and the internal auto-backups are excluded. Settings (DataStore) still
+  transfer. Direct device-to-device transfer keeps everything - the data
+  moves between the user's own devices without a cloud copy.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude
+            domain="database"
+            path="dosette.db" />
+        <exclude
+            domain="database"
+            path="dosette.db-wal" />
+        <exclude
+            domain="database"
+            path="dosette.db-shm" />
+        <exclude
+            domain="file"
+            path="backups/" />
+    </cloud-backup>
+    <device-transfer />
+</data-extraction-rules>
