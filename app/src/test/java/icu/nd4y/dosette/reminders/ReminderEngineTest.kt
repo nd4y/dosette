@@ -217,6 +217,20 @@ class ReminderEngineTest {
         }
 
     @Test
+    fun `reschedule catches up an already-due occurrence`() =
+        runTest {
+            // Regression from the on-device import test: data lands while the
+            // dose time is already in the past (inside grace) — reschedule()
+            // alone must alert, without waiting for the next alarm tick.
+            clock.advance(Duration.ofMinutes(10))
+            engine.reschedule()
+
+            assertThat(notifier.reminders).hasSize(1)
+            assertThat(notifier.reminders.single().second).isTrue()
+            assertThat(stateRepository.get(key)?.phase).isEqualTo(ReminderPhase.ACTIVE)
+        }
+
+    @Test
     fun `take writes the log and decrements the variant by strength ratio`() =
         runTest {
             engine.processDueEvents()

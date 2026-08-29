@@ -104,10 +104,16 @@ class ReminderEngine
                 processDueLocked(world)
             }
 
-        /** Data or settings changed: just re-arm the alarm. */
+        /**
+         * Data or settings changed. A full catch-up pass, not just re-arming:
+         * an import or edit can introduce occurrences that are already due
+         * (inside the grace window) and they must alert immediately — found
+         * the hard way on-device, where an import whose times had all passed
+         * produced no notifications until the nightly housekeeping tick.
+         */
         suspend fun reschedule(): Unit =
             mutex.withLock {
-                rescheduleLocked(loadWorld().settings)
+                processDueLocked()
             }
 
         private suspend fun processDueLocked(preloaded: World? = null) {
