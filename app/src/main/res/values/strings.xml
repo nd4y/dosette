@@ -120,6 +120,22 @@
     <string name="review_stock">Stock</string>
     <string name="review_variant_line">%1$s %2$s — %3$s pcs</string>
 
+    <string name="today_taken_of">Taken %1$d of %2$d</string>
+    <string name="today_next_dose">Next dose — %1$s</string>
+    <string name="today_all_done">Everything is marked for today</string>
+    <string name="today_empty_title">No doses today</string>
+    <string name="today_empty_subtitle">Add a medication with a schedule in the Meds tab</string>
+    <string name="slot_morning">Morning</string>
+    <string name="slot_afternoon">Afternoon</string>
+    <string name="slot_evening">Evening</string>
+    <string name="slot_night">Night</string>
+    <string name="slot_all_done">all taken</string>
+    <string name="dose_taken_at">taken at %1$s</string>
+    <string name="dose_skipped_label">skipped</string>
+    <string name="dose_missed_label">missed</string>
+    <string name="today_prn_section">As needed</string>
+    <string name="prn_take">Log intake</string>
+
     <string name="action_next">Next</string>
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>

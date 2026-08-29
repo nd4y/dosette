@@ -16,6 +16,11 @@ import icu.nd4y.dosette.ui.mededit.MedEditUiState
 import icu.nd4y.dosette.ui.mededit.VariantDraft
 import icu.nd4y.dosette.ui.mededit.WizardStep
 import icu.nd4y.dosette.ui.theme.DosetteTheme
+import icu.nd4y.dosette.ui.today.DoseUiStatus
+import icu.nd4y.dosette.ui.today.PrnMed
+import icu.nd4y.dosette.ui.today.TodayContent
+import icu.nd4y.dosette.ui.today.TodayDose
+import icu.nd4y.dosette.ui.today.TodayUiState
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,6 +28,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
 
 private const val RU_PIXEL7 = "ru-rRU-" + RobolectricDeviceQualifiers.Pixel7
@@ -186,6 +192,124 @@ class ScreenshotTests {
             ),
         )
         composeRule.onRoot().captureRoboImage("$SHOTS/wizard_schedule_light.png")
+    }
+
+    private fun todayDose(
+        medicationId: String,
+        name: String,
+        strength: String,
+        time: LocalTime,
+        form: MedicationForm,
+        colorSeed: Int,
+        status: DoseUiStatus,
+        actedTime: LocalTime? = null,
+        instructions: String? = null,
+    ) = TodayDose(
+        medicationId = medicationId,
+        date = LocalDate.parse("2026-08-29"),
+        time = time,
+        name = name,
+        strengthText = strength,
+        amountText = "1",
+        instructions = instructions,
+        form = form,
+        colorSeed = colorSeed,
+        status = status,
+        actedTime = actedTime,
+    )
+
+    private val todayState =
+        TodayUiState(
+            loading = false,
+            date = LocalDate.parse("2026-08-29"),
+            doses =
+                listOf(
+                    todayDose(
+                        "m1",
+                        "Метформин",
+                        "500 мг",
+                        LocalTime.of(8, 0),
+                        MedicationForm.TABLET,
+                        0,
+                        DoseUiStatus.TAKEN,
+                        LocalTime.of(8, 4),
+                    ),
+                    todayDose(
+                        "m2",
+                        "Лизиноприл",
+                        "10 мг",
+                        LocalTime.of(8, 0),
+                        MedicationForm.TABLET,
+                        1,
+                        DoseUiStatus.TAKEN,
+                        LocalTime.of(8, 4),
+                    ),
+                    todayDose(
+                        "m4",
+                        "Витамин D",
+                        "2000 МЕ",
+                        LocalTime.of(8, 0),
+                        MedicationForm.DROPS,
+                        3,
+                        DoseUiStatus.TAKEN,
+                        LocalTime.of(8, 5),
+                    ),
+                    todayDose(
+                        "m1",
+                        "Метформин",
+                        "500 мг",
+                        LocalTime.of(20, 0),
+                        MedicationForm.TABLET,
+                        0,
+                        DoseUiStatus.PENDING,
+                        instructions = "с едой",
+                    ),
+                    todayDose(
+                        "m3",
+                        "Аторвастатин",
+                        "20 мг",
+                        LocalTime.of(20, 0),
+                        MedicationForm.CAPSULE,
+                        2,
+                        DoseUiStatus.PENDING,
+                    ),
+                ),
+            prn = listOf(PrnMed("m5", "Ибупрофен", "400 мг", MedicationForm.TABLET, 4)),
+            takenCount = 3,
+            plannedCount = 5,
+            nextDoseTime = LocalTime.of(20, 0),
+        )
+
+    private fun today(state: TodayUiState) {
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    TodayContent(
+                        state = state,
+                        contentPadding = screenPadding,
+                        onTake = {},
+                        onSkip = {},
+                        onTakePrn = {},
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun todayLight() {
+        today(todayState)
+        composeRule.onRoot().captureRoboImage("$SHOTS/today_light.png")
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7_NIGHT)
+    fun todayDark() {
+        today(todayState)
+        composeRule.onRoot().captureRoboImage("$SHOTS/today_dark.png")
     }
 
     @Test

@@ -40,6 +40,7 @@ import icu.nd4y.dosette.ui.navigation.CabinetKey
 import icu.nd4y.dosette.ui.navigation.MedDetailKey
 import icu.nd4y.dosette.ui.navigation.MedEditKey
 import icu.nd4y.dosette.ui.theme.DosetteTheme
+import icu.nd4y.dosette.ui.today.TodayScreen
 
 private enum class DosetteTab(
     @StringRes val label: Int,
@@ -119,11 +120,7 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
             }
 
             DosetteTab.Today -> {
-                PlaceholderScreen(
-                    labelRes = DosetteTab.Today.label,
-                    icon = DosetteTab.Today.icon,
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                )
+                TodayScreen(contentPadding = padding)
             }
 
             DosetteTab.Calendar -> {
