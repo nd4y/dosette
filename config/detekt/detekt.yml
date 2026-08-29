@@ -1,0 +1,15 @@
+style:
+  MagicNumber:
+    active: false
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+
+complexity:
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    ignoreAnnotated: ['Composable']
