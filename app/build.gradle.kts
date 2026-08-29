@@ -9,6 +9,12 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
+// Release builds pass -Pdosette.version=vX.Y.Z (the git tag); local builds fall back to a dev version.
+val releaseVersion: String? =
+    (findProperty("dosette.version") as String?)?.removePrefix("v")?.also {
+        require(Regex("""\d+\.\d+\.\d+""").matches(it)) { "dosette.version must be X.Y.Z, got $it" }
+    }
+
 android {
     namespace = "icu.nd4y.dosette"
     compileSdk = 37
@@ -17,8 +23,26 @@ android {
         applicationId = "icu.nd4y.dosette"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // Monotonic scheme required by Obtainium: major*10000 + minor*100 + patch.
+        versionCode =
+            releaseVersion
+                ?.split('.')
+                ?.map(String::toInt)
+                ?.let { (major, minor, patch) -> major * 10_000 + minor * 100 + patch }
+                ?: 1
+        versionName = releaseVersion ?: "0.0.0-dev"
+    }
+
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("DOSETTE_KEYSTORE")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("DOSETTE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("DOSETTE_KEY_ALIAS")
+                keyPassword = System.getenv("DOSETTE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -29,6 +53,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // The release key exists only in CI; local release builds use the debug key.
+            signingConfig =
+                if (System.getenv("DOSETTE_KEYSTORE") != null) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 
