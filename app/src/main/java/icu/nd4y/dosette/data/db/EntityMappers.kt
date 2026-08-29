@@ -17,6 +17,7 @@ import icu.nd4y.dosette.domain.model.Medication
 import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.MedicationVariant
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.Profile
 import icu.nd4y.dosette.domain.model.ReminderPhase
 import icu.nd4y.dosette.domain.model.ReminderState
@@ -214,6 +215,8 @@ fun ReminderStateEntity.toDomain(): ReminderState =
         scheduledAt = scheduledAt,
         phase = ReminderPhase.valueOf(phase),
         snoozedUntil = snoozedUntil,
+        snoozedUntilPlace = snoozedUntilPlace?.let(PlaceId::valueOf),
+        graceAnchor = graceAnchor,
         nagCount = nagCount,
         firstNotifiedAt = firstNotifiedAt,
         lastAlertAt = lastAlertAt,
@@ -227,6 +230,8 @@ fun ReminderState.toEntity(): ReminderStateEntity =
         scheduledAt = scheduledAt,
         phase = phase.name,
         snoozedUntil = snoozedUntil,
+        snoozedUntilPlace = snoozedUntilPlace?.name,
+        graceAnchor = graceAnchor,
         nagCount = nagCount,
         firstNotifiedAt = firstNotifiedAt,
         lastAlertAt = lastAlertAt,

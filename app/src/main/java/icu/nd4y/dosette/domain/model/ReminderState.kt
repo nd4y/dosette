@@ -14,6 +14,14 @@ data class ReminderState(
     val scheduledAt: Instant,
     val phase: ReminderPhase,
     val snoozedUntil: Instant?,
+    /** Set instead of [snoozedUntil] when snoozed until a place is reached. */
+    val snoozedUntilPlace: PlaceId?,
+    /**
+     * Start of the missed-grace window. Equals [scheduledAt] normally; a
+     * place-snooze moves it to the wake-up moment, otherwise "snooze until
+     * home" would silently expire into MISSED while still commuting.
+     */
+    val graceAnchor: Instant,
     val nagCount: Int,
     val firstNotifiedAt: Instant,
     val lastAlertAt: Instant,

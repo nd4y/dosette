@@ -3,6 +3,7 @@ package icu.nd4y.dosette.domain.nag
 import com.google.common.truth.Truth.assertThat
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.ReminderPhase
 import icu.nd4y.dosette.domain.model.ReminderState
 import org.junit.Test
@@ -27,6 +28,8 @@ class NagStateMachineTest {
             scheduledAt = scheduledAt,
             phase = ReminderPhase.ACTIVE,
             snoozedUntil = null,
+            snoozedUntilPlace = null,
+            graceAnchor = scheduledAt,
             nagCount = nagCount,
             firstNotifiedAt = scheduledAt,
             lastAlertAt = lastAlertAt,
@@ -124,11 +127,92 @@ class NagStateMachineTest {
     @Test
     fun `snooze parks the reminder and cancels the notification`() {
         val now = scheduledAt.plusSeconds(120)
-        val t = NagStateMachine.reduce(activeState(), NagEvent.Snooze, now, settings)
+        val t =
+            NagStateMachine.reduce(
+                activeState(),
+                NagEvent.Snooze(SnoozeTarget.ForMinutes(10)),
+                now,
+                settings,
+            )
 
         assertThat(t.state?.phase).isEqualTo(ReminderPhase.SNOOZED)
         assertThat(t.state?.snoozedUntil).isEqualTo(now.plusSeconds(600))
         assertThat(t.effects).containsExactly(NagEffect.CancelReminder, NagEffect.Reschedule).inOrder()
+    }
+
+    @Test
+    fun `snooze until a place has no expiry time and remembers the place`() {
+        val t =
+            NagStateMachine.reduce(
+                activeState(),
+                NagEvent.Snooze(SnoozeTarget.UntilPlace(PlaceId.HOME)),
+                scheduledAt.plusSeconds(120),
+                settings,
+            )
+
+        assertThat(t.state?.phase).isEqualTo(ReminderPhase.SNOOZED)
+        assertThat(t.state?.snoozedUntil).isNull()
+        assertThat(t.state?.snoozedUntilPlace).isEqualTo(PlaceId.HOME)
+        assertThat(t.effects).containsExactly(NagEffect.CancelReminder, NagEffect.Reschedule).inOrder()
+    }
+
+    @Test
+    fun `reaching the place re-alerts and restarts the grace window`() {
+        val snoozed =
+            activeState(nagCount = 3).copy(
+                phase = ReminderPhase.SNOOZED,
+                snoozedUntil = null,
+                snoozedUntilPlace = PlaceId.HOME,
+            )
+        // Hours later — way past the original grace window.
+        val arrival = scheduledAt.plusSeconds(4 * 3600L)
+
+        val t = NagStateMachine.reduce(snoozed, NagEvent.PlaceReached(PlaceId.HOME), arrival, settings)
+
+        assertThat(t.state?.phase).isEqualTo(ReminderPhase.ACTIVE)
+        assertThat(t.state?.snoozedUntilPlace).isNull()
+        assertThat(t.state?.graceAnchor).isEqualTo(arrival)
+        assertThat(t.state?.nagCount).isEqualTo(0)
+        assertThat(t.effects).contains(NagEffect.PostReminder(alert = true))
+
+        // The following nag tick must NOT expire it: grace counts from arrival now.
+        val tick = NagStateMachine.reduce(t.state, NagEvent.NagTick, arrival.plusSeconds(600), settings)
+        assertThat(tick.state).isNotNull()
+        assertThat(tick.effects).contains(NagEffect.PostReminder(alert = true))
+    }
+
+    @Test
+    fun `reaching a different place is a no-op`() {
+        val snoozed =
+            activeState().copy(
+                phase = ReminderPhase.SNOOZED,
+                snoozedUntil = null,
+                snoozedUntilPlace = PlaceId.WORK,
+            )
+        val t =
+            NagStateMachine.reduce(
+                snoozed,
+                NagEvent.PlaceReached(PlaceId.HOME),
+                scheduledAt.plusSeconds(600),
+                settings,
+            )
+
+        assertThat(t.state).isEqualTo(snoozed)
+        assertThat(t.effects).isEmpty()
+    }
+
+    @Test
+    fun `time expiry does not wake a place snooze`() {
+        val snoozed =
+            activeState().copy(
+                phase = ReminderPhase.SNOOZED,
+                snoozedUntil = null,
+                snoozedUntilPlace = PlaceId.HOME,
+            )
+        val t = NagStateMachine.reduce(snoozed, NagEvent.SnoozeExpired, scheduledAt.plusSeconds(600), settings)
+
+        assertThat(t.state).isEqualTo(snoozed)
+        assertThat(t.effects).isEmpty()
     }
 
     @Test

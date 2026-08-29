@@ -159,6 +159,22 @@
     <string name="more_about">About</string>
     <string name="coming_soon_badge">soon</string>
 
+    <string name="snooze_for_min">Snooze for %1$d min</string>
+    <string name="snooze_until_home">Snooze until home</string>
+    <string name="snooze_until_work">Snooze until work</string>
+
+    <string name="settings_places_section">Places</string>
+    <string name="settings_places_hint">Used by \u0022snooze until home / work\u0022</string>
+    <string name="place_home">Home</string>
+    <string name="place_work">Work</string>
+    <string name="place_not_set">not set</string>
+    <string name="place_geo_set">location set</string>
+    <string name="place_wifi_set">Wi-Fi %1$s</string>
+    <string name="place_use_location">Use current location</string>
+    <string name="place_use_wifi">Bind current Wi-Fi</string>
+    <string name="place_clear">Clear</string>
+    <string name="place_permission_rationale">Location permission is needed to read coordinates and the Wi-Fi name</string>
+    <string name="place_background_hint">Allow location \u0022all the time\u0022 in system settings so arriving can wake reminders even in the background</string>
     <string name="settings_title">Settings</string>
     <string name="settings_reminders_section">Reminders</string>
     <string name="settings_nag_interval">Repeat interval</string>

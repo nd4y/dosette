@@ -133,10 +133,12 @@ dependencies {
     ksp(libs.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.play.services.location)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
     testImplementation(libs.konsist)
+    testImplementation(libs.room.testing)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)

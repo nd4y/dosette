@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import icu.nd4y.dosette.data.repository.DoseLogRepository
 import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
+import icu.nd4y.dosette.data.repository.ProfileRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.inventory.InventoryPolicy
 import icu.nd4y.dosette.domain.model.DoseKind
@@ -13,7 +14,9 @@ import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.ScheduleType
+import icu.nd4y.dosette.domain.nag.SnoozeTarget
 import icu.nd4y.dosette.domain.schedule.OccurrenceGenerator
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.UserDoseAction
@@ -73,6 +76,12 @@ data class PrnMed(
     val colorSeed: Int,
 )
 
+data class ProfileChip(
+    val id: String,
+    val name: String,
+    val colorSeed: Int,
+)
+
 data class TodayUiState(
     val loading: Boolean = true,
     val date: LocalDate = LocalDate.now(),
@@ -81,6 +90,11 @@ data class TodayUiState(
     val takenCount: Int = 0,
     val plannedCount: Int = 0,
     val nextDoseTime: LocalTime? = null,
+    /** Places configured well enough to snooze until. */
+    val snoozePlaces: Set<PlaceId> = emptySet(),
+    /** Shown as switcher chips only when more than one exists. */
+    val profiles: List<ProfileChip> = emptyList(),
+    val activeProfileId: String? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -90,7 +104,8 @@ class TodayViewModel
     constructor(
         private val medicationRepository: MedicationRepository,
         private val doseLogRepository: DoseLogRepository,
-        settingsRepository: SettingsRepository,
+        private val settingsRepository: SettingsRepository,
+        private val profileRepository: ProfileRepository,
         private val engine: ReminderEngine,
         private val clock: Clock,
     ) : ViewModel() {
@@ -113,19 +128,39 @@ class TodayViewModel
 
         val uiState: StateFlow<TodayUiState> =
             combine(
-                settingsRepository.settings.map { it.activeProfileId }.distinctUntilChanged(),
+                settingsRepository.settings,
                 dateTicker,
-            ) { profileId, date -> profileId to date }
-                .flatMapLatest { (profileId, date) ->
+            ) { settings, date -> Triple(settings.activeProfileId, settings.places, date) }
+                .distinctUntilChanged()
+                .flatMapLatest { (profileId, places, date) ->
+                    val snoozePlaces = places.filterValues { it.isConfigured }.keys
                     if (profileId == null) {
                         flowOf(TodayUiState(loading = false, date = date))
                     } else {
                         combine(
                             medicationRepository.observeByProfile(profileId),
                             doseLogRepository.observeRange(profileId, date, date),
-                        ) { meds, logs -> buildState(date, meds, logs) }
+                            profileRepository.observeAll(),
+                        ) { meds, logs, profiles ->
+                            buildState(date, meds, logs).copy(
+                                snoozePlaces = snoozePlaces,
+                                profiles = profiles.map { ProfileChip(it.id, it.name, it.colorSeed) },
+                                activeProfileId = profileId,
+                            )
+                        }
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
+
+        fun snooze(
+            dose: TodayDose,
+            target: SnoozeTarget,
+        ) {
+            viewModelScope.launch { engine.snooze(dose.key, target) }
+        }
+
+        fun selectProfile(id: String) {
+            viewModelScope.launch { settingsRepository.setActiveProfileId(id) }
+        }
 
         private fun buildState(
             date: LocalDate,

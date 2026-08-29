@@ -11,7 +11,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
-enum class AlarmReason { DOSE, NAG, SNOOZE, GRACE, APPOINTMENT, HOUSEKEEPING }
+enum class AlarmReason { DOSE, NAG, SNOOZE, GRACE, APPOINTMENT, HOUSEKEEPING, PLACE_POLL }
 
 data class AlarmPlan(
     val at: Instant,
@@ -34,6 +34,9 @@ object AlarmPlanner {
     /** Housekeeping runs nightly to finalize missed doses of the previous day. */
     private val HOUSEKEEPING_TIME: LocalTime = LocalTime.of(0, 5)
 
+    /** Wi-Fi fallback cadence while any reminder waits for a place. */
+    private const val PLACE_POLL_MINUTES = 15L
+
     fun nextAlarm(
         now: Instant,
         zone: ZoneId,
@@ -43,7 +46,7 @@ object AlarmPlanner {
         val candidates = mutableListOf<AlarmPlan>()
 
         nextDose(obligations.schedules, now, zone)?.let(candidates::add)
-        obligations.states.forEach { state -> candidates += stateCandidates(state, settings) }
+        obligations.states.forEach { state -> candidates += stateCandidates(state, settings, now) }
         candidates += appointmentCandidates(obligations.appointments, now, zone)
         candidates += housekeeping(now, zone)
 
@@ -63,9 +66,10 @@ object AlarmPlanner {
     private fun stateCandidates(
         state: ReminderState,
         settings: NagSettings,
+        now: Instant,
     ): List<AlarmPlan> {
         val graceEnd =
-            state.scheduledAt.plus(settings.missedGraceMin.toLong(), ChronoUnit.MINUTES)
+            state.graceAnchor.plus(settings.missedGraceMin.toLong(), ChronoUnit.MINUTES)
         return when (state.phase) {
             ReminderPhase.ACTIVE -> {
                 buildList {
@@ -80,8 +84,19 @@ object AlarmPlanner {
 
             ReminderPhase.SNOOZED -> {
                 buildList {
-                    add(AlarmPlan(graceEnd, AlarmReason.GRACE))
-                    state.snoozedUntil?.let { add(AlarmPlan(it, AlarmReason.SNOOZE)) }
+                    if (state.snoozedUntilPlace != null) {
+                        // No time expiry while waiting for a place: the geofence is
+                        // the primary wake-up, this poll is the Wi-Fi fallback.
+                        add(
+                            AlarmPlan(
+                                now.plus(PLACE_POLL_MINUTES, ChronoUnit.MINUTES),
+                                AlarmReason.PLACE_POLL,
+                            ),
+                        )
+                    } else {
+                        add(AlarmPlan(graceEnd, AlarmReason.GRACE))
+                        state.snoozedUntil?.let { add(AlarmPlan(it, AlarmReason.SNOOZE)) }
+                    }
                 }
             }
         }

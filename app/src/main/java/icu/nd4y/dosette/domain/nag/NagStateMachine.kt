@@ -2,6 +2,7 @@ package icu.nd4y.dosette.domain.nag
 
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.ReminderPhase
 import icu.nd4y.dosette.domain.model.ReminderState
 import java.time.Instant
@@ -32,8 +33,10 @@ sealed interface NagEvent {
     /** User deliberately skipped the dose. */
     data object Skip : NagEvent
 
-    /** User postponed the reminder. */
-    data object Snooze : NagEvent
+    /** User postponed the reminder for a fixed time or until a place. */
+    data class Snooze(
+        val target: SnoozeTarget,
+    ) : NagEvent
 
     /** The user swiped the notification away (deleteIntent fired). */
     data object Dismissed : NagEvent
@@ -41,8 +44,23 @@ sealed interface NagEvent {
     /** The snooze period ended. */
     data object SnoozeExpired : NagEvent
 
+    /** The device arrived at a place a reminder was snoozed until. */
+    data class PlaceReached(
+        val place: PlaceId,
+    ) : NagEvent
+
     /** The grace window closed without an action. */
     data object GraceExpired : NagEvent
+}
+
+sealed interface SnoozeTarget {
+    data class ForMinutes(
+        val minutes: Int,
+    ) : SnoozeTarget
+
+    data class UntilPlace(
+        val place: PlaceId,
+    ) : SnoozeTarget
 }
 
 sealed interface NagEffect {
@@ -91,9 +109,10 @@ object NagStateMachine {
             NagEvent.NagTick -> onNagTick(state, now, settings)
             NagEvent.Take -> resolve(DoseStatus.TAKEN)
             NagEvent.Skip -> resolve(DoseStatus.SKIPPED)
-            NagEvent.Snooze -> onSnooze(state, now, settings)
+            is NagEvent.Snooze -> onSnooze(state, event.target, now)
             NagEvent.Dismissed -> onDismissed(state)
             NagEvent.SnoozeExpired -> onSnoozeExpired(state, now)
+            is NagEvent.PlaceReached -> onPlaceReached(state, event.place, now)
             NagEvent.GraceExpired -> expire(state)
         }
 
@@ -112,6 +131,8 @@ object NagStateMachine {
                 scheduledAt = event.scheduledAt,
                 phase = ReminderPhase.ACTIVE,
                 snoozedUntil = null,
+                snoozedUntilPlace = null,
+                graceAnchor = event.scheduledAt,
                 nagCount = 0,
                 firstNotifiedAt = now,
                 lastAlertAt = now,
@@ -128,7 +149,7 @@ object NagStateMachine {
             return Transition(state, emptyList())
         }
         val graceOver =
-            now.isAfter(state.scheduledAt.plus(settings.missedGraceMin.toLong(), ChronoUnit.MINUTES))
+            now.isAfter(state.graceAnchor.plus(settings.missedGraceMin.toLong(), ChronoUnit.MINUTES))
         val exhausted = state.nagCount + 1 >= settings.nagMaxCount
         return if (graceOver || exhausted) {
             expire(state)
@@ -151,16 +172,51 @@ object NagStateMachine {
 
     private fun onSnooze(
         state: ReminderState?,
+        target: SnoozeTarget,
         now: Instant,
-        settings: NagSettings,
     ): Transition {
         if (state == null) return Transition(null, emptyList())
         val snoozed =
-            state.copy(
-                phase = ReminderPhase.SNOOZED,
-                snoozedUntil = now.plus(settings.snoozeMin.toLong(), ChronoUnit.MINUTES),
-            )
+            when (target) {
+                is SnoozeTarget.ForMinutes -> {
+                    state.copy(
+                        phase = ReminderPhase.SNOOZED,
+                        snoozedUntil = now.plus(target.minutes.toLong(), ChronoUnit.MINUTES),
+                        snoozedUntilPlace = null,
+                    )
+                }
+
+                is SnoozeTarget.UntilPlace -> {
+                    state.copy(
+                        phase = ReminderPhase.SNOOZED,
+                        snoozedUntil = null,
+                        snoozedUntilPlace = target.place,
+                    )
+                }
+            }
         return Transition(snoozed, listOf(NagEffect.CancelReminder, NagEffect.Reschedule))
+    }
+
+    private fun onPlaceReached(
+        state: ReminderState?,
+        place: PlaceId,
+        now: Instant,
+    ): Transition {
+        if (state == null || state.phase != ReminderPhase.SNOOZED || state.snoozedUntilPlace != place) {
+            return Transition(state, emptyList())
+        }
+        // Arriving restarts the grace window: the wait for the place was
+        // deliberate, so the user gets the full window to act from now on.
+        val active =
+            state.copy(
+                phase = ReminderPhase.ACTIVE,
+                snoozedUntil = null,
+                snoozedUntilPlace = null,
+                graceAnchor = now,
+                nagCount = 0,
+                lastAlertAt = now,
+            )
+        return Transition(active, listOf(NagEffect.PostReminder(alert = true), NagEffect.Reschedule))
     }
 
     private fun onDismissed(state: ReminderState?): Transition =
@@ -176,7 +232,8 @@ object NagStateMachine {
         state: ReminderState?,
         now: Instant,
     ): Transition {
-        if (state == null || state.phase != ReminderPhase.SNOOZED) {
+        // Place-snoozes have no expiry time; only PlaceReached wakes them.
+        if (state == null || state.phase != ReminderPhase.SNOOZED || state.snoozedUntilPlace != null) {
             return Transition(state, emptyList())
         }
         val active = state.copy(phase = ReminderPhase.ACTIVE, snoozedUntil = null, lastAlertAt = now)

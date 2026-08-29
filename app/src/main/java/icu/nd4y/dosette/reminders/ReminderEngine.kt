@@ -15,16 +15,20 @@ import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.domain.model.PlaceConfig
+import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.ReminderPhase
 import icu.nd4y.dosette.domain.model.ReminderState
 import icu.nd4y.dosette.domain.nag.NagEffect
 import icu.nd4y.dosette.domain.nag.NagEvent
 import icu.nd4y.dosette.domain.nag.NagSettings
 import icu.nd4y.dosette.domain.nag.NagStateMachine
+import icu.nd4y.dosette.domain.nag.SnoozeTarget
 import icu.nd4y.dosette.domain.schedule.Occurrence
 import icu.nd4y.dosette.domain.schedule.OccurrenceGenerator
 import icu.nd4y.dosette.reminders.notifications.ReminderNotifier
 import icu.nd4y.dosette.reminders.notifications.ReminderPayload
+import icu.nd4y.dosette.reminders.places.PlaceMonitor
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -56,6 +60,7 @@ class ReminderEngine
         private val profileRepository: ProfileRepository,
         private val notifier: ReminderNotifier,
         private val alarmScheduler: AlarmScheduler,
+        private val placeMonitor: PlaceMonitor,
         private val clock: Clock,
     ) {
         private val mutex = Mutex()
@@ -75,11 +80,43 @@ class ReminderEngine
                 val world = loadWorld()
                 val event =
                     when (action) {
-                        UserDoseAction.TAKE -> NagEvent.Take
-                        UserDoseAction.SKIP -> NagEvent.Skip
-                        UserDoseAction.SNOOZE -> NagEvent.Snooze
+                        UserDoseAction.TAKE -> {
+                            NagEvent.Take
+                        }
+
+                        UserDoseAction.SKIP -> {
+                            NagEvent.Skip
+                        }
+
+                        UserDoseAction.SNOOZE -> {
+                            NagEvent.Snooze(SnoozeTarget.ForMinutes(world.settings.snoozeMin))
+                        }
                     }
                 applyEvent(world, key, event)
+                syncGeofences(world)
+                rescheduleLocked(world.settings)
+            }
+
+        /** Snooze with an explicit target (duration or place) from the app UI. */
+        suspend fun snooze(
+            key: OccurrenceKey,
+            target: SnoozeTarget,
+        ): Unit =
+            mutex.withLock {
+                val world = loadWorld()
+                applyEvent(world, key, NagEvent.Snooze(target))
+                syncGeofences(world)
+                rescheduleLocked(world.settings)
+            }
+
+        /** Geofence fired: wake every reminder waiting for [place]. */
+        suspend fun onPlaceReached(place: PlaceId): Unit =
+            mutex.withLock {
+                val world = loadWorld()
+                world.states
+                    .filter { it.snoozedUntilPlace == place }
+                    .forEach { state -> applyEvent(world, state.occurrenceKey, NagEvent.PlaceReached(place)) }
+                syncGeofences(world)
                 rescheduleLocked(world.settings)
             }
 
@@ -180,7 +217,7 @@ class ReminderEngine
         ) {
             for (state in world.states) {
                 val graceEnd =
-                    state.scheduledAt.plus(Duration.ofMinutes(world.settings.missedGraceMin.toLong()))
+                    state.graceAnchor.plus(Duration.ofMinutes(world.settings.missedGraceMin.toLong()))
                 when (state.phase) {
                     ReminderPhase.ACTIVE -> {
                         val tickDue =
@@ -195,14 +232,47 @@ class ReminderEngine
                     }
 
                     ReminderPhase.SNOOZED -> {
-                        val snoozeOver = state.snoozedUntil?.isAfter(slackEnd) == false
-                        when {
-                            now.isAfter(graceEnd) -> applyEvent(world, state.occurrenceKey, NagEvent.GraceExpired)
-                            snoozeOver -> applyEvent(world, state.occurrenceKey, NagEvent.SnoozeExpired)
-                        }
+                        handleSnoozedState(world, state, now, slackEnd, graceEnd)
                     }
                 }
             }
+            syncGeofences(world)
+        }
+
+        private suspend fun handleSnoozedState(
+            world: World,
+            state: ReminderState,
+            now: Instant,
+            slackEnd: Instant,
+            graceEnd: Instant,
+        ) {
+            val place = state.snoozedUntilPlace
+            if (place != null) {
+                // No time expiry while waiting for a place; the Wi-Fi
+                // check here is the fallback for a missed geofence.
+                val config = world.places[place]?.takeIf { it.isConfigured }
+                if (config != null && placeMonitor.isCurrentlyAt(config)) {
+                    applyEvent(world, state.occurrenceKey, NagEvent.PlaceReached(place))
+                }
+            } else {
+                val snoozeOver = state.snoozedUntil?.isAfter(slackEnd) == false
+                when {
+                    now.isAfter(graceEnd) -> applyEvent(world, state.occurrenceKey, NagEvent.GraceExpired)
+                    snoozeOver -> applyEvent(world, state.occurrenceKey, NagEvent.SnoozeExpired)
+                }
+            }
+        }
+
+        /** Keep geofences registered for exactly the places reminders wait on. */
+        private fun syncGeofences(world: World) {
+            val waiting =
+                world.stateByKey.values
+                    .mapNotNull { it.snoozedUntilPlace }
+                    .toSet()
+                    .mapNotNull { place ->
+                        world.places[place]?.takeIf { it.isConfigured }?.let { place to it }
+                    }.toMap()
+            placeMonitor.syncGeofences(waiting)
         }
 
         private fun handleAppointments(
@@ -424,6 +494,7 @@ class ReminderEngine
                         missedGraceMin = settings.missedGraceMin,
                     ),
                 lowStockNotifyEnabled = settings.lowStockNotifyEnabled,
+                places = settings.places,
                 medications = medications,
                 medicationById = medications.associateBy { it.medication.id },
                 states = reminderStateRepository.getAll(),
@@ -441,6 +512,7 @@ class ReminderEngine
         private data class World(
             val settings: NagSettings,
             val lowStockNotifyEnabled: Boolean,
+            val places: Map<PlaceId, PlaceConfig>,
             val medications: List<MedicationDetails>,
             val medicationById: Map<String, MedicationDetails>,
             val states: List<ReminderState>,
