@@ -13,6 +13,8 @@ import icu.nd4y.dosette.domain.model.Profile
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator
 import icu.nd4y.dosette.ui.appointments.AppointmentsContent
 import icu.nd4y.dosette.ui.appointments.AppointmentsUiState
+import icu.nd4y.dosette.ui.backup.BackupContent
+import icu.nd4y.dosette.ui.backup.BackupUiState
 import icu.nd4y.dosette.ui.cabinet.CabinetContent
 import icu.nd4y.dosette.ui.cabinet.CabinetUiState
 import icu.nd4y.dosette.ui.cabinet.MedCard
@@ -411,6 +413,7 @@ class ScreenshotTests {
                         onOpenSettings = {},
                         onOpenAppointments = {},
                         onOpenStats = {},
+                        onOpenBackup = {},
                     )
                 }
             }
@@ -443,6 +446,29 @@ class ScreenshotTests {
             }
         }
         composeRule.onRoot().captureRoboImage("$SHOTS/settings_light.png")
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun backupLight() {
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    BackupContent(
+                        state = BackupUiState(),
+                        contentPadding = screenPadding,
+                        onBack = {},
+                        onExport = {},
+                        onImport = {},
+                        onConfirmImport = {},
+                        onDismissImport = {},
+                    )
+                }
+            }
+        }
+        composeRule.onRoot().captureRoboImage("$SHOTS/backup_light.png")
     }
 
     @Test

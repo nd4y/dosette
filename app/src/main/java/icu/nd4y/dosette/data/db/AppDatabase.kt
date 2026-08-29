@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import icu.nd4y.dosette.data.db.dao.AppointmentDao
+import icu.nd4y.dosette.data.db.dao.BackupDao
 import icu.nd4y.dosette.data.db.dao.DoseLogDao
 import icu.nd4y.dosette.data.db.dao.MedicationDao
 import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
@@ -48,6 +49,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appointmentDao(): AppointmentDao
 
     abstract fun reminderStateDao(): ReminderStateDao
+
+    abstract fun backupDao(): BackupDao
 
     companion object {
         const val NAME = "dosette.db"

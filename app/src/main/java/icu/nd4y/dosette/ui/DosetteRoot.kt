@@ -27,6 +27,7 @@ import androidx.navigation3.ui.NavDisplay
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.ui.appointments.AppointmentEditScreen
 import icu.nd4y.dosette.ui.appointments.AppointmentsScreen
+import icu.nd4y.dosette.ui.backup.BackupScreen
 import icu.nd4y.dosette.ui.cabinet.CabinetScreen
 import icu.nd4y.dosette.ui.calendar.CalendarScreen
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
@@ -35,6 +36,7 @@ import icu.nd4y.dosette.ui.mededit.MedEditScreen
 import icu.nd4y.dosette.ui.more.MoreScreen
 import icu.nd4y.dosette.ui.navigation.AppointmentEditKey
 import icu.nd4y.dosette.ui.navigation.AppointmentsKey
+import icu.nd4y.dosette.ui.navigation.BackupKey
 import icu.nd4y.dosette.ui.navigation.CabinetKey
 import icu.nd4y.dosette.ui.navigation.MedDetailKey
 import icu.nd4y.dosette.ui.navigation.MedEditKey
@@ -156,6 +158,13 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
                                     onOpenSettings = { moreBackStack.add(SettingsKey) },
                                     onOpenAppointments = { moreBackStack.add(AppointmentsKey) },
                                     onOpenStats = { moreBackStack.add(StatsKey) },
+                                    onOpenBackup = { moreBackStack.add(BackupKey) },
+                                )
+                            }
+                            entry<BackupKey> {
+                                BackupScreen(
+                                    contentPadding = padding,
+                                    onBack = { moreBackStack.removeLastOrNull() },
                                 )
                             }
                             entry<AppointmentsKey> {

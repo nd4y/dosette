@@ -14,6 +14,7 @@ room = "2.8.4"
 datastore = "1.2.1"
 kotlinxSerialization = "1.11.0"
 kotlinxCoroutines = "1.11.0"
+kaml = "0.83.0"
 junit = "4.13.2"
 truth = "1.4.4"
 turbine = "1.2.1"
@@ -53,6 +54,7 @@ room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kaml = { group = "com.charleskorn.kaml", name = "kaml", version.ref = "kaml" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }

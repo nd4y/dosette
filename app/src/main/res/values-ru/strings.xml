@@ -213,6 +213,20 @@
     <string name="appointment_delete">Удалить визит</string>
     <string name="appointment_delete_warning">Визит и его напоминания будут удалены.</string>
 
+    <string name="backup_title">Экспорт и импорт</string>
+    <string name="backup_export_title">Экспорт</string>
+    <string name="backup_export_text">Сохраняет всё — профили, лекарства, историю, визиты и настройки — в один YAML-файл. Место любое, включая Google Drive.</string>
+    <string name="backup_export_action">Экспортировать</string>
+    <string name="backup_import_title">Импорт</string>
+    <string name="backup_import_text">Заменяет все текущие данные содержимым файла. Перед импортом текущие данные автоматически сохраняются внутри приложения.</string>
+    <string name="backup_import_action">Импортировать</string>
+    <string name="backup_confirm_title">Заменить всё?</string>
+    <string name="backup_confirm_text">В файле: профилей — %1$d, лекарств — %2$d, записей истории — %3$d, визитов — %4$d. Все текущие данные будут заменены.</string>
+    <string name="backup_confirm_action">Заменить</string>
+    <string name="backup_exported">Бэкап сохранён</string>
+    <string name="backup_imported">Данные импортированы, напоминания перестроены</string>
+    <string name="backup_error">Не получилось: %1$s</string>
+
     <string name="stats_title">Статистика</string>
     <string name="stats_window">Последние 30 дней</string>
     <string name="stats_taken">Принято: %1$d</string>

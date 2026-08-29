@@ -37,3 +37,6 @@ data class AppointmentEditKey(
 
 @Serializable
 data object StatsKey : NavKey
+
+@Serializable
+data object BackupKey : NavKey
