@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android / IDE
+local.properties
+.idea/
+*.iml
+captures/
+.cxx/
+.kotlin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Design canvas build artifact (sources are the *.dc.html files)
+design/mockups/dosette-mockups.html
+
+# Signing
+*.jks
+*.keystore

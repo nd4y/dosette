@@ -1,0 +1,19 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "Сегодня" },
+    { "file": "Calendar.dc.html", "x": 500, "y": 0, "w": 390, "h": 844, "title": "Календарь" },
+    { "file": "Cabinet.dc.html", "x": 1000, "y": 0, "w": 390, "h": 844, "title": "Аптечка" },
+    { "file": "MedDetail.dc.html", "x": 1500, "y": 0, "w": 390, "h": 844, "title": "Карточка лекарства" },
+    { "file": "Wizard.dc.html", "x": 2000, "y": 0, "w": 390, "h": 844, "title": "Мастер · Расписание" },
+    { "file": "More.dc.html", "x": 2500, "y": 0, "w": 390, "h": 844, "title": "Ещё" },
+    { "file": "Settings.dc.html", "x": 3000, "y": 0, "w": 390, "h": 844, "title": "Настройки" },
+    { "file": "Notifications.dc.html", "x": 3500, "y": 0, "w": 390, "h": 760, "title": "Уведомления" },
+    { "file": "TodayDark.dc.html", "x": 0, "y": 1000, "w": 390, "h": 844, "title": "Сегодня · тёмная" },
+    { "file": "CabinetDark.dc.html", "x": 500, "y": 1000, "w": 390, "h": 844, "title": "Аптечка · тёмная" },
+    { "file": "NotificationsDark.dc.html", "x": 1000, "y": 1000, "w": 390, "h": 760, "title": "Уведомления · тёмная" }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 0, "y": -220, "w": 420, "text": "Dosette — Material 3 Expressive.\nSeed-цвет: тёплый teal #00696B (в приложении включён Material You — палитра подстроится под обои, это фолбэк и фирменный вид).\nШрифт: Roboto Flex. Верхний ряд — светлая тема, нижний — тёмная.\nМакеты статичные; правки можно вносить прямо здесь или писать в чат." }
+  ],
+  "launch": { "view": "canvas" }
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..900&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Roboto Flex', Roboto, system-ui, sans-serif; }
+    a { color: #80D4D6; } a:hover { color: #9BF0F2; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 760px; background: #05080A; display: flex; flex-direction: column; gap: 14px; padding: 24px 14px; overflow: hidden; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 24px; background: #1A2121;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="width: 18px; height: 18px; border-radius: 6px; background: #80D4D6; display: flex; align-items: center; justify-content: center;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#003739" stroke-width="2.6" stroke-linecap="round"><g transform="rotate(45 12 12)"><rect x="4" y="8" width="16" height="8" rx="4"/><path d="M12 8v8"/></g></svg>
+      </div>
+      <div style="font-size: 12px; font-weight: 600; color: #BEC8C8;">Dosette · сейчас</div>
+      <div style="flex: 1;"></div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BEC8C8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 1;">
+        <div style="font-size: 15px; font-weight: 700; color: #DDE4E4;">Метформин 500 мг — 20:00</div>
+        <div style="font-size: 13px; font-weight: 500; color: #BEC8C8;">1 таблетка · с едой</div>
+      </div>
+      <div style="width: 40px; height: 40px; border-radius: 14px; background: #5A3C00; display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFDDAF" stroke-width="2" stroke-linecap="round"><g transform="rotate(45 12 12)"><rect x="4" y="8" width="16" height="8" rx="4"/><path d="M12 8v8"/></g></svg>
+      </div>
+    </div>
+    <div style="display: flex; gap: 18px; padding-left: 2px;">
+      <div style="font-size: 13px; font-weight: 700; color: #80D4D6;">Принял</div>
+      <div style="font-size: 13px; font-weight: 700; color: #80D4D6;">Пропустить</div>
+      <div style="font-size: 13px; font-weight: 700; color: #80D4D6;">Отложить</div>
+    </div>
+  </div>
+  <div style="font-size: 12px; font-weight: 500; color: #889392; line-height: 17px; padding: 0 6px;">Свёрнутое уведомление — постоянное (ongoing). Смахивание возвращает его без звука; звук повторяется с настроенным интервалом, пока приём не отмечен.</div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 24px; background: #1A2121;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="width: 18px; height: 18px; border-radius: 6px; background: #80D4D6; display: flex; align-items: center; justify-content: center;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#003739" stroke-width="2.6" stroke-linecap="round"><g transform="rotate(45 12 12)"><rect x="4" y="8" width="16" height="8" rx="4"/><path d="M12 8v8"/></g></svg>
+      </div>
+      <div style="font-size: 12px; font-weight: 600; color: #BEC8C8;">Dosette · 20 мин назад · повтор 2</div>
+      <div style="flex: 1;"></div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BEC8C8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+    </div>
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <div style="width: 56px; height: 56px; border-radius: 20px; background: #143B63; display: flex; align-items: center; justify-content: center;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C9E2FF" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M8.5 12h7M12 8.5v7"/></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 1;">
+        <div style="font-size: 16px; font-weight: 700; color: #DDE4E4;">Лизиноприл 10 мг — 08:00</div>
+        <div style="font-size: 13px; font-weight: 500; color: #BEC8C8;">1 таблетка · профиль: Алексей</div>
+        <div style="font-size: 12px; font-weight: 500; color: #FFB877;">запас на исходе — осталось 6</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <div style="flex: 1; height: 44px; border-radius: 22px; background: #80D4D6; font-size: 14px; font-weight: 650; color: #003739; display: flex; align-items: center; justify-content: center; gap: 7px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#003739" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+        Принял
+      </div>
+      <div style="height: 44px; padding: 0 16px; border-radius: 22px; background: #303636; font-size: 14px; font-weight: 650; color: #DDE4E4; display: flex; align-items: center; justify-content: center;">Пропустить</div>
+      <div style="height: 44px; padding: 0 16px; border-radius: 22px; background: #303636; font-size: 14px; font-weight: 650; color: #DDE4E4; display: flex; align-items: center; justify-content: center;">+10 мин</div>
+    </div>
+  </div>
+  <div style="font-size: 12px; font-weight: 500; color: #889392; line-height: 17px; padding: 0 6px;">Развёрнутое уведомление — крупные кнопки-действия, имя профиля (когда профилей больше одного), предупреждение о запасе.</div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 24px; background: #1A2121;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="width: 18px; height: 18px; border-radius: 6px; background: #80D4D6; display: flex; align-items: center; justify-content: center;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#003739" stroke-width="2.6" stroke-linecap="round"><g transform="rotate(45 12 12)"><rect x="4" y="8" width="16" height="8" rx="4"/><path d="M12 8v8"/></g></svg>
+      </div>
+      <div style="font-size: 12px; font-weight: 600; color: #BEC8C8;">Dosette · 21:00</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 22px; height: 22px; border-radius: 11px; background: #93000A; display: flex; align-items: center; justify-content: center;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFDAD6" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 1px;">
+        <div style="font-size: 14px; font-weight: 700; color: #DDE4E4;">Пропущено: Метформин — 20:00</div>
+        <div style="font-size: 12px; font-weight: 500; color: #BEC8C8;">можно отметить задним числом в календаре</div>
+      </div>
+    </div>
+  </div>
+  <div style="font-size: 12px; font-weight: 500; color: #889392; line-height: 17px; padding: 0 6px;">После окна пропуска (по умолчанию 60 мин) постоянное уведомление снимается — остаётся обычное, его можно смахнуть.</div>
+</div>
+</x-dc>
+</body>
+</html>
