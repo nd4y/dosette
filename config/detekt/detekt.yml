@@ -13,3 +13,9 @@ complexity:
     ignoreAnnotated: ['Composable']
   LongParameterList:
     ignoreAnnotated: ['Composable']
+    ignoreDataClasses: true
+    excludes: ['**/test/**', '**/androidTest/**']
+  TooManyFunctions:
+    thresholdInFiles: 40
+    thresholdInClasses: 25
+    thresholdInInterfaces: 25
