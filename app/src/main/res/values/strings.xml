@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Dosette</string>
+
+    <string name="tab_today">Today</string>
+    <string name="tab_calendar">Calendar</string>
+    <string name="tab_cabinet">Meds</string>
+    <string name="tab_more">More</string>
+
+    <string name="placeholder_wip">Coming soon</string>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_today">Сегодня</string>
+    <string name="tab_calendar">Календарь</string>
+    <string name="tab_cabinet">Аптечка</string>
+    <string name="tab_more">Ещё</string>
+
+    <string name="placeholder_wip">В разработке</string>
+</resources>

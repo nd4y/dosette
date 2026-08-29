@@ -18,6 +18,9 @@ Thumbs.db
 # Design canvas build artifact (sources are the *.dc.html files)
 design/mockups/dosette-mockups.html
 
+# Local device screenshots
+.screenshots/
+
 # Signing
 *.jks
 *.keystore
