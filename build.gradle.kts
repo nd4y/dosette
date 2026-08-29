@@ -10,20 +10,19 @@ plugins {
     alias(libs.plugins.spotless)
 }
 
+// Targets are narrowed to real sources on purpose: a bare "**/*" walk
+// races with parallel build tasks writing into app/build.
 spotless {
     kotlin {
-        target("**/*.kt")
-        targetExclude("**/build/**")
+        target("app/src/**/*.kt")
         ktlint()
     }
     kotlinGradle {
-        target("**/*.gradle.kts")
-        targetExclude("**/build/**")
+        target("*.gradle.kts", "app/*.gradle.kts")
         ktlint()
     }
     format("misc") {
-        target("**/*.md", "**/.gitignore")
-        targetExclude("**/build/**")
+        target("*.md", ".gitignore", "config/**/*.yml")
         trimTrailingWhitespace()
         endWithNewline()
     }
