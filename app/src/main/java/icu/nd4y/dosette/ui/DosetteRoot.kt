@@ -25,20 +25,26 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import icu.nd4y.dosette.R
+import icu.nd4y.dosette.ui.appointments.AppointmentEditScreen
+import icu.nd4y.dosette.ui.appointments.AppointmentsScreen
 import icu.nd4y.dosette.ui.cabinet.CabinetScreen
 import icu.nd4y.dosette.ui.calendar.CalendarScreen
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.meddetail.MedDetailScreen
 import icu.nd4y.dosette.ui.mededit.MedEditScreen
 import icu.nd4y.dosette.ui.more.MoreScreen
+import icu.nd4y.dosette.ui.navigation.AppointmentEditKey
+import icu.nd4y.dosette.ui.navigation.AppointmentsKey
 import icu.nd4y.dosette.ui.navigation.CabinetKey
 import icu.nd4y.dosette.ui.navigation.MedDetailKey
 import icu.nd4y.dosette.ui.navigation.MedEditKey
 import icu.nd4y.dosette.ui.navigation.MoreKey
 import icu.nd4y.dosette.ui.navigation.ProfilesKey
 import icu.nd4y.dosette.ui.navigation.SettingsKey
+import icu.nd4y.dosette.ui.navigation.StatsKey
 import icu.nd4y.dosette.ui.profiles.ProfilesScreen
 import icu.nd4y.dosette.ui.settings.SettingsScreen
+import icu.nd4y.dosette.ui.stats.StatsScreen
 import icu.nd4y.dosette.ui.theme.DosetteTheme
 import icu.nd4y.dosette.ui.today.TodayScreen
 
@@ -148,6 +154,29 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
                                     contentPadding = padding,
                                     onOpenProfiles = { moreBackStack.add(ProfilesKey) },
                                     onOpenSettings = { moreBackStack.add(SettingsKey) },
+                                    onOpenAppointments = { moreBackStack.add(AppointmentsKey) },
+                                    onOpenStats = { moreBackStack.add(StatsKey) },
+                                )
+                            }
+                            entry<AppointmentsKey> {
+                                AppointmentsScreen(
+                                    contentPadding = padding,
+                                    onBack = { moreBackStack.removeLastOrNull() },
+                                    onAdd = { moreBackStack.add(AppointmentEditKey()) },
+                                    onOpen = { id -> moreBackStack.add(AppointmentEditKey(id)) },
+                                )
+                            }
+                            entry<AppointmentEditKey> { key ->
+                                AppointmentEditScreen(
+                                    appointmentId = key.appointmentId,
+                                    contentPadding = padding,
+                                    onDone = { moreBackStack.removeLastOrNull() },
+                                )
+                            }
+                            entry<StatsKey> {
+                                StatsScreen(
+                                    contentPadding = padding,
+                                    onBack = { moreBackStack.removeLastOrNull() },
                                 )
                             }
                             entry<SettingsKey> {

@@ -25,3 +25,15 @@ data object SettingsKey : NavKey
 
 @Serializable
 data object ProfilesKey : NavKey
+
+@Serializable
+data object AppointmentsKey : NavKey
+
+@Serializable
+data class AppointmentEditKey(
+    /** null = create a new appointment. */
+    val appointmentId: String? = null,
+) : NavKey
+
+@Serializable
+data object StatsKey : NavKey
