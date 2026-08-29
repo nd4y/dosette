@@ -36,11 +36,11 @@ class MedicationDaoTest {
                     scheduleTimeEntity(id = "t2", timeMinutes = 20 * 60, sortIndex = 1),
                 ),
             )
-            db.inventoryDao().upsert(inventoryEntity())
+            db.medicationVariantDao().upsert(variantEntity())
 
             val details = db.medicationDao().getAllActiveWithDetails().single()
             assertThat(details.schedules.single().times).hasSize(2)
-            assertThat(details.inventory?.currentStock).isEqualTo(10.0)
+            assertThat(details.variants.single().currentStock).isEqualTo(10.0)
         }
 
     @Test

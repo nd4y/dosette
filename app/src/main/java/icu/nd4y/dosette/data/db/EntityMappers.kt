@@ -2,8 +2,8 @@ package icu.nd4y.dosette.data.db
 
 import icu.nd4y.dosette.data.db.entity.AppointmentEntity
 import icu.nd4y.dosette.data.db.entity.DoseLogEntity
-import icu.nd4y.dosette.data.db.entity.InventoryEntity
 import icu.nd4y.dosette.data.db.entity.MedicationEntity
+import icu.nd4y.dosette.data.db.entity.MedicationVariantEntity
 import icu.nd4y.dosette.data.db.entity.ProfileEntity
 import icu.nd4y.dosette.data.db.entity.ReminderStateEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleEntity
@@ -13,9 +13,9 @@ import icu.nd4y.dosette.domain.model.Appointment
 import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
-import icu.nd4y.dosette.domain.model.Inventory
 import icu.nd4y.dosette.domain.model.Medication
 import icu.nd4y.dosette.domain.model.MedicationForm
+import icu.nd4y.dosette.domain.model.MedicationVariant
 import icu.nd4y.dosette.domain.model.OccurrenceKey
 import icu.nd4y.dosette.domain.model.Profile
 import icu.nd4y.dosette.domain.model.ReminderPhase
@@ -50,6 +50,7 @@ fun MedicationEntity.toDomain(): Medication =
         instructions = instructions,
         colorSeed = colorSeed,
         iconKey = iconKey,
+        defaultVariantId = defaultVariantId,
         archivedAt = archivedAt,
         createdAt = createdAt,
     )
@@ -65,6 +66,7 @@ fun Medication.toEntity(): MedicationEntity =
         instructions = instructions,
         colorSeed = colorSeed,
         iconKey = iconKey,
+        defaultVariantId = defaultVariantId,
         archivedAt = archivedAt,
         createdAt = createdAt,
     )
@@ -121,6 +123,8 @@ fun DoseLogEntity.toDomain(): DoseLog =
         status = DoseStatus.valueOf(status),
         actedAt = actedAt,
         amount = amount,
+        variantId = variantId,
+        consumedUnits = consumedUnits,
         note = note,
         updatedAt = updatedAt,
     )
@@ -138,15 +142,41 @@ fun DoseLog.toEntity(): DoseLogEntity =
         status = status.name,
         actedAt = actedAt,
         amount = amount,
+        variantId = variantId,
+        consumedUnits = consumedUnits,
         note = note,
         updatedAt = updatedAt,
     )
 
-fun InventoryEntity.toDomain(): Inventory =
-    Inventory(medicationId, trackingEnabled, currentStock, lowStockThreshold, defaultRefillAmount, lastRefillAt)
+fun MedicationVariantEntity.toDomain(): MedicationVariant =
+    MedicationVariant(
+        id = id,
+        medicationId = medicationId,
+        label = label,
+        strengthValue = strengthValue,
+        strengthUnit = strengthUnit,
+        sortOrder = sortOrder,
+        trackingEnabled = trackingEnabled,
+        currentStock = currentStock,
+        lowStockThreshold = lowStockThreshold,
+        defaultRefillAmount = defaultRefillAmount,
+        lastRefillAt = lastRefillAt,
+    )
 
-fun Inventory.toEntity(): InventoryEntity =
-    InventoryEntity(medicationId, trackingEnabled, currentStock, lowStockThreshold, defaultRefillAmount, lastRefillAt)
+fun MedicationVariant.toEntity(): MedicationVariantEntity =
+    MedicationVariantEntity(
+        id = id,
+        medicationId = medicationId,
+        label = label,
+        strengthValue = strengthValue,
+        strengthUnit = strengthUnit,
+        sortOrder = sortOrder,
+        trackingEnabled = trackingEnabled,
+        currentStock = currentStock,
+        lowStockThreshold = lowStockThreshold,
+        defaultRefillAmount = defaultRefillAmount,
+        lastRefillAt = lastRefillAt,
+    )
 
 fun AppointmentEntity.toDomain(): Appointment =
     Appointment(

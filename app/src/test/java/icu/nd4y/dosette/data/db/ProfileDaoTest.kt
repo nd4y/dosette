@@ -36,14 +36,14 @@ class ProfileDaoTest {
             db.medicationDao().upsert(medicationEntity())
             db.scheduleDao().insertWithTimes(scheduleEntity(), listOf(scheduleTimeEntity()))
             db.doseLogDao().insert(doseLogEntity())
-            db.inventoryDao().upsert(inventoryEntity())
+            db.medicationVariantDao().upsert(variantEntity())
 
             db.profileDao().delete("p1")
 
             assertThat(db.medicationDao().getById("m1")).isNull()
             assertThat(db.scheduleDao().getByMedication("m1")).isEmpty()
             assertThat(db.doseLogDao().getById("d1")).isNull()
-            assertThat(db.inventoryDao().getByMedication("m1")).isNull()
+            assertThat(db.medicationVariantDao().getByMedication("m1")).isEmpty()
         }
 
     @Test

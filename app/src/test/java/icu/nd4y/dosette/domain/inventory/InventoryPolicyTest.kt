@@ -72,6 +72,37 @@ class InventoryPolicyTest {
     }
 
     @Test
+    fun `dose converts to variant units by strength ratio`() {
+        // 150 mg dose (1 reference unit) taken as 75 mg capsules -> 2 units.
+        assertThat(InventoryPolicy.unitsForDose(1.0, medicationStrength = 150.0, variantStrength = 75.0))
+            .isEqualTo(2.0)
+        // Same variant as the reference -> 1:1.
+        assertThat(InventoryPolicy.unitsForDose(1.0, medicationStrength = 150.0, variantStrength = 150.0))
+            .isEqualTo(1.0)
+        // 225 mg (1.5 reference units) as 75 mg capsules -> 3 units.
+        assertThat(InventoryPolicy.unitsForDose(1.5, medicationStrength = 150.0, variantStrength = 75.0))
+            .isEqualTo(3.0)
+        // Half a pill of a stronger variant.
+        assertThat(InventoryPolicy.unitsForDose(1.0, medicationStrength = 75.0, variantStrength = 150.0))
+            .isEqualTo(0.5)
+    }
+
+    @Test
+    fun `dose conversion falls back to plain units without strengths`() {
+        assertThat(InventoryPolicy.unitsForDose(2.0, medicationStrength = null, variantStrength = 75.0))
+            .isEqualTo(2.0)
+        assertThat(InventoryPolicy.unitsForDose(2.0, medicationStrength = 150.0, variantStrength = null))
+            .isEqualTo(2.0)
+        assertThat(InventoryPolicy.unitsForDose(2.0, medicationStrength = 0.0, variantStrength = 75.0))
+            .isEqualTo(2.0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `negative dose is rejected`() {
+        InventoryPolicy.unitsForDose(-1.0, medicationStrength = 150.0, variantStrength = 75.0)
+    }
+
+    @Test
     fun `days of supply floors partial days`() {
         assertThat(InventoryPolicy.daysOfSupply(stock = 42.0, dailyConsumption = 2.0)).isEqualTo(21)
         assertThat(InventoryPolicy.daysOfSupply(stock = 10.0, dailyConsumption = 3.0)).isEqualTo(3)

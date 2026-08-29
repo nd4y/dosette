@@ -5,15 +5,15 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import icu.nd4y.dosette.data.db.dao.AppointmentDao
 import icu.nd4y.dosette.data.db.dao.DoseLogDao
-import icu.nd4y.dosette.data.db.dao.InventoryDao
 import icu.nd4y.dosette.data.db.dao.MedicationDao
+import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
 import icu.nd4y.dosette.data.db.dao.ProfileDao
 import icu.nd4y.dosette.data.db.dao.ReminderStateDao
 import icu.nd4y.dosette.data.db.dao.ScheduleDao
 import icu.nd4y.dosette.data.db.entity.AppointmentEntity
 import icu.nd4y.dosette.data.db.entity.DoseLogEntity
-import icu.nd4y.dosette.data.db.entity.InventoryEntity
 import icu.nd4y.dosette.data.db.entity.MedicationEntity
+import icu.nd4y.dosette.data.db.entity.MedicationVariantEntity
 import icu.nd4y.dosette.data.db.entity.ProfileEntity
 import icu.nd4y.dosette.data.db.entity.ReminderStateEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleEntity
@@ -26,7 +26,7 @@ import icu.nd4y.dosette.data.db.entity.ScheduleTimeEntity
         ScheduleEntity::class,
         ScheduleTimeEntity::class,
         DoseLogEntity::class,
-        InventoryEntity::class,
+        MedicationVariantEntity::class,
         AppointmentEntity::class,
         ReminderStateEntity::class,
     ],
@@ -43,7 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun doseLogDao(): DoseLogDao
 
-    abstract fun inventoryDao(): InventoryDao
+    abstract fun medicationVariantDao(): MedicationVariantDao
 
     abstract fun appointmentDao(): AppointmentDao
 

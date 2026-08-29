@@ -1,7 +1,7 @@
 package icu.nd4y.dosette.data.repository
 
 import icu.nd4y.dosette.data.db.dao.DoseLogDao
-import icu.nd4y.dosette.data.db.dao.InventoryDao
+import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
 import icu.nd4y.dosette.data.db.toDomain
 import icu.nd4y.dosette.data.db.toEntity
 import icu.nd4y.dosette.domain.model.DoseLog
@@ -35,6 +35,13 @@ interface DoseLogRepository {
     /** Idempotent by occurrence identity; returns true if the row was written. */
     suspend fun recordScheduledIfAbsent(log: DoseLog): Boolean
 
+    /**
+     * Authoritative write for a user action on a scheduled occurrence:
+     * updates the existing row for this occurrence if one exists (e.g. a
+     * retroactive flip of MISSED), inserts [log] otherwise.
+     */
+    suspend fun finalizeScheduled(log: DoseLog)
+
     suspend fun upsert(log: DoseLog)
 
     suspend fun recordPrn(log: DoseLog)
@@ -61,7 +68,7 @@ class DoseLogRepositoryImpl
     @Inject
     constructor(
         private val doseLogDao: DoseLogDao,
-        private val inventoryDao: InventoryDao,
+        private val variantDao: MedicationVariantDao,
     ) : DoseLogRepository {
         override fun observeRange(
             profileId: String,
@@ -78,12 +85,31 @@ class DoseLogRepositoryImpl
         override suspend fun recordScheduledIfAbsent(log: DoseLog): Boolean =
             doseLogDao.insertScheduledIfAbsent(log.toEntity())
 
+        override suspend fun finalizeScheduled(log: DoseLog) {
+            val entity = log.toEntity()
+            val timeMinutes = requireNotNull(entity.timeMinutes) { "finalizeScheduled needs a planned time" }
+            val existing = doseLogDao.getScheduled(entity.medicationId, entity.date, timeMinutes)
+            if (existing == null) {
+                doseLogDao.insert(entity)
+            } else {
+                doseLogDao.upsert(
+                    existing.copy(
+                        status = entity.status,
+                        actedAt = entity.actedAt,
+                        variantId = entity.variantId,
+                        consumedUnits = entity.consumedUnits,
+                        updatedAt = entity.updatedAt,
+                    ),
+                )
+            }
+        }
+
         override suspend fun upsert(log: DoseLog) = doseLogDao.upsert(log.toEntity())
 
         override suspend fun recordPrn(log: DoseLog) {
             doseLogDao.insert(log.toEntity())
-            if (log.status == DoseStatus.TAKEN) {
-                inventoryDao.decrement(log.medicationId, log.amount)
+            if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
+                variantDao.decrement(log.variantId, log.consumedUnits)
             }
         }
 

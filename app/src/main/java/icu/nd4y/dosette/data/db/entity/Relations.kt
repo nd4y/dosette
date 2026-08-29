@@ -14,5 +14,5 @@ data class MedicationWithDetails(
     @Relation(entity = ScheduleEntity::class, parentColumn = "id", entityColumn = "medicationId")
     val schedules: List<ScheduleWithTimes>,
     @Relation(parentColumn = "id", entityColumn = "medicationId")
-    val inventory: InventoryEntity?,
+    val variants: List<MedicationVariantEntity>,
 )

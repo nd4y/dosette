@@ -28,6 +28,8 @@ data class MedicationEntity(
     val instructions: String?,
     val colorSeed: Int,
     val iconKey: String,
+    /** Variant consumed by default on Take; app-managed, no FK on purpose. */
+    val defaultVariantId: String?,
     val archivedAt: Instant?,
     val createdAt: Instant,
 )
