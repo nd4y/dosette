@@ -209,6 +209,20 @@
     <string name="appointment_delete">Delete visit</string>
     <string name="appointment_delete_warning">The visit and its reminders will be deleted.</string>
 
+    <string name="backup_title">Export and import</string>
+    <string name="backup_export_title">Export</string>
+    <string name="backup_export_text">Saves everything — profiles, medications, history, visits and settings — into one YAML file. Pick any location, including Google Drive.</string>
+    <string name="backup_export_action">Export</string>
+    <string name="backup_import_title">Import</string>
+    <string name="backup_import_text">Replaces all current data with the file contents. The current data is auto-saved inside the app before the import.</string>
+    <string name="backup_import_action">Import</string>
+    <string name="backup_confirm_title">Replace everything?</string>
+    <string name="backup_confirm_text">The file contains: profiles — %1$d, medications — %2$d, history records — %3$d, visits — %4$d. All current data will be replaced.</string>
+    <string name="backup_confirm_action">Replace</string>
+    <string name="backup_exported">Backup saved</string>
+    <string name="backup_imported">Data imported, reminders rebuilt</string>
+    <string name="backup_error">Failed: %1$s</string>
+
     <string name="stats_title">Statistics</string>
     <string name="stats_window">Last 30 days</string>
     <string name="stats_taken">Taken: %1$d</string>

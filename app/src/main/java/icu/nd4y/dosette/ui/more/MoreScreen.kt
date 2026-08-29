@@ -44,6 +44,7 @@ fun MoreScreen(
     onOpenSettings: () -> Unit,
     onOpenAppointments: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenBackup: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MoreViewModel = hiltViewModel(),
 ) {
@@ -56,6 +57,7 @@ fun MoreScreen(
         onOpenSettings = onOpenSettings,
         onOpenAppointments = onOpenAppointments,
         onOpenStats = onOpenStats,
+        onOpenBackup = onOpenBackup,
         modifier = modifier,
     )
 }
@@ -68,6 +70,7 @@ fun MoreContent(
     onOpenSettings: () -> Unit,
     onOpenAppointments: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenBackup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -116,8 +119,8 @@ fun MoreContent(
                     icon = BackupIcon,
                     title = stringResource(R.string.more_backup),
                     subtitle = stringResource(R.string.more_backup_hint),
-                    enabled = false,
-                    onClick = {},
+                    enabled = true,
+                    onClick = onOpenBackup,
                 )
                 Divider()
                 MoreRow(

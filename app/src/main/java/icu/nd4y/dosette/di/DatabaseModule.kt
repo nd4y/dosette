@@ -42,4 +42,7 @@ object DatabaseModule {
 
     @Provides
     fun provideReminderStateDao(db: AppDatabase) = db.reminderStateDao()
+
+    @Provides
+    fun provideBackupDao(db: AppDatabase) = db.backupDao()
 }
