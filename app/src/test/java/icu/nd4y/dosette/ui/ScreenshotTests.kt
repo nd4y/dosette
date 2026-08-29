@@ -355,6 +355,7 @@ class ScreenshotTests {
                         contentPadding = screenPadding,
                         onPreviousMonth = {},
                         onNextMonth = {},
+                        onShowMonth = {},
                         onSelect = {},
                         onMark = { _, _ -> },
                     )

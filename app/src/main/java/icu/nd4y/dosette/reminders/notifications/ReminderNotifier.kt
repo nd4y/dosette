@@ -81,7 +81,6 @@ class AndroidReminderNotifier
             alert: Boolean,
         ) {
             val id = NotificationIds.reminder(payload.key)
-            val channel = if (alert) Channels.DOSE_ALERTS else Channels.DOSE_SILENT
             val text =
                 buildList {
                     add(context.getString(R.string.notification_dose_text, payload.key.time.format(TIME_FORMAT)))
@@ -89,23 +88,24 @@ class AndroidReminderNotifier
                     payload.instructions?.let(::add)
                     payload.profileName?.let { add(context.getString(R.string.notification_profile, it)) }
                 }.joinToString(" · ")
+            // Always the alerting channel: the silent swipe-repost is muted with
+            // setSilent instead of a LOW channel, so it reappears in the SAME
+            // spot of the shade — to the user the notification never leaves.
             val notification =
                 NotificationCompat
-                    .Builder(context, channel)
+                    .Builder(context, Channels.DOSE_ALERTS)
                     .setSmallIcon(R.drawable.ic_stat_pill)
                     .setContentTitle(payload.title)
                     .setContentText(text)
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                    .setColor(context.getColor(R.color.notification_accent))
                     .setOngoing(true)
                     .setAutoCancel(false)
                     .setOnlyAlertOnce(false)
+                    .setSilent(!alert)
                     .setContentIntent(contentIntent(id))
                     .setDeleteIntent(actionIntent(payload.key, NotificationActionReceiver.ACTION_DISMISSED, id, 0))
                     .addAction(
-                        0,
-                        context.getString(R.string.action_take),
-                        actionIntent(payload.key, NotificationActionReceiver.ACTION_TAKE, id, 1),
-                    ).addAction(
                         0,
                         context.getString(R.string.action_skip),
                         actionIntent(payload.key, NotificationActionReceiver.ACTION_SKIP, id, 2),
@@ -113,6 +113,10 @@ class AndroidReminderNotifier
                         0,
                         context.getString(R.string.action_snooze),
                         actionIntent(payload.key, NotificationActionReceiver.ACTION_SNOOZE, id, 3),
+                    ).addAction(
+                        0,
+                        context.getString(R.string.action_take),
+                        actionIntent(payload.key, NotificationActionReceiver.ACTION_TAKE, id, 1),
                     ).build()
             notifyIfAllowed(id, notification)
         }

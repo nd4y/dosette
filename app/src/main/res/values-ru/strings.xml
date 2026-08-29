@@ -6,7 +6,6 @@
     <string name="tab_more">Ещё</string>
 
     <string name="channel_dose_alerts">Напоминания о приёме</string>
-    <string name="channel_dose_silent">Постоянное напоминание (без звука)</string>
     <string name="channel_appointments">Визиты к врачу</string>
     <string name="channel_inventory">Запасы</string>
     <string name="channel_misc">Прочее</string>
@@ -151,6 +150,8 @@
     <string name="calendar_month_adherence">Соблюдение за %1$s</string>
     <string name="calendar_prev_month">Предыдущий месяц</string>
     <string name="calendar_next_month">Следующий месяц</string>
+    <string name="calendar_prev_year">Предыдущий год</string>
+    <string name="calendar_next_year">Следующий год</string>
     <string name="mark_taken">Отметить принятым</string>
     <string name="mark_skipped">Отметить пропущенным</string>
 
