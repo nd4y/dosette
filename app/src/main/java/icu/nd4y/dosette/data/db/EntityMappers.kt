@@ -27,7 +27,7 @@ import icu.nd4y.dosette.domain.model.ScheduleType
 import java.time.DayOfWeek
 import java.time.LocalTime
 
-private fun LocalTime.toMinutes(): Int = hour * 60 + minute
+internal fun LocalTime.toMinutes(): Int = hour * 60 + minute
 
 private fun Int.toLocalTime(): LocalTime = LocalTime.of(this / 60, this % 60)
 

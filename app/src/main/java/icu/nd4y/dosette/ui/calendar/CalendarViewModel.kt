@@ -8,6 +8,10 @@ import icu.nd4y.dosette.data.repository.MedicationRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseStatus
+import icu.nd4y.dosette.domain.model.MedicationForm
+import icu.nd4y.dosette.domain.model.Schedule
+import icu.nd4y.dosette.domain.model.ScheduleTime
+import icu.nd4y.dosette.domain.model.ScheduleType
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.UserDoseAction
@@ -26,7 +30,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
+import java.util.UUID
 import javax.inject.Inject
 
 data class CalendarDay(
@@ -37,6 +43,15 @@ data class CalendarDay(
     val status: AdherenceCalculator.DayStatus?,
 )
 
+/** Medication offered in the one-off dose dialog. */
+data class OneOffMedOption(
+    val id: String,
+    val name: String,
+    val form: MedicationForm,
+    val colorSeed: Int,
+    val defaultAmount: Double,
+)
+
 data class CalendarUiState(
     val loading: Boolean = true,
     val month: YearMonth = YearMonth.now(),
@@ -45,6 +60,8 @@ data class CalendarUiState(
     val monthAdherencePercent: Int? = null,
     val selectedDate: LocalDate? = null,
     val selectedDoses: List<TodayDose> = emptyList(),
+    /** Active medications a one-off dose can be added for. */
+    val medications: List<OneOffMedOption> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -119,6 +136,21 @@ class CalendarViewModel
                                     selectedDate = selected,
                                     selectedDoses =
                                         selected?.let { buildDayDoses(it, meds, logs, clock.zone) }.orEmpty(),
+                                    medications =
+                                        meds
+                                            .filter { !it.medication.isArchived }
+                                            .map { med ->
+                                                OneOffMedOption(
+                                                    id = med.medication.id,
+                                                    name = med.medication.name,
+                                                    form = med.medication.form,
+                                                    colorSeed = med.medication.colorSeed,
+                                                    defaultAmount =
+                                                        med.schedules
+                                                            .firstOrNull { it.endDate == null }
+                                                            ?.defaultDoseAmount ?: 1.0,
+                                                )
+                                            },
                                 )
                             }
                         }
@@ -149,6 +181,60 @@ class CalendarViewModel
             viewModelScope.launch {
                 engine.onUserAction(dose.key, if (taken) UserDoseAction.TAKE else UserDoseAction.SKIP)
             }
+        }
+
+        /** Revert an accidental mark; the dose becomes pending again. */
+        fun undo(dose: TodayDose) {
+            viewModelScope.launch { engine.undoDose(dose.key) }
+        }
+
+        /**
+         * One-off dose for a specific day and time: a single-day FIXED_TIMES
+         * schedule version, so the whole reminder/statistics pipeline treats
+         * it like any other planned intake.
+         */
+        fun addOneOff(
+            medicationId: String,
+            date: LocalDate,
+            time: LocalTime,
+            amount: Double,
+        ) {
+            viewModelScope.launch {
+                val scheduleId = UUID.randomUUID().toString()
+                medicationRepository.addSchedule(
+                    Schedule(
+                        id = scheduleId,
+                        medicationId = medicationId,
+                        type = ScheduleType.FIXED_TIMES,
+                        startDate = date,
+                        endDate = date,
+                        weekdays = emptySet(),
+                        intervalDays = null,
+                        cycleDaysOn = null,
+                        cycleDaysOff = null,
+                        defaultDoseAmount = amount,
+                        remindersEnabled = true,
+                        createdAt = clock.instant(),
+                        times =
+                            listOf(
+                                ScheduleTime(
+                                    id = UUID.randomUUID().toString(),
+                                    scheduleId = scheduleId,
+                                    time = time,
+                                    doseAmount = amount,
+                                    sortIndex = 0,
+                                ),
+                            ),
+                    ),
+                )
+                engine.reschedule()
+            }
+        }
+
+        /** Delete a one-off dose together with its log and notifications. */
+        fun deleteOneOff(dose: TodayDose) {
+            val scheduleId = dose.scheduleId ?: return
+            viewModelScope.launch { engine.deleteOneOffSchedule(dose.medicationId, scheduleId) }
         }
 
         private fun gridStart(month: YearMonth): LocalDate {

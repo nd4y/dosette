@@ -148,6 +148,12 @@
     <string name="calendar_next_year">Next year</string>
     <string name="mark_taken">Mark as taken</string>
     <string name="mark_skipped">Mark as skipped</string>
+    <string name="undo_mark">Undo mark</string>
+    <string name="oneoff_add">Add one-time dose</string>
+    <string name="oneoff_title">One-time dose</string>
+    <string name="oneoff_medication">Medication</string>
+    <string name="oneoff_time">Time</string>
+    <string name="oneoff_delete">Delete one-time dose</string>
 
     <string name="more_profiles">Profiles</string>
     <string name="more_appointments">Doctor visits</string>

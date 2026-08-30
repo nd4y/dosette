@@ -56,6 +56,9 @@ data class TodayDose(
     val colorSeed: Int,
     val status: DoseUiStatus,
     val actedTime: LocalTime?,
+    val scheduleId: String? = null,
+    /** Single-day schedule created from the calendar — deletable as a whole. */
+    val oneOff: Boolean = false,
 ) {
     val key: OccurrenceKey get() = OccurrenceKey(medicationId, date, time)
     val slot: DaySlot
@@ -207,6 +210,11 @@ class TodayViewModel
 
         fun skip(dose: TodayDose) {
             viewModelScope.launch { engine.onUserAction(dose.key, UserDoseAction.SKIP) }
+        }
+
+        /** Revert an accidental Take/Skip mark; the dose becomes pending again. */
+        fun undo(dose: TodayDose) {
+            viewModelScope.launch { engine.undoDose(dose.key) }
         }
 
         fun takePrn(prnMed: PrnMed) {

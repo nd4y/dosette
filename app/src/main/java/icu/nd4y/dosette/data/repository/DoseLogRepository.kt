@@ -4,8 +4,10 @@ import icu.nd4y.dosette.data.db.dao.DoseLogDao
 import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
 import icu.nd4y.dosette.data.db.toDomain
 import icu.nd4y.dosette.data.db.toEntity
+import icu.nd4y.dosette.data.db.toMinutes
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
+import icu.nd4y.dosette.domain.model.OccurrenceKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
@@ -31,6 +33,9 @@ interface DoseLogRepository {
         from: LocalDate,
         to: LocalDate,
     ): List<DoseLog>
+
+    /** The scheduled log for one occurrence, if any. */
+    suspend fun getScheduled(key: OccurrenceKey): DoseLog?
 
     /** Idempotent by occurrence identity; returns true if the row was written. */
     suspend fun recordScheduledIfAbsent(log: DoseLog): Boolean
@@ -81,6 +86,9 @@ class DoseLogRepositoryImpl
             from: LocalDate,
             to: LocalDate,
         ): List<DoseLog> = doseLogDao.getScheduledInRange(from, to).map { it.toDomain() }
+
+        override suspend fun getScheduled(key: OccurrenceKey): DoseLog? =
+            doseLogDao.getScheduled(key.medicationId, key.date, key.time.toMinutes())?.toDomain()
 
         override suspend fun recordScheduledIfAbsent(log: DoseLog): Boolean =
             doseLogDao.insertScheduledIfAbsent(log.toEntity())

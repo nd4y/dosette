@@ -54,6 +54,9 @@ interface MedicationRepository {
         replacement: Schedule,
     )
 
+    /** Removes the schedule version outright — one-off doses only. */
+    suspend fun deleteSchedule(scheduleId: String)
+
     suspend fun upsertVariant(variant: MedicationVariant)
 
     suspend fun getVariant(variantId: String): MedicationVariant?
@@ -130,6 +133,8 @@ class MedicationRepositoryImpl
             replacement.toEntity(),
             replacement.timeEntities(),
         )
+
+        override suspend fun deleteSchedule(scheduleId: String) = scheduleDao.delete(scheduleId)
 
         override suspend fun upsertVariant(variant: MedicationVariant) = variantDao.upsert(variant.toEntity())
 

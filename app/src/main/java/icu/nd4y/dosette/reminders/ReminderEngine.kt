@@ -109,6 +109,58 @@ class ReminderEngine
                 rescheduleLocked(world.settings)
             }
 
+        /**
+         * Revert an accidental Take/Skip mark: the stock consumed by the log
+         * is returned and the log is deleted, so the occurrence is pending
+         * again. The catch-up pass right after decides what that means now —
+         * inside the grace window the reminder comes back (audibly), past it
+         * the dose is quietly finalized as missed.
+         */
+        suspend fun undoDose(key: OccurrenceKey): Unit =
+            mutex.withLock {
+                val log = doseLogRepository.getScheduled(key) ?: return
+                restoreStock(log)
+                doseLogRepository.delete(log.id)
+                processDueLocked()
+            }
+
+        /**
+         * Delete a one-off dose (a single-day schedule created from the
+         * calendar) together with everything it produced: reminder state,
+         * notification, logs — with stock returned for a taken one.
+         */
+        suspend fun deleteOneOffSchedule(
+            medicationId: String,
+            scheduleId: String,
+        ): Unit =
+            mutex.withLock {
+                val med = medicationRepository.getDetails(medicationId)
+                val schedule = med?.schedules?.firstOrNull { it.id == scheduleId }
+                if (schedule != null) {
+                    val end = schedule.endDate ?: schedule.startDate
+                    OccurrenceGenerator
+                        .occurrencesInRange(listOf(schedule), schedule.startDate, end)
+                        .forEach { occurrence ->
+                            if (reminderStateRepository.get(occurrence.key) != null) {
+                                reminderStateRepository.delete(occurrence.key)
+                                notifier.cancelReminder(occurrence.key)
+                            }
+                            doseLogRepository.getScheduled(occurrence.key)?.let { log ->
+                                restoreStock(log)
+                                doseLogRepository.delete(log.id)
+                            }
+                        }
+                    medicationRepository.deleteSchedule(scheduleId)
+                }
+                processDueLocked()
+            }
+
+        private suspend fun restoreStock(log: DoseLog) {
+            if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
+                medicationRepository.incrementStock(log.variantId, log.consumedUnits)
+            }
+        }
+
         /** Geofence fired: wake every reminder waiting for [place]. */
         suspend fun onPlaceReached(place: PlaceId): Unit =
             mutex.withLock {
@@ -469,17 +521,6 @@ class ReminderEngine
             )
         }
 
-        private fun medicationTitle(med: MedicationDetails): String {
-            val strength =
-                med.medication.strengthValue?.let { value ->
-                    "${formatUnits(value)} ${med.medication.strengthUnit.orEmpty()}".trim()
-                }
-            return listOfNotNull(med.medication.name, strength).joinToString(" ")
-        }
-
-        private fun formatUnits(value: Double): String =
-            if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
-
         private suspend fun loadWorld(): World {
             val settings = settingsRepository.settings.first()
             val medications = medicationRepository.getAllActive()
@@ -528,3 +569,14 @@ class ReminderEngine
             const val MISSED_SWEEP_DAYS = 7L
         }
     }
+
+private fun medicationTitle(med: MedicationDetails): String {
+    val strength =
+        med.medication.strengthValue?.let { value ->
+            "${formatUnits(value)} ${med.medication.strengthUnit.orEmpty()}".trim()
+        }
+    return listOfNotNull(med.medication.name, strength).joinToString(" ")
+}
+
+private fun formatUnits(value: Double): String =
+    if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()

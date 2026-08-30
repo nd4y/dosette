@@ -358,6 +358,65 @@ class ReminderEngineTest {
         }
 
     @Test
+    fun `undo of a take restores stock and brings the reminder back inside grace`() =
+        runTest {
+            engine.processDueEvents()
+            engine.onUserAction(key, UserDoseAction.TAKE)
+            notifier.reminders.clear()
+
+            engine.undoDose(key)
+
+            assertThat(doseLogRepository.getScheduledInRange(key.date, key.date)).isEmpty()
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(10.0)
+            // Still inside the grace window, so the reminder returns audibly.
+            assertThat(stateRepository.get(key)?.phase).isEqualTo(ReminderPhase.ACTIVE)
+            assertThat(notifier.reminders.single().second).isTrue()
+        }
+
+    @Test
+    fun `undo past the grace window quietly finalizes as missed`() =
+        runTest {
+            engine.processDueEvents()
+            engine.onUserAction(key, UserDoseAction.TAKE)
+            clock.advance(Duration.ofMinutes(61))
+            notifier.reminders.clear()
+
+            engine.undoDose(key)
+
+            val log = doseLogRepository.getScheduledInRange(key.date, key.date).single()
+            assertThat(log.status).isEqualTo(DoseStatus.MISSED)
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(10.0)
+            assertThat(notifier.reminders).isEmpty()
+        }
+
+    @Test
+    fun `deleting a one-off schedule removes its state log and stock effect`() =
+        runTest {
+            // One-off dose at 08:30 the same day, alongside the regular 08:00 slot.
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(
+                    id = "s-oneoff",
+                    startDate = key.date,
+                    endDate = key.date,
+                ),
+                listOf(scheduleTimeEntity(id = "t-oneoff", scheduleId = "s-oneoff", timeMinutes = 8 * 60 + 30)),
+            )
+            val oneOffKey = OccurrenceKey("m1", key.date, LocalTime.of(8, 30))
+            clock.advance(Duration.ofMinutes(30))
+            engine.processDueEvents()
+            engine.onUserAction(oneOffKey, UserDoseAction.TAKE)
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(8.0)
+
+            engine.deleteOneOffSchedule("m1", "s-oneoff")
+
+            assertThat(doseLogRepository.getScheduled(oneOffKey)).isNull()
+            assertThat(stateRepository.get(oneOffKey)).isNull()
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(10.0)
+            // The regular 08:00 slot is untouched.
+            assertThat(stateRepository.get(key)?.phase).isEqualTo(ReminderPhase.ACTIVE)
+        }
+
+    @Test
     fun `old unlogged occurrences are quietly finalized as missed`() =
         runTest {
             clock.advance(Duration.ofDays(2))
