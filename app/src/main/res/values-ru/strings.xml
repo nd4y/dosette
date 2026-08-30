@@ -155,6 +155,8 @@
     <string name="mark_taken">Отметить принятым</string>
     <string name="mark_skipped">Отметить пропущенным</string>
     <string name="undo_mark">Отменить отметку</string>
+    <string name="prn_taken_snackbar">«%1$s» — принято</string>
+    <string name="action_undo">Отменить</string>
     <string name="oneoff_add">Добавить назначение</string>
     <string name="oneoff_title">Разовое назначение</string>
     <string name="oneoff_medication">Лекарство</string>

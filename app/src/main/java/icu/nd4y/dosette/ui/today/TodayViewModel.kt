@@ -23,6 +23,8 @@ import icu.nd4y.dosette.reminders.UserDoseAction
 import icu.nd4y.dosette.ui.cabinet.formatAmount
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -85,6 +87,12 @@ data class ProfileChip(
     val colorSeed: Int,
 )
 
+/** One PRN intake just recorded — offered for undo via the snackbar. */
+data class PrnTaken(
+    val logId: String,
+    val medicationName: String,
+)
+
 data class TodayUiState(
     val loading: Boolean = true,
     val date: LocalDate = LocalDate.now(),
@@ -113,6 +121,11 @@ class TodayViewModel
         private val clock: Clock,
     ) : ViewModel() {
         private val today: LocalDate get() = clock.instant().atZone(clock.zone).toLocalDate()
+
+        private val _prnTaken = MutableSharedFlow<PrnTaken>(extraBufferCapacity = 1)
+
+        /** Fires after each PRN intake so the screen can offer an undo snackbar. */
+        val prnTaken: SharedFlow<PrnTaken> = _prnTaken
 
         /** Emits today's date and re-emits right after midnight so the screen rolls over. */
         private val dateTicker =
@@ -230,9 +243,10 @@ class TodayViewModel
                         InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
                     }
                 val now = clock.instant()
+                val logId = UUID.randomUUID().toString()
                 doseLogRepository.recordPrn(
                     DoseLog(
-                        id = UUID.randomUUID().toString(),
+                        id = logId,
                         profileId = med.medication.profileId,
                         medicationId = med.medication.id,
                         scheduleId = schedule.id,
@@ -249,6 +263,12 @@ class TodayViewModel
                         updatedAt = now,
                     ),
                 )
+                _prnTaken.tryEmit(PrnTaken(logId = logId, medicationName = med.medication.name))
             }
+        }
+
+        /** Snackbar undo: removes the PRN log and returns the consumed stock. */
+        fun undoPrn(logId: String) {
+            viewModelScope.launch { doseLogRepository.undoPrn(logId) }
         }
     }
