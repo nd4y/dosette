@@ -7,7 +7,8 @@ Offline medication tracker for Android. Material 3 Expressive, no accounts, no n
 - **Medications with flexible schedules**: fixed times, weekdays, every-N-days, cycles (X on / Y off), as-needed.
 - **Persistent reminders**: the notification cannot be dismissed for good — swiping it away silently re-posts it in place, and the alert repeats on a configurable interval until the dose is marked taken or skipped. Snooze for a chosen duration or **until you get home / to work** (geofence + Wi-Fi recognition, configured in Settings → Places), with a configurable missed-dose grace window.
 - **Package variants with per-variant stock**: a 150 mg dose can be taken as one 150 mg capsule or two 75 mg ones — each package form keeps its own stock pool and is decremented correctly.
-- **History and adherence**: a calendar with per-day status dots (statuses editable retroactively), 30-day adherence stats with per-medication breakdown and a no-miss streak.
+- **History and adherence**: a calendar with per-day status dots (statuses editable retroactively, an accidental mark can be undone), 30-day adherence stats with per-medication breakdown and a no-miss streak.
+- **One-time doses**: a dose for a specific day and time can be added right from the calendar — it gets reminders, stock decrement and statistics like any scheduled intake, and can be deleted as a whole.
 - **Stock tracking** with low-stock notifications and refill amounts.
 - **Multiple profiles** — family members in one app, reminders fire for everyone.
 - **Doctor appointments** with reminders (1 day / 2 h / 30 min before).

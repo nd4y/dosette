@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -71,6 +73,7 @@ fun TodayScreen(
         onTake = viewModel::take,
         onSkip = viewModel::skip,
         onSnooze = viewModel::snooze,
+        onUndo = viewModel::undo,
         onTakePrn = viewModel::takePrn,
         onSelectProfile = viewModel::selectProfile,
         modifier = modifier,
@@ -85,12 +88,21 @@ fun TodayContent(
     onTake: (TodayDose) -> Unit,
     onSkip: (TodayDose) -> Unit,
     onSnooze: (TodayDose, SnoozeTarget) -> Unit,
+    onUndo: (TodayDose) -> Unit,
     onTakePrn: (PrnMed) -> Unit,
     onSelectProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (!state.loading && state.doses.isEmpty() && state.prn.isEmpty()) {
-        Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
+        // Same horizontal inset as the list below, or switching to an
+        // empty profile visibly shifts the header to the screen edge.
+        Column(
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .padding(horizontal = 20.dp),
+        ) {
             TodayHeader(state)
             ProfileChips(state, onSelectProfile)
             EmptyState(
@@ -147,7 +159,11 @@ fun TodayContent(
                                 onSnooze = { target -> onSnooze(animatedDose, target) },
                             )
                         } else {
-                            ActedDoseRow(animatedDose)
+                            ActedDoseRow(
+                                dose = animatedDose,
+                                onTake = { onTake(animatedDose) },
+                                onUndo = { onUndo(animatedDose) },
+                            )
                         }
                     }
                 }
@@ -289,30 +305,57 @@ private fun SlotHeader(
 }
 
 @Composable
-private fun ActedDoseRow(dose: TodayDose) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(18.dp))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) {
-        MedIconBox(form = dose.form, colorSeed = dose.colorSeed, size = 36.dp)
-        Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f)) {
-            Text(
-                text = dose.name,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = actedSubtitle(dose),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun ActedDoseRow(
+    dose: TodayDose,
+    onTake: () -> Unit,
+    onUndo: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .clickable { menuOpen = true }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            MedIconBox(form = dose.form, colorSeed = dose.colorSeed, size = 36.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f)) {
+                Text(
+                    text = dose.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = actedSubtitle(dose),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            StatusCircle(dose.status)
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            if (dose.status != DoseUiStatus.TAKEN) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.mark_taken)) },
+                    onClick = {
+                        menuOpen = false
+                        onTake()
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.undo_mark)) },
+                onClick = {
+                    menuOpen = false
+                    onUndo()
+                },
             )
         }
-        StatusCircle(dose.status)
     }
 }
 

@@ -154,6 +154,12 @@
     <string name="calendar_next_year">Следующий год</string>
     <string name="mark_taken">Отметить принятым</string>
     <string name="mark_skipped">Отметить пропущенным</string>
+    <string name="undo_mark">Отменить отметку</string>
+    <string name="oneoff_add">Добавить назначение</string>
+    <string name="oneoff_title">Разовое назначение</string>
+    <string name="oneoff_medication">Лекарство</string>
+    <string name="oneoff_time">Время</string>
+    <string name="oneoff_delete">Удалить назначение</string>
 
     <string name="more_profiles">Профили</string>
     <string name="more_appointments">Визиты к врачу</string>

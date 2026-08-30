@@ -309,6 +309,7 @@ class ScreenshotTests {
                         onTake = {},
                         onSkip = {},
                         onSnooze = { _, _ -> },
+                        onUndo = {},
                         onTakePrn = {},
                         onSelectProfile = {},
                     )
@@ -360,6 +361,9 @@ class ScreenshotTests {
                         onShowMonth = {},
                         onSelect = {},
                         onMark = { _, _ -> },
+                        onUndo = {},
+                        onAddOneOff = { _, _, _, _ -> },
+                        onDeleteOneOff = {},
                     )
                 }
             }

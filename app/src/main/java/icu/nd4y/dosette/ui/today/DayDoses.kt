@@ -28,10 +28,12 @@ fun buildDayDoses(
 
     return active
         .flatMap { med ->
+            val schedulesById = med.schedules.associateBy { it.id }
             OccurrenceGenerator
                 .occurrencesOn(med.schedulesActiveOn(date), date)
                 .map { occurrence ->
                     val log = logByKey[occurrence.key]
+                    val schedule = schedulesById[occurrence.scheduleId]
                     TodayDose(
                         medicationId = med.medication.id,
                         date = date,
@@ -53,6 +55,8 @@ fun buildDayDoses(
                                 null -> DoseUiStatus.PENDING
                             },
                         actedTime = log?.actedAt?.atZone(zone)?.toLocalTime(),
+                        scheduleId = occurrence.scheduleId,
+                        oneOff = schedule != null && schedule.startDate == schedule.endDate,
                     )
                 }
         }.sortedBy { it.time }
