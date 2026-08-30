@@ -3,6 +3,8 @@ package icu.nd4y.dosette.widget
 import android.content.Context
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
@@ -38,8 +40,12 @@ class DoseWidget : GlanceAppWidget() {
         context: Context,
         id: GlanceId,
     ) {
-        val state = widgetEntryPoint(context).stateLoader().load()
+        val loader = widgetEntryPoint(context).stateLoader()
+        // The session outlives a single update, so collect live data:
+        // a take from the widget itself must repaint it immediately.
+        val initial = loader.load()
         provideContent {
+            val state by loader.observe().collectAsState(initial = initial)
             GlanceTheme(colors = widgetColors()) {
                 WidgetRoot(state)
             }

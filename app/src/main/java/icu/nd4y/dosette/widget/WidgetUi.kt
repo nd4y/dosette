@@ -187,10 +187,9 @@ internal fun MediumContent(state: WidgetState) {
 internal fun LargeContent(state: WidgetState) {
     val context = LocalContext.current
     val locale = context.resources.configuration.locales[0]
-    val dateText =
-        state.date
-            .format(DateTimeFormatter.ofPattern("EEEE, d MMMM", locale))
-            .replaceFirstChar { it.lowercase(locale) }
+    val raw = state.date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", locale))
+    // Russian weekday names are lowercase mid-sentence; English stays as is.
+    val dateText = if (locale.language == "ru") raw.replaceFirstChar { it.lowercase(locale) } else raw
 
     Column(modifier = GlanceModifier.fillMaxSize().padding(14.dp)) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

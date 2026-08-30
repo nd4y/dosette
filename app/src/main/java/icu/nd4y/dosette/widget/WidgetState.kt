@@ -1,14 +1,23 @@
 package icu.nd4y.dosette.widget
 
 import icu.nd4y.dosette.data.repository.DoseLogRepository
+import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
+import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.ScheduleType
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
 import icu.nd4y.dosette.ui.today.TodayDose
 import icu.nd4y.dosette.ui.today.buildDayDoses
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -35,7 +44,13 @@ data class WidgetState(
         }
 }
 
-/** Loads the same picture the Today screen shows, once, for the widget. */
+/**
+ * The same picture the Today screen shows, as a flow: a Glance session
+ * stays alive for a while after an update, so the widget collects live
+ * data instead of a one-shot snapshot — otherwise a take from the widget
+ * itself would not be reflected until the session expires.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class WidgetStateLoader
     @Inject
@@ -45,14 +60,32 @@ class WidgetStateLoader
         private val settingsRepository: SettingsRepository,
         private val clock: Clock,
     ) {
-        suspend fun load(): WidgetState {
+        fun observe(): Flow<WidgetState> =
+            settingsRepository.settings
+                .map { it.activeProfileId }
+                .distinctUntilChanged()
+                .flatMapLatest { profileId ->
+                    val date = today()
+                    if (profileId == null) {
+                        flowOf(WidgetState(date))
+                    } else {
+                        combine(
+                            medicationRepository.observeByProfile(profileId),
+                            doseLogRepository.observeRange(profileId, date, date),
+                        ) { meds, logs -> build(meds, logs) }
+                    }
+                }
+
+        suspend fun load(): WidgetState = observe().first()
+
+        private fun today() = clock.instant().atZone(clock.zone).toLocalDate()
+
+        private fun build(
+            meds: List<MedicationDetails>,
+            logs: List<DoseLog>,
+        ): WidgetState {
             val now = clock.instant()
-            val date = now.atZone(clock.zone).toLocalDate()
-            val profileId =
-                settingsRepository.settings.first().activeProfileId
-                    ?: return WidgetState(date)
-            val meds = medicationRepository.observeByProfile(profileId).first()
-            val logs = doseLogRepository.observeRange(profileId, date, date).first()
+            val date = today()
             val doses = buildDayDoses(date, meds, logs, clock.zone)
 
             val prn =
