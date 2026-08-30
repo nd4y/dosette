@@ -157,6 +157,14 @@
     <string name="undo_mark">Отменить отметку</string>
     <string name="prn_taken_snackbar">«%1$s» — принято</string>
     <string name="action_undo">Отменить</string>
+
+    <string name="widget_label">Приёмы на сегодня</string>
+    <string name="widget_description">Кольцо дня, ближайшие приёмы и отметка в одно касание прямо с рабочего стола</string>
+    <string name="widget_all_done">Всё отмечено</string>
+    <string name="widget_in_hours">через %1$d ч</string>
+    <string name="widget_in_minutes">через %1$d мин</string>
+    <string name="widget_due_now">пора принять</string>
+    <string name="widget_more_doses">+ ещё %1$d</string>
     <string name="oneoff_add">Добавить назначение</string>
     <string name="oneoff_title">Разовое назначение</string>
     <string name="oneoff_medication">Лекарство</string>

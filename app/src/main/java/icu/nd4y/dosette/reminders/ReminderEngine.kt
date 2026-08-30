@@ -61,6 +61,7 @@ class ReminderEngine
         private val notifier: ReminderNotifier,
         private val alarmScheduler: AlarmScheduler,
         private val placeMonitor: PlaceMonitor,
+        private val widgetRefresher: WidgetRefresher,
         private val clock: Clock,
     ) {
         private val mutex = Mutex()
@@ -500,6 +501,8 @@ class ReminderEngine
                     settings,
                 )
             alarmScheduler.scheduleExact(plan.at)
+            // Every mutating entry point ends here, so the widget stays in step.
+            widgetRefresher.refresh()
         }
 
         private fun payloadFor(

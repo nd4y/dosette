@@ -151,6 +151,14 @@
     <string name="undo_mark">Undo mark</string>
     <string name="prn_taken_snackbar">%1$s taken</string>
     <string name="action_undo">Undo</string>
+
+    <string name="widget_label">Today\'s doses</string>
+    <string name="widget_description">Day ring, upcoming doses and one-tap marking right from the home screen</string>
+    <string name="widget_all_done">Everything is marked</string>
+    <string name="widget_in_hours">in %1$d h</string>
+    <string name="widget_in_minutes">in %1$d min</string>
+    <string name="widget_due_now">due now</string>
+    <string name="widget_more_doses">+ %1$d more</string>
     <string name="oneoff_add">Add one-time dose</string>
     <string name="oneoff_title">One-time dose</string>
     <string name="oneoff_medication">Medication</string>

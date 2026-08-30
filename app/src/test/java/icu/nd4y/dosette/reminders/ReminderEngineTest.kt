@@ -188,6 +188,7 @@ class ReminderEngineTest {
                 notifier = notifier,
                 alarmScheduler = AlarmScheduler(ApplicationProvider.getApplicationContext()),
                 placeMonitor = FakePlaceMonitor(),
+                widgetRefresher = { },
                 clock = clock,
             )
         runTest {
