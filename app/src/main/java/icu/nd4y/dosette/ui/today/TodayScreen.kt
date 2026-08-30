@@ -28,9 +28,14 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,17 +72,43 @@ fun TodayScreen(
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    TodayContent(
-        state = state,
-        contentPadding = contentPadding,
-        onTake = viewModel::take,
-        onSkip = viewModel::skip,
-        onSnooze = viewModel::snooze,
-        onUndo = viewModel::undo,
-        onTakePrn = viewModel::takePrn,
-        onSelectProfile = viewModel::selectProfile,
-        modifier = modifier,
-    )
+    val snackbarHost = remember { SnackbarHostState() }
+    val messageTemplate = stringResource(R.string.prn_taken_snackbar)
+    val undoLabel = stringResource(R.string.action_undo)
+
+    LaunchedEffect(viewModel) {
+        viewModel.prnTaken.collect { taken ->
+            val result =
+                snackbarHost.showSnackbar(
+                    message = messageTemplate.format(taken.medicationName),
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoPrn(taken.logId)
+            }
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        TodayContent(
+            state = state,
+            contentPadding = contentPadding,
+            onTake = viewModel::take,
+            onSkip = viewModel::skip,
+            onSnooze = viewModel::snooze,
+            onUndo = viewModel::undo,
+            onTakePrn = viewModel::takePrn,
+            onSelectProfile = viewModel::selectProfile,
+        )
+        SnackbarHost(
+            hostState = snackbarHost,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = contentPadding.calculateBottomPadding()),
+        )
+    }
 }
 
 /** Stateless body — rendered directly by screenshot tests. */

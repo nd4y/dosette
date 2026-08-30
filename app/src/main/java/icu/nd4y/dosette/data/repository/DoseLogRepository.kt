@@ -5,6 +5,7 @@ import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
 import icu.nd4y.dosette.data.db.toDomain
 import icu.nd4y.dosette.data.db.toEntity
 import icu.nd4y.dosette.data.db.toMinutes
+import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.OccurrenceKey
@@ -50,6 +51,9 @@ interface DoseLogRepository {
     suspend fun upsert(log: DoseLog)
 
     suspend fun recordPrn(log: DoseLog)
+
+    /** Undo of [recordPrn]: deletes the log and returns the consumed stock. */
+    suspend fun undoPrn(logId: String)
 
     suspend fun adherence(
         profileId: String,
@@ -119,6 +123,15 @@ class DoseLogRepositoryImpl
             if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
                 variantDao.decrement(log.variantId, log.consumedUnits)
             }
+        }
+
+        override suspend fun undoPrn(logId: String) {
+            val log = getById(logId) ?: return
+            if (log.kind != DoseKind.PRN) return
+            if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
+                variantDao.increment(log.variantId, log.consumedUnits)
+            }
+            doseLogDao.delete(logId)
         }
 
         override suspend fun adherence(
