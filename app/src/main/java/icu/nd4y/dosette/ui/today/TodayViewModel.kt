@@ -6,12 +6,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import icu.nd4y.dosette.data.repository.DoseLogRepository
 import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
+import icu.nd4y.dosette.data.repository.PrnRecorder
 import icu.nd4y.dosette.data.repository.ProfileRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
-import icu.nd4y.dosette.domain.inventory.InventoryPolicy
-import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseLog
-import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.OccurrenceKey
 import icu.nd4y.dosette.domain.model.PlaceId
@@ -39,7 +37,6 @@ import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
-import java.util.UUID
 import javax.inject.Inject
 
 enum class DaySlot { MORNING, AFTERNOON, EVENING, NIGHT }
@@ -117,6 +114,7 @@ class TodayViewModel
         private val doseLogRepository: DoseLogRepository,
         private val settingsRepository: SettingsRepository,
         private val profileRepository: ProfileRepository,
+        private val prnRecorder: PrnRecorder,
         private val engine: ReminderEngine,
         private val clock: Clock,
     ) : ViewModel() {
@@ -232,38 +230,8 @@ class TodayViewModel
 
         fun takePrn(prnMed: PrnMed) {
             viewModelScope.launch {
-                val med = medicationRepository.getDetails(prnMed.medicationId) ?: return@launch
-                val schedule =
-                    med.schedules.firstOrNull { it.endDate == null && it.type == ScheduleType.AS_NEEDED }
-                        ?: return@launch
-                val variant = med.defaultVariant
-                val amount = schedule.defaultDoseAmount
-                val consumed =
-                    variant?.let {
-                        InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
-                    }
-                val now = clock.instant()
-                val logId = UUID.randomUUID().toString()
-                doseLogRepository.recordPrn(
-                    DoseLog(
-                        id = logId,
-                        profileId = med.medication.profileId,
-                        medicationId = med.medication.id,
-                        scheduleId = schedule.id,
-                        kind = DoseKind.PRN,
-                        date = now.atZone(clock.zone).toLocalDate(),
-                        time = null,
-                        scheduledAt = null,
-                        status = DoseStatus.TAKEN,
-                        actedAt = now,
-                        amount = amount,
-                        variantId = variant?.id,
-                        consumedUnits = consumed,
-                        note = null,
-                        updatedAt = now,
-                    ),
-                )
-                _prnTaken.tryEmit(PrnTaken(logId = logId, medicationName = med.medication.name))
+                val intake = prnRecorder.record(prnMed.medicationId) ?: return@launch
+                _prnTaken.tryEmit(PrnTaken(logId = intake.logId, medicationName = intake.medicationName))
             }
         }
 
