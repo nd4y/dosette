@@ -145,7 +145,7 @@ fun TodayContent(
         return
     }
 
-    val slots = state.doses.groupBy { it.slot }
+    val sections = slotSections(state.doses)
 
     LazyColumn(
         contentPadding =
@@ -164,9 +164,9 @@ fun TodayContent(
         }
         item(key = "hero") { HeroCard(state) }
 
-        DaySlot.entries.forEach { slot ->
-            val doses = slots[slot] ?: return@forEach
-            item(key = "slot-$slot") {
+        sections.forEach { doses ->
+            val slot = doses.first().slot
+            item(key = "slot-$slot-${doses.first().time}") {
                 SlotHeader(slot = slot, doses = doses, modifier = Modifier.padding(top = 10.dp))
             }
             doses.forEach { dose ->
@@ -306,7 +306,8 @@ private fun SlotHeader(
             DaySlot.NIGHT -> stringResource(R.string.slot_night)
         }
     val firstTime = doses.minOf { it.time }.format(TimeFormat)
-    val allActed = doses.none { it.status == DoseUiStatus.PENDING }
+    // Only genuinely taken doses earn the label; a missed slot stays silent.
+    val allTaken = doses.all { it.status == DoseUiStatus.TAKEN }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -325,7 +326,7 @@ private fun SlotHeader(
                     .height(1.dp)
                     .background(MaterialTheme.colorScheme.outlineVariant),
         )
-        if (allActed) {
+        if (allTaken) {
             Text(
                 text = stringResource(R.string.slot_all_done),
                 style = MaterialTheme.typography.labelMedium,
