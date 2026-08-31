@@ -34,12 +34,14 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import icu.nd4y.dosette.MainActivity
 import icu.nd4y.dosette.R
+import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.ui.common.TimeFormat
 import icu.nd4y.dosette.ui.designsystem.MedPalette
 import icu.nd4y.dosette.ui.today.DaySlot
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
 import icu.nd4y.dosette.ui.today.TodayDose
+import icu.nd4y.dosette.ui.today.slotSections
 import java.time.format.DateTimeFormatter
 
 private const val MAX_LARGE_ROWS = 5
@@ -212,10 +214,9 @@ internal fun LargeContent(state: WidgetState) {
         }
 
         var remaining = MAX_LARGE_ROWS
-        DaySlot.entries.forEach { slot ->
-            val doses = state.doses.filter { it.slot == slot }
-            if (doses.isEmpty() || remaining <= 0) return@forEach
-            SlotHeader(slot, doses)
+        slotSections(state.doses).forEach { doses ->
+            if (remaining <= 0) return@forEach
+            SlotHeader(doses.first().slot, doses)
             doses.forEach { dose ->
                 if (remaining <= 0) return@forEach
                 remaining--
@@ -279,7 +280,8 @@ private fun SlotHeader(
     doses: List<TodayDose>,
 ) {
     val context = LocalContext.current
-    val allActed = doses.none { it.status == DoseUiStatus.PENDING }
+    // Only genuinely taken doses earn the label; a missed slot stays silent.
+    val allTaken = doses.all { it.status == DoseUiStatus.TAKEN }
     Row(
         modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -294,7 +296,7 @@ private fun SlotHeader(
                 ),
         )
         Spacer(GlanceModifier.defaultWeight())
-        if (allActed) {
+        if (allTaken) {
             Text(
                 text = context.getString(R.string.slot_all_done),
                 style = TextStyle(color = GlanceTheme.colors.primary, fontSize = 10.sp),
@@ -319,7 +321,7 @@ private fun PendingRow(
                 .padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MedChip(dose.colorSeed, sizeDp = 28.dp, corner = 10.dp)
+        MedChip(dose.colorSeed, dose.form, sizeDp = 28.dp, corner = 10.dp)
         Spacer(GlanceModifier.width(8.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
@@ -396,7 +398,7 @@ private fun ActedRow(dose: TodayDose) {
                 .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MedChip(dose.colorSeed, sizeDp = 24.dp, corner = 8.dp)
+        MedChip(dose.colorSeed, dose.form, sizeDp = 24.dp, corner = 8.dp)
         Spacer(GlanceModifier.width(8.dp))
         Text(
             text = dose.name,
@@ -466,7 +468,7 @@ private fun PrnRow(prn: PrnMed) {
                 .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MedChip(prn.colorSeed, sizeDp = 24.dp, corner = 8.dp)
+        MedChip(prn.colorSeed, prn.form, sizeDp = 24.dp, corner = 8.dp)
         Spacer(GlanceModifier.width(8.dp))
         Text(
             text = "${prn.name} · ${context.getString(R.string.schedule_as_needed)}",
@@ -529,6 +531,7 @@ private fun DayRing(
 @Composable
 private fun MedChip(
     colorSeed: Int,
+    form: MedicationForm,
     sizeDp: Dp,
     corner: Dp,
 ) {
@@ -543,7 +546,7 @@ private fun MedChip(
         contentAlignment = Alignment.Center,
     ) {
         Image(
-            provider = ImageProvider(R.drawable.ic_widget_pill),
+            provider = ImageProvider(formIcon(form)),
             contentDescription = null,
             modifier = GlanceModifier.size((sizeDp.value * CHIP_ICON_FRACTION).dp),
             colorFilter =
@@ -551,6 +554,20 @@ private fun MedChip(
         )
     }
 }
+
+/** The same stroke glyphs the app draws in MedFormIcons, as resources. */
+private fun formIcon(form: MedicationForm): Int =
+    when (form) {
+        MedicationForm.TABLET -> R.drawable.ic_widget_form_tablet
+        MedicationForm.CAPSULE -> R.drawable.ic_widget_form_capsule
+        MedicationForm.INJECTION -> R.drawable.ic_widget_form_injection
+        MedicationForm.DROPS -> R.drawable.ic_widget_form_drops
+        MedicationForm.LIQUID -> R.drawable.ic_widget_form_liquid
+        MedicationForm.INHALER -> R.drawable.ic_widget_form_inhaler
+        MedicationForm.OINTMENT -> R.drawable.ic_widget_form_ointment
+        MedicationForm.SPRAY -> R.drawable.ic_widget_form_spray
+        MedicationForm.OTHER -> R.drawable.ic_widget_form_other
+    }
 
 private fun takeAction(dose: TodayDose) =
     actionRunCallback<TakeDoseAction>(actionParametersOf(doseKeyParam to dose.key.encode()))

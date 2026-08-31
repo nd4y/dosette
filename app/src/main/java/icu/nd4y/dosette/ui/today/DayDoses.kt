@@ -11,6 +11,24 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /**
+ * Consecutive runs of the same slot, in time order. Slots are NOT rendered
+ * in fixed enum order: a midnight dose belongs to the start of the day, so
+ * the night slot can appear both first (00:xx) and last (23:xx).
+ */
+fun slotSections(doses: List<TodayDose>): List<List<TodayDose>> {
+    val sections = mutableListOf<MutableList<TodayDose>>()
+    doses.forEach { dose ->
+        val last = sections.lastOrNull()
+        if (last == null || last.last().slot != dose.slot) {
+            sections.add(mutableListOf(dose))
+        } else {
+            last.add(dose)
+        }
+    }
+    return sections
+}
+
+/**
  * Planned occurrences of [date] merged with the day's logs — the single
  * source for both the Today timeline and the calendar day sheet.
  */
