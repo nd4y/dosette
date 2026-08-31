@@ -80,16 +80,23 @@ class AppointmentEditViewModel
             _draft.update(transform)
         }
 
+        /** A double tap on Save must not create the appointment twice. */
+        private var saveInFlight = false
+
         fun save(onDone: () -> Unit) {
             val draft = _draft.value
-            if (!draft.valid) return
+            if (!draft.valid || saveInFlight) return
+            saveInFlight = true
             viewModelScope.launch {
                 val profileId =
                     existing?.profileId
                         ?: settingsRepository.settings
                             .first()
                             .activeProfileId
-                        ?: return@launch
+                        ?: run {
+                            saveInFlight = false
+                            return@launch
+                        }
                 appointmentRepository.upsert(
                     Appointment(
                         id = existing?.id ?: UUID.randomUUID().toString(),

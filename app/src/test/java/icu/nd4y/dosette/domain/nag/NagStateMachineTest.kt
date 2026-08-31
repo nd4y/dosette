@@ -80,17 +80,21 @@ class NagStateMachineTest {
     }
 
     @Test
-    fun `nag tick at the max count expires instead of re-alerting`() {
+    fun `nag tick at the max count goes quiet without finalizing`() {
+        // Exhausted nags stop the noise, but only GraceExpired may mark the
+        // dose missed — a stray tick from an unrelated engine pass must not
+        // finalize it early.
+        val state = activeState(nagCount = 5)
         val t =
             NagStateMachine.reduce(
-                activeState(nagCount = 5),
+                state,
                 NagEvent.NagTick,
                 scheduledAt.plusSeconds(600),
                 settings,
             )
 
-        assertThat(t.state).isNull()
-        assertThat(t.effects).contains(NagEffect.FinalizeDose(DoseStatus.MISSED))
+        assertThat(t.state).isEqualTo(state)
+        assertThat(t.effects).isEmpty()
     }
 
     @Test
@@ -233,7 +237,7 @@ class NagStateMachineTest {
     }
 
     @Test
-    fun `snooze expiry returns to active with an audible post`() {
+    fun `snooze expiry returns to active with an audible post and a fresh window`() {
         val snoozed =
             activeState(
                 nagCount = 1,
@@ -244,7 +248,11 @@ class NagStateMachineTest {
 
         assertThat(t.state?.phase).isEqualTo(ReminderPhase.ACTIVE)
         assertThat(t.state?.snoozedUntil).isNull()
-        assertThat(t.state?.nagCount).isEqualTo(1)
+        // Same rule as arriving at a place: the wake restarts both the
+        // grace window and the nag budget, so a snooze reaching past the
+        // original grace end is not finalized the moment it wakes.
+        assertThat(t.state?.graceAnchor).isEqualTo(now)
+        assertThat(t.state?.nagCount).isEqualTo(0)
         assertThat(t.effects).contains(NagEffect.PostReminder(alert = true))
     }
 

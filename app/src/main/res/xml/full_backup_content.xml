@@ -13,4 +13,7 @@
     <exclude
         domain="file"
         path="backups/" />
+    <exclude
+        domain="file"
+        path="datastore/" />
 </full-backup-content>

@@ -16,8 +16,6 @@ interface ReminderStateRepository {
     suspend fun upsert(state: ReminderState)
 
     suspend fun delete(key: OccurrenceKey)
-
-    suspend fun deleteAll()
 }
 
 @Singleton
@@ -37,9 +35,5 @@ class ReminderStateRepositoryImpl
 
         override suspend fun delete(key: OccurrenceKey) {
             reminderStateDao.delete(key.encode())
-        }
-
-        override suspend fun deleteAll() {
-            reminderStateDao.deleteAll()
         }
     }

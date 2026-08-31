@@ -3,7 +3,6 @@ package icu.nd4y.dosette.ui.stats
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,8 +43,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.ui.designsystem.MedPalette
+import icu.nd4y.dosette.ui.designsystem.ScreenHeader
 import icu.nd4y.dosette.ui.designsystem.slowSpatialSpec
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
+import icu.nd4y.dosette.ui.theme.LocalDarkTheme
 
 @Composable
 fun StatsScreen(
@@ -80,17 +81,7 @@ fun StatsContent(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                Icon(BackIcon, contentDescription = stringResource(R.string.action_back))
-            }
-            Text(
-                text = stringResource(R.string.stats_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        ScreenHeader(title = stringResource(R.string.stats_title), onBack = onBack)
 
         AdherenceHero(state)
 
@@ -218,7 +209,7 @@ private fun animatedProgress(value: Float): Float {
 
 @Composable
 private fun MedStatRow(med: MedStat) {
-    val palette = MedPalette.resolve(med.colorSeed, isSystemInDarkTheme())
+    val palette = MedPalette.resolve(med.colorSeed, LocalDarkTheme.current)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -309,16 +300,6 @@ private fun PercentRing(
             }
         }
         center()
-    }
-}
-
-private val BackIcon: ImageVector by lazy {
-    strokeGlyph("Back", strokeWidth = 2.2f) {
-        moveTo(19f, 12f)
-        lineTo(5f, 12f)
-        moveTo(11f, 6f)
-        lineToRelative(-6f, 6f)
-        lineToRelative(6f, 6f)
     }
 }
 

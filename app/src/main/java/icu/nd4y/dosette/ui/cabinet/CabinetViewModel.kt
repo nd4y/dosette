@@ -10,6 +10,8 @@ import icu.nd4y.dosette.domain.inventory.InventoryPolicy
 import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.Schedule
 import icu.nd4y.dosette.domain.model.ScheduleType
+import icu.nd4y.dosette.ui.common.formatAmount
+import icu.nd4y.dosette.ui.common.strengthLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -111,10 +113,7 @@ class CabinetViewModel
             return MedCard(
                 id = medication.id,
                 name = medication.name,
-                strengthText =
-                    medication.strengthValue?.let {
-                        "${formatAmount(it)} ${medication.strengthUnit.orEmpty()}".trim()
-                    },
+                strengthText = strengthLabel(medication.strengthValue, medication.strengthUnit),
                 form = medication.form,
                 colorSeed = medication.colorSeed,
                 schedule = activeSchedules.toBrief(),
@@ -151,6 +150,3 @@ class CabinetViewModel
             }
         }
     }
-
-fun formatAmount(value: Double): String =
-    if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()

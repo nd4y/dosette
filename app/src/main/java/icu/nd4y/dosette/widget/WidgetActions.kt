@@ -8,8 +8,8 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import icu.nd4y.dosette.data.repository.PrnRecorder
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.reminders.PrnIntakes
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.UserDoseAction
 
@@ -21,7 +21,7 @@ internal interface WidgetEntryPoint {
 
     fun engine(): ReminderEngine
 
-    fun prnRecorder(): PrnRecorder
+    fun prnIntakes(): PrnIntakes
 
     fun updater(): WidgetUpdater
 }
@@ -40,8 +40,9 @@ internal class TakeDoseAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         val encoded = parameters[doseKeyParam] ?: return
+        val key = runCatching { OccurrenceKey.decode(encoded) }.getOrNull() ?: return
         // The engine refreshes the widget at the end of its pass.
-        widgetEntryPoint(context).engine().onUserAction(OccurrenceKey.decode(encoded), UserDoseAction.TAKE)
+        widgetEntryPoint(context).engine().onUserAction(key, UserDoseAction.TAKE)
     }
 }
 
@@ -53,8 +54,7 @@ internal class TakePrnAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         val medicationId = parameters[prnMedicationParam] ?: return
-        val entryPoint = widgetEntryPoint(context)
-        entryPoint.prnRecorder().record(medicationId)
-        entryPoint.updater().updateAll()
+        // The shared path adds the low-stock check and the widget refresh.
+        widgetEntryPoint(context).prnIntakes().take(medicationId)
     }
 }

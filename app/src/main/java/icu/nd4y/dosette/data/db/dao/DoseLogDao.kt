@@ -9,11 +9,6 @@ import icu.nd4y.dosette.data.db.entity.DoseLogEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
-data class StatusCount(
-    val status: String,
-    val count: Int,
-)
-
 @Dao
 interface DoseLogDao {
     @Query(
@@ -66,26 +61,6 @@ interface DoseLogDao {
         insert(log)
         return true
     }
-
-    @Query(
-        "SELECT status, COUNT(*) as count FROM dose_logs WHERE profileId = :profileId " +
-            "AND kind = 'SCHEDULED' AND date BETWEEN :from AND :to GROUP BY status",
-    )
-    suspend fun adherenceCounts(
-        profileId: String,
-        from: LocalDate,
-        to: LocalDate,
-    ): List<StatusCount>
-
-    @Query(
-        "SELECT status, COUNT(*) as count FROM dose_logs WHERE medicationId = :medicationId " +
-            "AND kind = 'SCHEDULED' AND date BETWEEN :from AND :to GROUP BY status",
-    )
-    suspend fun adherenceCountsForMedication(
-        medicationId: String,
-        from: LocalDate,
-        to: LocalDate,
-    ): List<StatusCount>
 
     @Query("SELECT * FROM dose_logs WHERE id = :id")
     suspend fun getById(id: String): DoseLogEntity?

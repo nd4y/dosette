@@ -1,5 +1,6 @@
 package icu.nd4y.dosette.reminders
 
+import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,8 +12,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * API 31-32 only: the user re-granted the revocable "Alarms & reminders"
+ * special access. The chain has been running on inexact fallback alarms
+ * (see [AlarmScheduler]) — re-arm it exactly.
+ */
 @AndroidEntryPoint
-class AlarmReceiver : BroadcastReceiver() {
+class ExactAlarmPermissionReceiver : BroadcastReceiver() {
     @Inject
     lateinit var engine: ReminderEngine
 
@@ -24,14 +30,12 @@ class AlarmReceiver : BroadcastReceiver() {
         context: Context,
         intent: Intent,
     ) {
+        if (intent.action != AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) return
         val result = goAsync()
         CoroutineScope(ioDispatcher).launch {
             try {
-                // An uncaught throw here would kill the process AFTER the
-                // alarm was consumed but BEFORE the next one is armed — the
-                // whole reminder chain would silently stop.
-                runCatching { engine.processDueEvents() }
-                    .onFailure { Log.e("AlarmReceiver", "engine pass failed", it) }
+                runCatching { engine.reschedule() }
+                    .onFailure { Log.e("ExactAlarmPermission", "re-arm failed", it) }
             } finally {
                 result.finish()
             }

@@ -26,7 +26,7 @@ class DoseLogRepositoryTest {
     @Before
     fun setUp() {
         db = inMemoryDb()
-        repository = DoseLogRepositoryImpl(db.doseLogDao(), db.medicationVariantDao())
+        repository = DoseLogRepositoryImpl(db, db.doseLogDao(), db.medicationVariantDao())
         runTest {
             db.profileDao().upsert(profileEntity())
             db.medicationDao().upsert(medicationEntity())
@@ -73,7 +73,7 @@ class DoseLogRepositoryTest {
     @Test
     fun `undoPrn refuses a scheduled log`() =
         runTest {
-            repository.upsert(
+            repository.recordScheduledIfAbsent(
                 prnLog(id = "sched1").copy(
                     kind = DoseKind.SCHEDULED,
                     time = java.time.LocalTime.of(8, 0),

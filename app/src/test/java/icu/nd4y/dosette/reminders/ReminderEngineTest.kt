@@ -139,6 +139,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setLastAutoBackupAt(value: Instant?) = Unit
 
+    override suspend fun setLastAppointmentSweepAt(value: Instant) {
+        state.value = state.value.copy(lastAppointmentSweepAt = value)
+    }
+
     override suspend fun setPlace(
         id: icu.nd4y.dosette.domain.model.PlaceId,
         config: icu.nd4y.dosette.domain.model.PlaceConfig?,
@@ -174,7 +178,7 @@ class ReminderEngineTest {
         clock = MutableClock(doseInstant.plusSeconds(5), zone)
         notifier = FakeNotifier()
         stateRepository = ReminderStateRepositoryImpl(db.reminderStateDao())
-        doseLogRepository = DoseLogRepositoryImpl(db.doseLogDao(), db.medicationVariantDao())
+        doseLogRepository = DoseLogRepositoryImpl(db, db.doseLogDao(), db.medicationVariantDao())
         medicationRepository =
             MedicationRepositoryImpl(db.medicationDao(), db.scheduleDao(), db.medicationVariantDao())
         engine =
@@ -277,6 +281,103 @@ class ReminderEngineTest {
             val log = doseLogRepository.getScheduledInRange(key.date, key.date).single()
             assertThat(log.status).isEqualTo(DoseStatus.SKIPPED)
             assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(10.0)
+        }
+
+    @Test
+    fun `repeated take does not drain the stock twice`() =
+        runTest {
+            engine.processDueEvents()
+            engine.onUserAction(key, UserDoseAction.TAKE)
+            engine.onUserAction(key, UserDoseAction.TAKE)
+
+            assertThat(doseLogRepository.getScheduledInRange(key.date, key.date)).hasSize(1)
+            // One 150 mg dose out of 75 mg capsules = 2 units, exactly once.
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(8.0)
+        }
+
+    @Test
+    fun `flipping a taken dose to skipped returns the consumed stock`() =
+        runTest {
+            engine.processDueEvents()
+            engine.onUserAction(key, UserDoseAction.TAKE)
+            engine.onUserAction(key, UserDoseAction.SKIP)
+
+            val log = doseLogRepository.getScheduledInRange(key.date, key.date).single()
+            assertThat(log.status).isEqualTo(DoseStatus.SKIPPED)
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(10.0)
+        }
+
+    @Test
+    fun `take decrements by the amount of its own slot`() =
+        runTest {
+            // Second slot at 20:00 carries a double dose.
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s2", startDate = key.date),
+                listOf(
+                    scheduleTimeEntity(id = "t-evening", scheduleId = "s2", timeMinutes = 20 * 60, doseAmount = 2.0),
+                ),
+            )
+            val evening = OccurrenceKey("m1", key.date, LocalTime.of(20, 0))
+            clock.current =
+                key.date
+                    .atTime(20, 0)
+                    .atZone(zone)
+                    .toInstant()
+                    .plusSeconds(5)
+
+            engine.processDueEvents()
+            engine.onUserAction(evening, UserDoseAction.TAKE)
+
+            val log =
+                doseLogRepository
+                    .getScheduledInRange(key.date, key.date)
+                    .single { it.time == LocalTime.of(20, 0) }
+            // 2 x 150 mg out of 75 mg capsules = 4 units, both in the log
+            // and on the shelf.
+            assertThat(log.consumedUnits).isEqualTo(4.0)
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(6.0)
+        }
+
+    @Test
+    fun `state whose medication is gone is cancelled instead of nagging forever`() =
+        runTest {
+            engine.processDueEvents()
+            assertThat(stateRepository.get(key)).isNotNull()
+
+            db.medicationDao().delete("m1")
+            engine.processDueEvents()
+
+            assertThat(stateRepository.get(key)).isNull()
+            assertThat(notifier.cancelled).contains(key)
+        }
+
+    @Test
+    fun `appointment reminder is not re-posted by a later pass`() =
+        runTest {
+            AppointmentRepositoryImpl(db.appointmentDao()).upsert(
+                Appointment(
+                    id = "a1",
+                    profileId = "p1",
+                    title = "Visit",
+                    doctorName = null,
+                    location = null,
+                    date = key.date,
+                    time = LocalTime.of(9, 0),
+                    notes = null,
+                    reminderOffsetsMin = listOf(55),
+                    createdAt = clock.instant(),
+                ),
+            )
+
+            // Reminder due at 08:05 (55 min before 09:00) — move there.
+            clock.advance(Duration.ofMinutes(5))
+            engine.processDueEvents()
+            assertThat(notifier.appointments).hasSize(1)
+
+            // A pass seconds later inside the window must not re-alert.
+            clock.advance(Duration.ofSeconds(90))
+            engine.processDueEvents()
+            assertThat(notifier.appointments).hasSize(1)
         }
 
     @Test

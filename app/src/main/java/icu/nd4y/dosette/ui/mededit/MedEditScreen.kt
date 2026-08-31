@@ -3,7 +3,6 @@ package icu.nd4y.dosette.ui.mededit
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,10 +54,13 @@ import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.ScheduleType
 import icu.nd4y.dosette.ui.common.TimeFormat
 import icu.nd4y.dosette.ui.common.currentLocale
+import icu.nd4y.dosette.ui.common.everyNDaysText
+import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
 import icu.nd4y.dosette.ui.designsystem.MedPalette
 import icu.nd4y.dosette.ui.designsystem.rememberDirectionalMotion
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
+import icu.nd4y.dosette.ui.theme.LocalDarkTheme
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.format.TextStyle
@@ -112,13 +114,20 @@ fun MedEditContent(
             targetState = state.step,
             transitionSpec = { stepMotion.transform(forward = targetState.ordinal > initialState.ordinal) },
             label = "wizard-step",
+            // The weight must sit on AnimatedContent itself: inside the
+            // content lambda the parent is AnimatedContent's own layout,
+            // which ignores Column parent data — the footer would then be
+            // measured with whatever height is left, down to zero.
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = true),
         ) { step ->
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier =
                     Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = true)
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState()),
             ) {
                 Text(
@@ -198,7 +207,7 @@ private fun WizardHeader(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                Icon(BackIcon, contentDescription = stringResource(R.string.action_back))
+                Icon(DosetteIcons.Back, contentDescription = stringResource(R.string.action_back))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -305,7 +314,7 @@ private fun BasicsStep(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        val dark = isSystemInDarkTheme()
+        val dark = LocalDarkTheme.current
         repeat(MedPalette.size) { seed ->
             val color = MedPalette.resolve(seed, dark)
             Box(
@@ -324,7 +333,7 @@ private fun BasicsStep(
             ) {
                 if (state.colorSeed == seed) {
                     Icon(
-                        imageVector = CheckIcon,
+                        imageVector = DosetteIcons.Check,
                         contentDescription = null,
                         tint = color.onContainer,
                         modifier = Modifier.size(18.dp),
@@ -790,7 +799,7 @@ private fun ReviewStep(state: MedEditUiState) {
                 }
 
                 ScheduleType.EVERY_N_DAYS -> {
-                    stringResource(R.string.schedule_every_n_days, state.intervalText.toIntOrNull() ?: 1)
+                    everyNDaysText(state.intervalText.toIntOrNull() ?: 1)
                 }
 
                 ScheduleType.CYCLE -> {
@@ -862,24 +871,6 @@ private fun ReviewBlock(
             )
             content()
         }
-    }
-}
-
-private val BackIcon by lazy {
-    strokeGlyph("Back", strokeWidth = 2.2f) {
-        moveTo(19f, 12f)
-        lineTo(5f, 12f)
-        moveTo(11f, 6f)
-        lineToRelative(-6f, 6f)
-        lineToRelative(6f, 6f)
-    }
-}
-
-private val CheckIcon by lazy {
-    strokeGlyph("Check", strokeWidth = 3f) {
-        moveTo(5f, 13f)
-        lineToRelative(4f, 4f)
-        lineTo(19f, 7f)
     }
 }
 

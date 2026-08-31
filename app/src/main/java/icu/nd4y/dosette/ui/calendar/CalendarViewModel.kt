@@ -12,9 +12,11 @@ import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.Schedule
 import icu.nd4y.dosette.domain.model.ScheduleTime
 import icu.nd4y.dosette.domain.model.ScheduleType
+import icu.nd4y.dosette.domain.schedule.OccurrenceGenerator
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.UserDoseAction
+import icu.nd4y.dosette.ui.common.dayTicker
 import icu.nd4y.dosette.ui.today.TodayDose
 import icu.nd4y.dosette.ui.today.buildDayDoses
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -93,8 +95,10 @@ class CalendarViewModel
                                 medicationRepository.observeByProfile(profileId),
                                 doseLogRepository.observeRange(profileId, gridStart, gridEnd),
                                 selectedDate,
-                            ) { meds, logs, selected ->
-                                val today = clock.instant().atZone(clock.zone).toLocalDate()
+                                // Moves the "today" ring at midnight without
+                                // waiting for a data change.
+                                dayTicker(clock),
+                            ) { meds, logs, selected, today ->
                                 val countsByDate =
                                     logs
                                         .filter { it.kind == DoseKind.SCHEDULED }
@@ -200,6 +204,20 @@ class CalendarViewModel
             amount: Double,
         ) {
             viewModelScope.launch {
+                // Occurrence identity is (medication, date, time): a one-off
+                // landing exactly on an existing slot would merge with it, so
+                // nudge the time forward to the nearest free minute.
+                val busy =
+                    medicationRepository
+                        .getDetails(medicationId)
+                        ?.let { details ->
+                            OccurrenceGenerator
+                                .occurrencesOn(details.schedulesActiveOn(date), date)
+                                .map { it.time }
+                        }.orEmpty()
+                        .toSet()
+                var slot = time
+                while (slot in busy) slot = slot.plusMinutes(1)
                 val scheduleId = UUID.randomUUID().toString()
                 medicationRepository.addSchedule(
                     Schedule(
@@ -220,7 +238,7 @@ class CalendarViewModel
                                 ScheduleTime(
                                     id = UUID.randomUUID().toString(),
                                     scheduleId = scheduleId,
-                                    time = time,
+                                    time = slot,
                                     doseAmount = amount,
                                     sortIndex = 0,
                                 ),

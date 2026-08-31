@@ -6,7 +6,8 @@ import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.OccurrenceKey
 import icu.nd4y.dosette.domain.schedule.OccurrenceGenerator
-import icu.nd4y.dosette.ui.cabinet.formatAmount
+import icu.nd4y.dosette.ui.common.formatAmount
+import icu.nd4y.dosette.ui.common.strengthLabel
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -38,7 +39,16 @@ fun buildDayDoses(
     logs: List<DoseLog>,
     zone: ZoneId,
 ): List<TodayDose> {
-    val active = meds.filter { !it.medication.isArchived }
+    // An archived medication disappears from the archive date on, but its
+    // history stays: past days keep showing what was planned and logged.
+    val active =
+        meds.filter { med ->
+            val archivedOn =
+                med.medication.archivedAt
+                    ?.atZone(zone)
+                    ?.toLocalDate()
+            archivedOn == null || date.isBefore(archivedOn)
+        }
     val logByKey =
         logs
             .filter { it.kind == DoseKind.SCHEDULED && it.time != null && it.date == date }
@@ -57,10 +67,7 @@ fun buildDayDoses(
                         date = date,
                         time = occurrence.time,
                         name = med.medication.name,
-                        strengthText =
-                            med.medication.strengthValue?.let {
-                                "${formatAmount(it)} ${med.medication.strengthUnit.orEmpty()}".trim()
-                            },
+                        strengthText = strengthLabel(med.medication.strengthValue, med.medication.strengthUnit),
                         amountText = formatAmount(occurrence.amount),
                         instructions = med.medication.instructions,
                         form = med.medication.form,
@@ -77,5 +84,11 @@ fun buildDayDoses(
                         oneOff = schedule != null && schedule.startDate == schedule.endDate,
                     )
                 }
-        }.sortedBy { it.time }
+        }
+        // Occurrence identity is (medication, date, time): two schedules
+        // producing the same slot are one dose for the logs and must be one
+        // row here — otherwise the list keys collide. The regular schedule
+        // wins over a one-off.
+        .sortedWith(compareBy({ it.time }, { it.oneOff }))
+        .distinctBy { it.key }
 }

@@ -142,7 +142,7 @@ private fun TabContent(
                         entry<CabinetKey> {
                             CabinetScreen(
                                 contentPadding = padding,
-                                onAddMedication = { cabinetBackStack.add(MedEditKey()) },
+                                onAddMedication = { cabinetBackStack.add(MedEditKey) },
                                 onOpenMedication = { id -> cabinetBackStack.add(MedDetailKey(id)) },
                             )
                         }

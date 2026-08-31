@@ -53,9 +53,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator.DayStatus
-import icu.nd4y.dosette.ui.cabinet.formatAmount
 import icu.nd4y.dosette.ui.common.TimeFormat
 import icu.nd4y.dosette.ui.common.currentLocale
+import icu.nd4y.dosette.ui.common.formatAmount
+import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
 import icu.nd4y.dosette.ui.designsystem.rememberDirectionalMotion
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
@@ -213,7 +214,7 @@ private fun CalendarHeader(
         )
         IconButton(onClick = onNextMonth) {
             Icon(
-                ChevronRight,
+                DosetteIcons.ChevronRight,
                 contentDescription = stringResource(R.string.calendar_next_month),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -248,7 +249,7 @@ private fun MonthPickerDialog(
                 )
                 IconButton(onClick = { year++ }) {
                     Icon(
-                        ChevronRight,
+                        DosetteIcons.ChevronRight,
                         contentDescription = stringResource(R.string.calendar_next_year),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -420,7 +421,9 @@ private fun AdherenceCard(state: CalendarUiState) {
     val locale = currentLocale()
     val monthName =
         remember(state.month, locale) {
-            state.month.format(DateTimeFormatter.ofPattern("LLLL", locale)).lowercase(locale)
+            val name = state.month.format(DateTimeFormatter.ofPattern("LLLL", locale))
+            // Lowercase inline month names is a Russian-only convention.
+            if (locale.language == "ru") name.lowercase(locale) else name
         }
     Surface(
         shape = RoundedCornerShape(22.dp),
@@ -468,7 +471,12 @@ private fun DaySheet(
     var addDialogOpen by remember { mutableStateOf(false) }
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp),
+        modifier =
+            Modifier
+                // A long day (many meds) must scroll inside the sheet.
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
     ) {
         Text(
             text = title,
@@ -737,14 +745,6 @@ private val ChevronLeft: ImageVector by lazy {
         moveTo(15f, 6f)
         lineToRelative(-6f, 6f)
         lineToRelative(6f, 6f)
-    }
-}
-
-private val ChevronRight: ImageVector by lazy {
-    strokeGlyph("ChevronRight") {
-        moveTo(9f, 6f)
-        lineToRelative(6f, 6f)
-        lineToRelative(-6f, 6f)
     }
 }
 

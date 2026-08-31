@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -37,6 +40,12 @@ jobs:
 
       - name: Assemble debug
         run: ./gradlew :app:assembleDebug --stacktrace
+
+      # R8 smoke: keep-rule breakage (the widget's failure class) must
+      # surface here, not in the tag-triggered release build. Debug-signed,
+      # nothing is published.
+      - name: Assemble minified release
+        run: ./gradlew :app:assembleRelease --stacktrace
 
       - name: Upload reports on failure
         if: failure()

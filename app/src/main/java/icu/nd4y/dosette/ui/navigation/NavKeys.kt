@@ -11,11 +11,9 @@ data class MedDetailKey(
     val medicationId: String,
 ) : NavKey
 
+/** The wizard only creates medications; an edit flow does not exist yet. */
 @Serializable
-data class MedEditKey(
-    /** null = create a new medication. */
-    val medicationId: String? = null,
-) : NavKey
+data object MedEditKey : NavKey
 
 @Serializable
 data object MoreKey : NavKey

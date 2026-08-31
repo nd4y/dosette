@@ -17,7 +17,7 @@
     <string name="notification_dose_text">Приём в %1$s</string>
     <string name="unit_pieces">%1$s шт</string>
     <string name="notification_profile">профиль: %1$s</string>
-    <string name="notification_missed_title">Пропущено: %1$s</string>
+    <string name="notification_missed_title">Не принято: %1$s</string>
     <string name="notification_missed_text">Можно отметить задним числом в календаре</string>
     <string name="notification_low_stock_title">Запас на исходе: %1$s</string>
     <string name="notification_low_stock_text">Осталось %1$s</string>
@@ -46,6 +46,7 @@
         <item quantity="other">%d дня в неделю</item>
     </plurals>
     <string name="schedule_every_n_days">Каждые %d дн.</string>
+    <string name="schedule_every_day">Каждый день</string>
     <string name="schedule_every_other_day">Через день</string>
     <string name="schedule_cycle_summary">%1$d дн. приёма / %2$d перерыва</string>
     <string name="schedule_as_needed">По необходимости</string>
@@ -145,7 +146,7 @@
 
     <string name="legend_full">всё принято</string>
     <string name="legend_partial">частично</string>
-    <string name="legend_missed">пропущено</string>
+    <string name="legend_missed">не принято</string>
     <string name="legend_today">сегодня</string>
     <string name="calendar_month_adherence">Соблюдение за %1$s</string>
     <string name="calendar_prev_month">Предыдущий месяц</string>
@@ -274,8 +275,8 @@
     <string name="stats_title">Статистика</string>
     <string name="stats_window">Последние 30 дней</string>
     <string name="stats_taken">Принято: %1$d</string>
-    <string name="stats_missed">Пропущено: %1$d</string>
-    <string name="stats_skipped">Отменено: %1$d</string>
+    <string name="stats_missed">Не принято: %1$d</string>
+    <string name="stats_skipped">Пропущено: %1$d</string>
     <plurals name="stats_streak_days">
         <item quantity="one">%d день без пропусков</item>
         <item quantity="few">%d дня без пропусков</item>
@@ -287,16 +288,17 @@
 
     <string name="profiles_title">Профили</string>
     <string name="profiles_add">Добавить профиль</string>
+    <string name="profile_edit">Изменить профиль</string>
     <string name="profiles_active">активный</string>
     <string name="profile_name_label">Имя</string>
     <string name="profile_delete">Удалить профиль</string>
     <string name="profile_delete_warning">Все лекарства, история и визиты этого профиля будут удалены безвозвратно.</string>
     <string name="action_edit">Изменить</string>
+    <string name="action_ok">ОК</string>
     <string name="action_delete">Удалить</string>
     <string name="action_cancel">Отмена</string>
 
     <string name="action_next">Далее</string>
     <string name="action_back">Назад</string>
     <string name="action_save">Сохранить</string>
-    <string name="action_close">Закрыть</string>
 </resources>

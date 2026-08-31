@@ -94,7 +94,8 @@ object AlarmPlanner {
                             ),
                         )
                     } else {
-                        add(AlarmPlan(graceEnd, AlarmReason.GRACE))
+                        // No GRACE alarm while snoozed: waking from a snooze
+                        // restarts the grace window, so grace cannot end first.
                         state.snoozedUntil?.let { add(AlarmPlan(it, AlarmReason.SNOOZE)) }
                     }
                 }

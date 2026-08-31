@@ -33,10 +33,10 @@ data class AppSettings(
     val lowStockNotifyEnabled: Boolean = true,
     val onboardingDone: Boolean = false,
     val lastAutoBackupAt: Instant? = null,
+    /** Appointment reminders up to this instant were already posted. */
+    val lastAppointmentSweepAt: Instant? = null,
     val places: Map<PlaceId, PlaceConfig> = emptyMap(),
-) {
-    fun place(id: PlaceId): PlaceConfig? = places[id]?.takeIf { it.isConfigured }
-}
+)
 
 interface SettingsRepository {
     val settings: Flow<AppSettings>
@@ -63,13 +63,19 @@ interface SettingsRepository {
 
     suspend fun setLastAutoBackupAt(value: Instant?)
 
+    suspend fun setLastAppointmentSweepAt(value: Instant)
+
     /** null clears the place. */
     suspend fun setPlace(
         id: PlaceId,
         config: PlaceConfig?,
     )
 
-    /** Backup import: replaces everything atomically. */
+    /**
+     * Backup import: atomically overwrites the keys the backup schema
+     * carries. Device-local state — places, the auto-backup stamp, the
+     * appointment watermark — is deliberately left untouched.
+     */
     suspend fun replaceAll(settings: AppSettings)
 }
 
@@ -91,6 +97,7 @@ class SettingsRepositoryImpl
             val LOW_STOCK_NOTIFY = booleanPreferencesKey("low_stock_notify")
             val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
             val LAST_AUTO_BACKUP_AT = longPreferencesKey("last_auto_backup_at")
+            val LAST_APPOINTMENT_SWEEP_AT = longPreferencesKey("last_appointment_sweep_at")
 
             fun place(id: PlaceId) = stringPreferencesKey("place_${id.name.lowercase()}")
         }
@@ -111,6 +118,7 @@ class SettingsRepositoryImpl
                     lowStockNotifyEnabled = p[Keys.LOW_STOCK_NOTIFY] ?: defaults.lowStockNotifyEnabled,
                     onboardingDone = p[Keys.ONBOARDING_DONE] ?: defaults.onboardingDone,
                     lastAutoBackupAt = p[Keys.LAST_AUTO_BACKUP_AT]?.let(Instant::ofEpochMilli),
+                    lastAppointmentSweepAt = p[Keys.LAST_APPOINTMENT_SWEEP_AT]?.let(Instant::ofEpochMilli),
                     places =
                         PlaceId.entries
                             .mapNotNull { id ->
@@ -175,6 +183,10 @@ class SettingsRepositoryImpl
             }
         }
 
+        override suspend fun setLastAppointmentSweepAt(value: Instant) {
+            dataStore.edit { it[Keys.LAST_APPOINTMENT_SWEEP_AT] = value.toEpochMilli() }
+        }
+
         override suspend fun setPlace(
             id: PlaceId,
             config: PlaceConfig?,
@@ -189,9 +201,15 @@ class SettingsRepositoryImpl
         }
 
         override suspend fun replaceAll(settings: AppSettings) {
+            // No clear(): the backup schema does not carry places or the
+            // bookkeeping stamps, and an import must not silently destroy
+            // the configured home/work places of this device.
             dataStore.edit { p ->
-                p.clear()
-                settings.activeProfileId?.let { p[Keys.ACTIVE_PROFILE_ID] = it }
+                if (settings.activeProfileId == null) {
+                    p.remove(Keys.ACTIVE_PROFILE_ID)
+                } else {
+                    p[Keys.ACTIVE_PROFILE_ID] = settings.activeProfileId
+                }
                 p[Keys.NAG_INTERVAL_MIN] = settings.nagIntervalMin
                 p[Keys.NAG_MAX_COUNT] = settings.nagMaxCount
                 p[Keys.SNOOZE_MIN] = settings.snoozeMin
@@ -201,10 +219,6 @@ class SettingsRepositoryImpl
                 p[Keys.LANGUAGE] = settings.language.name
                 p[Keys.LOW_STOCK_NOTIFY] = settings.lowStockNotifyEnabled
                 p[Keys.ONBOARDING_DONE] = settings.onboardingDone
-                settings.lastAutoBackupAt?.let { p[Keys.LAST_AUTO_BACKUP_AT] = it.toEpochMilli() }
-                settings.places.forEach { (id, config) ->
-                    p[Keys.place(id)] = Json.encodeToString(PlaceConfig.serializer(), config)
-                }
             }
         }
     }

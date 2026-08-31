@@ -55,6 +55,8 @@ private class FixedSettingsRepository : SettingsRepository {
 
     override suspend fun setLastAutoBackupAt(value: Instant?) = Unit
 
+    override suspend fun setLastAppointmentSweepAt(value: Instant) = Unit
+
     override suspend fun setPlace(
         id: PlaceId,
         config: PlaceConfig?,
@@ -85,7 +87,7 @@ class WidgetStateLoaderTest {
             WidgetStateLoader(
                 medicationRepository =
                     MedicationRepositoryImpl(db.medicationDao(), db.scheduleDao(), db.medicationVariantDao()),
-                doseLogRepository = DoseLogRepositoryImpl(db.doseLogDao(), db.medicationVariantDao()),
+                doseLogRepository = DoseLogRepositoryImpl(db, db.doseLogDao(), db.medicationVariantDao()),
                 settingsRepository = FixedSettingsRepository(),
                 clock = Clock.fixed(now, zone),
             )
@@ -136,7 +138,7 @@ class WidgetStateLoaderTest {
                 WidgetStateLoader(
                     medicationRepository =
                         MedicationRepositoryImpl(db.medicationDao(), db.scheduleDao(), db.medicationVariantDao()),
-                    doseLogRepository = DoseLogRepositoryImpl(db.doseLogDao(), db.medicationVariantDao()),
+                    doseLogRepository = DoseLogRepositoryImpl(db, db.doseLogDao(), db.medicationVariantDao()),
                     settingsRepository =
                         object : SettingsRepository by FixedSettingsRepository() {
                             override val settings = MutableStateFlow(AppSettings())

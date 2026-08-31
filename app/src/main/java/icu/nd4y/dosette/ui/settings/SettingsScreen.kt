@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -43,13 +42,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -58,7 +57,8 @@ import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.ThemeMode
 import icu.nd4y.dosette.domain.model.PlaceId
-import icu.nd4y.dosette.ui.designsystem.strokeGlyph
+import icu.nd4y.dosette.ui.designsystem.DosetteIcons
+import icu.nd4y.dosette.ui.designsystem.ScreenHeader
 
 @Composable
 fun SettingsScreen(
@@ -73,10 +73,17 @@ fun SettingsScreen(
     var batteryExempt by remember {
         mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
     }
+    // The user answers the exemption dialog OUTSIDE the app; the state is
+    // only readable once we are resumed again (same pattern as onboarding).
+    LifecycleResumeEffect(Unit) {
+        batteryExempt = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+        onPauseOrDispose {}
+    }
 
     // Place actions need runtime location permission before they can read
     // coordinates or the Wi-Fi name; the pending action survives the dialog.
     var pendingPlaceAction by remember { mutableStateOf<Pair<PlaceId, PlaceAction>?>(null) }
+    var permissionDenied by remember { mutableStateOf(false) }
 
     fun executePlaceAction(
         id: PlaceId,
@@ -103,8 +110,25 @@ fun SettingsScreen(
             val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true
             val pending = pendingPlaceAction
             pendingPlaceAction = null
-            if (granted && pending != null) executePlaceAction(pending.first, pending.second)
+            if (granted && pending != null) {
+                executePlaceAction(pending.first, pending.second)
+            } else if (!granted) {
+                // A silent no-op after a denial reads as a broken button.
+                permissionDenied = true
+            }
         }
+
+    if (permissionDenied) {
+        AlertDialog(
+            onDismissRequest = { permissionDenied = false },
+            text = { Text(stringResource(R.string.place_permission_rationale)) },
+            confirmButton = {
+                TextButton(onClick = { permissionDenied = false }) {
+                    Text(stringResource(R.string.action_ok))
+                }
+            },
+        )
+    }
 
     SettingsContent(
         settings = settings,
@@ -148,7 +172,6 @@ fun SettingsScreen(
                         context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                     }
                 }
-            batteryExempt = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
         },
         modifier = modifier,
     )
@@ -183,17 +206,7 @@ fun SettingsContent(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                Icon(BackIcon, contentDescription = stringResource(R.string.action_back))
-            }
-            Text(
-                text = stringResource(R.string.settings_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        ScreenHeader(title = stringResource(R.string.settings_title), onBack = onBack)
 
         SettingsCard(title = stringResource(R.string.settings_reminders_section)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -384,7 +397,7 @@ private fun PlaceRow(
             color = MaterialTheme.colorScheme.primary,
         )
         Icon(
-            imageVector = ChevronRight,
+            imageVector = DosetteIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
@@ -511,7 +524,7 @@ private fun ValueRow(
             }
         }
         Icon(
-            imageVector = ChevronRight,
+            imageVector = DosetteIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
@@ -566,7 +579,7 @@ private fun ThemeRow(
             }
         }
         Icon(
-            imageVector = ChevronRight,
+            imageVector = DosetteIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
@@ -621,7 +634,7 @@ private fun LanguageRow(
             }
         }
         Icon(
-            imageVector = ChevronRight,
+            imageVector = DosetteIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
@@ -669,23 +682,5 @@ private fun BatteryBanner(
                 }
             }
         }
-    }
-}
-
-private val BackIcon: ImageVector by lazy {
-    strokeGlyph("Back", strokeWidth = 2.2f) {
-        moveTo(19f, 12f)
-        lineTo(5f, 12f)
-        moveTo(11f, 6f)
-        lineToRelative(-6f, 6f)
-        lineToRelative(6f, 6f)
-    }
-}
-
-private val ChevronRight: ImageVector by lazy {
-    strokeGlyph("ChevronRight") {
-        moveTo(9f, 6f)
-        lineToRelative(6f, 6f)
-        lineToRelative(-6f, 6f)
     }
 }

@@ -3,6 +3,7 @@ package icu.nd4y.dosette.reminders.places
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.google.android.gms.location.GeofencingEvent
 import dagger.hilt.android.AndroidEntryPoint
 import icu.nd4y.dosette.di.IoDispatcher
@@ -39,7 +40,8 @@ class PlaceReceiver : BroadcastReceiver() {
         val result = goAsync()
         CoroutineScope(ioDispatcher).launch {
             try {
-                places.forEach { engine.onPlaceReached(it) }
+                runCatching { places.forEach { engine.onPlaceReached(it) } }
+                    .onFailure { Log.e("PlaceReceiver", "engine pass failed", it) }
             } finally {
                 result.finish()
             }

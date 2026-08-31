@@ -273,6 +273,32 @@ class BackupCodecTest {
             BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
         }
     }
+
+    @Test
+    fun `scheduled log without a time is rejected`() {
+        // A scheduled log needs its wall-clock identity; letting one through
+        // would crash every reminder pass after the import.
+        val broken =
+            fullData.copy(
+                doseLogs =
+                    fullData.doseLogs.map {
+                        if (it.kind == DoseKind.SCHEDULED) it.copy(time = null) else it
+                    },
+            )
+        val yaml = BackupCodec.encode(BackupMapper.toSnapshot(broken, instant))
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
+        }
+    }
+
+    @Test
+    fun `duplicate schedule ids are rejected with a readable error`() {
+        val broken = fullData.copy(schedules = fullData.schedules + fullData.schedules.first())
+        val yaml = BackupCodec.encode(BackupMapper.toSnapshot(broken, instant))
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
+        }
+    }
 }
 
 private val GOLDEN_V1_YAML =

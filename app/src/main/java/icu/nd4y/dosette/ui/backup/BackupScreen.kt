@@ -41,6 +41,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.data.backup.BackupPreview
+import icu.nd4y.dosette.ui.designsystem.ScreenHeader
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -195,17 +196,7 @@ fun BackupContent(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                Icon(BackIcon, contentDescription = stringResource(R.string.action_back))
-            }
-            Text(
-                text = stringResource(R.string.backup_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        ScreenHeader(title = stringResource(R.string.backup_title), onBack = onBack)
 
         BackupCard(
             icon = ExportIcon,
@@ -353,16 +344,6 @@ private fun BackupCard(
                 Text(actionLabel)
             }
         }
-    }
-}
-
-private val BackIcon: ImageVector by lazy {
-    strokeGlyph("Back", strokeWidth = 2.2f) {
-        moveTo(19f, 12f)
-        lineTo(5f, 12f)
-        moveTo(11f, 6f)
-        lineToRelative(-6f, 6f)
-        lineToRelative(6f, 6f)
     }
 }
 

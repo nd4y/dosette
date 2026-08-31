@@ -8,7 +8,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,6 +62,7 @@ import icu.nd4y.dosette.ui.designsystem.RingCenterLabel
 import icu.nd4y.dosette.ui.designsystem.SegmentedRing
 import icu.nd4y.dosette.ui.designsystem.effectsSpec
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
+import icu.nd4y.dosette.ui.theme.LocalDarkTheme
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -422,7 +422,7 @@ private fun StatusCircle(status: DoseUiStatus) {
     val (bg, fg, icon) =
         when (status) {
             DoseUiStatus.TAKEN -> {
-                Triple(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, CheckIcon)
+                Triple(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, DosetteIcons.Check)
             }
 
             DoseUiStatus.SKIPPED -> {
@@ -445,7 +445,7 @@ private fun StatusCircle(status: DoseUiStatus) {
                 Triple(
                     MaterialTheme.colorScheme.surfaceContainerHighest,
                     MaterialTheme.colorScheme.onSurface,
-                    CheckIcon,
+                    DosetteIcons.Check,
                 )
             }
         }
@@ -463,7 +463,7 @@ private fun ProfileChips(
     onSelectProfile: (String) -> Unit,
 ) {
     if (state.profiles.size < 2) return
-    val dark = isSystemInDarkTheme()
+    val dark = LocalDarkTheme.current
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
@@ -688,14 +688,6 @@ private fun PrnRow(
                 }
             }
         }
-    }
-}
-
-private val CheckIcon: ImageVector by lazy {
-    strokeGlyph("Check", strokeWidth = 3f) {
-        moveTo(5f, 13f)
-        lineToRelative(4f, 4f)
-        lineTo(19f, 7f)
     }
 }
 

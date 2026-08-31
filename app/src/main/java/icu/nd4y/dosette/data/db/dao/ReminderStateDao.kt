@@ -18,7 +18,4 @@ interface ReminderStateDao {
 
     @Query("DELETE FROM reminder_states WHERE occurrenceKey = :occurrenceKey")
     suspend fun delete(occurrenceKey: String)
-
-    @Query("DELETE FROM reminder_states")
-    suspend fun deleteAll()
 }
