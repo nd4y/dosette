@@ -12,6 +12,8 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
@@ -31,9 +33,20 @@ object AppModule {
     ): DataStore<Preferences> = context.settingsDataStore
 
     // Injected everywhere time is read: tests substitute a fixed Clock.
+    // The zone is resolved per call — a plain systemDefaultZone() would
+    // freeze the zone captured at process start, and a process alive across
+    // a timezone change would keep computing occurrences in the old zone
+    // no matter what TimeChangeReceiver does.
     @Provides
     @Singleton
-    fun provideClock(): Clock = Clock.systemDefaultZone()
+    fun provideClock(): Clock =
+        object : Clock() {
+            override fun getZone(): ZoneId = ZoneId.systemDefault()
+
+            override fun withZone(zone: ZoneId): Clock = Clock.system(zone)
+
+            override fun instant(): Instant = Instant.now()
+        }
 
     @Provides
     @IoDispatcher

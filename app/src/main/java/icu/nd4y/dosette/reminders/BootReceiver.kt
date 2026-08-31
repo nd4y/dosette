@@ -3,6 +3,7 @@ package icu.nd4y.dosette.reminders
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
 import icu.nd4y.dosette.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
@@ -31,7 +32,8 @@ class BootReceiver : BroadcastReceiver() {
         val result = goAsync()
         CoroutineScope(ioDispatcher).launch {
             try {
-                engine.reconcile()
+                runCatching { engine.reconcile() }
+                    .onFailure { Log.e("BootReceiver", "reconcile failed", it) }
             } finally {
                 result.finish()
             }

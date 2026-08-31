@@ -21,6 +21,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
+      # A tag can land on any commit; do not sign what does not pass tests.
+      - name: Unit tests
+        run: ./gradlew :app:testReleaseUnitTest --stacktrace
+
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
 
@@ -38,7 +42,9 @@ jobs:
           sha256sum "dosette-$GITHUB_REF_NAME.apk" > "dosette-$GITHUB_REF_NAME.apk.sha256"
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
+        # Third-party action in a job holding the signing secrets: pinned to
+        # a commit, not a movable tag (dependabot bumps the pin). v3.0.3.
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
         with:
           files: |
             dosette-*.apk

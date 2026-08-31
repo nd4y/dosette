@@ -36,10 +36,4 @@ class MissedDosePolicyTest {
     fun `negative grace is rejected`() {
         MissedDosePolicy.isMissed(scheduledAt, scheduledAt, graceMin = -1)
     }
-
-    @Test
-    fun `cutoff is now minus grace`() {
-        val now = Instant.parse("2026-08-29T21:00:00Z")
-        assertThat(MissedDosePolicy.missedCutoff(now, graceMin = 60)).isEqualTo(scheduledAt)
-    }
 }

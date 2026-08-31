@@ -34,7 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.domain.model.Appointment
 import icu.nd4y.dosette.ui.common.currentLocale
-import icu.nd4y.dosette.ui.designsystem.strokeGlyph
+import icu.nd4y.dosette.ui.designsystem.ScreenHeader
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -76,17 +76,7 @@ fun AppointmentsContent(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                Icon(BackIcon, contentDescription = stringResource(R.string.action_back))
-            }
-            Text(
-                text = stringResource(R.string.appointments_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        ScreenHeader(title = stringResource(R.string.appointments_title), onBack = onBack)
 
         if (!state.loading && state.upcoming.isEmpty()) {
             Text(
@@ -177,15 +167,5 @@ private fun AppointmentRow(
                 color = MaterialTheme.colorScheme.primary,
             )
         }
-    }
-}
-
-private val BackIcon: ImageVector by lazy {
-    strokeGlyph("Back", strokeWidth = 2.2f) {
-        moveTo(19f, 12f)
-        lineTo(5f, 12f)
-        moveTo(11f, 6f)
-        lineToRelative(-6f, 6f)
-        lineToRelative(6f, 6f)
     }
 }

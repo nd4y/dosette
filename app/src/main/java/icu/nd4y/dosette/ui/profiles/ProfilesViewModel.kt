@@ -7,6 +7,7 @@ import icu.nd4y.dosette.data.repository.ProfileRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.Profile
 import icu.nd4y.dosette.reminders.ReminderEngine
+import icu.nd4y.dosette.reminders.WidgetRefresher
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,6 +29,7 @@ class ProfilesViewModel
         private val profileRepository: ProfileRepository,
         private val settingsRepository: SettingsRepository,
         private val engine: ReminderEngine,
+        private val widgetRefresher: WidgetRefresher,
         private val clock: Clock,
     ) : ViewModel() {
         val uiState: StateFlow<ProfilesUiState> =
@@ -36,7 +38,12 @@ class ProfilesViewModel
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfilesUiState())
 
         fun setActive(id: String) {
-            viewModelScope.launch { settingsRepository.setActiveProfileId(id) }
+            viewModelScope.launch {
+                settingsRepository.setActiveProfileId(id)
+                // The widget follows the active profile; Glance sessions
+                // expire, so it needs an explicit nudge.
+                widgetRefresher.refresh()
+            }
         }
 
         fun save(

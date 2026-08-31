@@ -2,6 +2,8 @@ package icu.nd4y.dosette.ui.meddetail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,12 +27,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
-import icu.nd4y.dosette.ui.cabinet.formatAmount
 import icu.nd4y.dosette.ui.common.TimeFormat
+import icu.nd4y.dosette.ui.common.formatAmount
+import icu.nd4y.dosette.ui.common.strengthLabel
+import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
 import icu.nd4y.dosette.ui.designsystem.StockBadge
-import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MedDetailScreen(
     medicationId: String,
@@ -54,7 +58,7 @@ fun MedDetailScreen(
                 .verticalScroll(rememberScrollState()),
     ) {
         IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-            Icon(BackIcon, contentDescription = stringResource(R.string.action_back))
+            Icon(DosetteIcons.Back, contentDescription = stringResource(R.string.action_back))
         }
 
         val med = details ?: return
@@ -69,9 +73,9 @@ fun MedDetailScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            med.medication.strengthValue?.let { strength ->
+            strengthLabel(med.medication.strengthValue, med.medication.strengthUnit)?.let { strength ->
                 Text(
-                    text = "${formatAmount(strength)} ${med.medication.strengthUnit.orEmpty()}".trim(),
+                    text = strength,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -80,7 +84,11 @@ fun MedDetailScreen(
 
         DetailBlock(title = stringResource(R.string.review_schedule)) {
             med.schedules.filter { it.endDate == null }.forEach { schedule ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Wrap: 4-5 daily slots would otherwise run off the screen.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     schedule.times.forEach { slot ->
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -158,15 +166,5 @@ private fun DetailBlock(
             )
             content()
         }
-    }
-}
-
-private val BackIcon by lazy {
-    strokeGlyph("Back", strokeWidth = 2.2f) {
-        moveTo(19f, 12f)
-        lineTo(5f, 12f)
-        moveTo(11f, 6f)
-        lineToRelative(-6f, 6f)
-        lineToRelative(6f, 6f)
     }
 }

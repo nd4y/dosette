@@ -151,11 +151,22 @@ object NagStateMachine {
         val graceOver =
             now.isAfter(state.graceAnchor.plus(settings.missedGraceMin.toLong(), ChronoUnit.MINUTES))
         val exhausted = state.nagCount + 1 >= settings.nagMaxCount
-        return if (graceOver || exhausted) {
-            expire(state)
-        } else {
-            val nagged = state.copy(nagCount = state.nagCount + 1, lastAlertAt = now)
-            Transition(nagged, listOf(NagEffect.PostReminder(alert = true), NagEffect.Reschedule))
+        return when {
+            graceOver -> {
+                expire(state)
+            }
+
+            // Nags are used up: stop alerting but keep the dose actionable.
+            // Only GraceExpired finalizes it — a stray tick delivered by an
+            // unrelated engine pass must not mark the dose missed early.
+            exhausted -> {
+                Transition(state, emptyList())
+            }
+
+            else -> {
+                val nagged = state.copy(nagCount = state.nagCount + 1, lastAlertAt = now)
+                Transition(nagged, listOf(NagEffect.PostReminder(alert = true), NagEffect.Reschedule))
+            }
         }
     }
 
@@ -236,7 +247,18 @@ object NagStateMachine {
         if (state == null || state.phase != ReminderPhase.SNOOZED || state.snoozedUntilPlace != null) {
             return Transition(state, emptyList())
         }
-        val active = state.copy(phase = ReminderPhase.ACTIVE, snoozedUntil = null, lastAlertAt = now)
+        // Same rule as arriving at a place: the postponement was deliberate,
+        // so the wake restarts both the grace window and the nag budget —
+        // otherwise a snooze reaching past the original grace end would be
+        // finalized missed the moment it wakes up.
+        val active =
+            state.copy(
+                phase = ReminderPhase.ACTIVE,
+                snoozedUntil = null,
+                graceAnchor = now,
+                nagCount = 0,
+                lastAlertAt = now,
+            )
         return Transition(active, listOf(NagEffect.PostReminder(alert = true), NagEffect.Reschedule))
     }
 

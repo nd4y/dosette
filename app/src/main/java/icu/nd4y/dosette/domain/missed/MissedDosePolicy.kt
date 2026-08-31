@@ -17,13 +17,4 @@ object MissedDosePolicy {
         require(graceMin >= 0) { "negative grace" }
         return now.isAfter(scheduledAt.plus(graceMin.toLong(), ChronoUnit.MINUTES))
     }
-
-    /** Occurrences scheduled at or before this instant are already missed. */
-    fun missedCutoff(
-        now: Instant,
-        graceMin: Int,
-    ): Instant {
-        require(graceMin >= 0) { "negative grace" }
-        return now.minus(graceMin.toLong(), ChronoUnit.MINUTES)
-    }
 }

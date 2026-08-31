@@ -2,7 +2,6 @@ package icu.nd4y.dosette.ui.profiles
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,8 +40,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.domain.model.Profile
+import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.MedPalette
+import icu.nd4y.dosette.ui.designsystem.ScreenHeader
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
+import icu.nd4y.dosette.ui.theme.LocalDarkTheme
 
 @Composable
 fun ProfilesScreen(
@@ -65,17 +67,7 @@ fun ProfilesScreen(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                Icon(BackIcon, contentDescription = stringResource(R.string.action_back))
-            }
-            Text(
-                text = stringResource(R.string.profiles_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        ScreenHeader(title = stringResource(R.string.profiles_title), onBack = onBack)
 
         state.profiles.forEach { profile ->
             ProfileRow(
@@ -145,7 +137,7 @@ private fun ProfileRow(
     onEdit: () -> Unit,
     onDelete: (() -> Unit)?,
 ) {
-    val color = MedPalette.resolve(profile.colorSeed, isSystemInDarkTheme())
+    val color = MedPalette.resolve(profile.colorSeed, LocalDarkTheme.current)
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
@@ -223,13 +215,13 @@ private fun ProfileDialog(
 ) {
     var name by remember { mutableStateOf(profile?.name.orEmpty()) }
     var colorSeed by remember { mutableStateOf(profile?.colorSeed ?: 0) }
-    val dark = isSystemInDarkTheme()
+    val dark = LocalDarkTheme.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                stringResource(if (profile == null) R.string.profiles_add else R.string.more_profiles),
+                stringResource(if (profile == null) R.string.profiles_add else R.string.profile_edit),
             )
         },
         text = {
@@ -255,7 +247,7 @@ private fun ProfileDialog(
                         ) {
                             if (colorSeed == seed) {
                                 Icon(
-                                    imageVector = CheckIcon,
+                                    imageVector = DosetteIcons.Check,
                                     contentDescription = null,
                                     tint = color.onContainer,
                                     modifier = Modifier.size(16.dp),
@@ -278,16 +270,6 @@ private fun ProfileDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
-}
-
-private val BackIcon: ImageVector by lazy {
-    strokeGlyph("Back", strokeWidth = 2.2f) {
-        moveTo(19f, 12f)
-        lineTo(5f, 12f)
-        moveTo(11f, 6f)
-        lineToRelative(-6f, 6f)
-        lineToRelative(6f, 6f)
-    }
 }
 
 private val EditIcon: ImageVector by lazy {
@@ -319,13 +301,5 @@ private val DeleteIcon: ImageVector by lazy {
         lineToRelative(0f, 6f)
         moveTo(14f, 11f)
         lineToRelative(0f, 6f)
-    }
-}
-
-private val CheckIcon: ImageVector by lazy {
-    strokeGlyph("Check", strokeWidth = 3f) {
-        moveTo(5f, 13f)
-        lineToRelative(4f, 4f)
-        lineTo(19f, 7f)
     }
 }

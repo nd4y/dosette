@@ -70,11 +70,12 @@ fun scheduleTimeEntity(
     scheduleId: String = "s1",
     timeMinutes: Int = 8 * 60,
     sortIndex: Int = 0,
+    doseAmount: Double = 1.0,
 ) = ScheduleTimeEntity(
     id = id,
     scheduleId = scheduleId,
     timeMinutes = timeMinutes,
-    doseAmount = 1.0,
+    doseAmount = doseAmount,
     sortIndex = sortIndex,
 )
 

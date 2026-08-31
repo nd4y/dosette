@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Medication data must not land in the Google cloud backup: the database
-  and the internal auto-backups are excluded. Settings (DataStore) still
-  transfer. Direct device-to-device transfer keeps everything - the data
-  moves between the user's own devices without a cloud copy.
+  Nothing the app stores may land in the Google cloud backup: the database
+  and auto-backups hold the medication data, and the DataStore holds the
+  configured home/work places (coordinates, Wi-Fi SSID). A cloud restore
+  without the database would be an empty app anyway. Direct device-to-device
+  transfer keeps everything - the data moves between the user's own devices
+  without a cloud copy.
 -->
 <data-extraction-rules>
     <cloud-backup>
@@ -19,6 +21,9 @@
         <exclude
             domain="file"
             path="backups/" />
+        <exclude
+            domain="file"
+            path="datastore/" />
     </cloud-backup>
     <device-transfer />
 </data-extraction-rules>

@@ -41,12 +41,4 @@ class AlarmSchedulerTest {
         val scheduled = requireNotNull(shadowOf(alarmManager).nextScheduledAlarm)
         assertThat(scheduled.triggerAtTime).isAtLeast(System.currentTimeMillis())
     }
-
-    @Test
-    fun `cancel clears the alarm`() {
-        scheduler.scheduleExact(Instant.now().plusSeconds(3600))
-        scheduler.cancel()
-
-        assertThat(shadowOf(alarmManager).scheduledAlarms).isEmpty()
-    }
 }

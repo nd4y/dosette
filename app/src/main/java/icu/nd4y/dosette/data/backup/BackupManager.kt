@@ -2,7 +2,6 @@ package icu.nd4y.dosette.data.backup
 
 import android.content.Context
 import android.net.Uri
-import androidx.core.app.NotificationManagerCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import icu.nd4y.dosette.data.db.dao.BackupDao
 import icu.nd4y.dosette.data.db.dao.BackupEntities
@@ -13,6 +12,7 @@ import icu.nd4y.dosette.data.db.toEntity
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.backup.BackupSnapshot
 import icu.nd4y.dosette.reminders.ReminderEngine
+import icu.nd4y.dosette.reminders.notifications.ReminderNotifier
 import kotlinx.coroutines.flow.first
 import java.io.File
 import java.time.Clock
@@ -36,6 +36,7 @@ class BackupManager
         private val backupDao: BackupDao,
         private val settingsRepository: SettingsRepository,
         private val engine: ReminderEngine,
+        private val notifier: ReminderNotifier,
         private val clock: Clock,
     ) {
         /** Non-blank [password] seals the file with [BackupCrypto]. */
@@ -95,7 +96,7 @@ class BackupManager
             settingsRepository.replaceAll(data.settings)
 
             // Ghost reminders must not survive the data swap.
-            NotificationManagerCompat.from(context).cancelAll()
+            notifier.cancelAll()
             engine.reschedule()
         }
 
@@ -157,7 +158,5 @@ class BackupManager
             const val KEEP_AUTO_BACKUPS = 5
 
             private val TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
-
-            fun suggestedFileName(snapshotDate: String): String = "dosette-backup-$snapshotDate.yaml"
         }
     }

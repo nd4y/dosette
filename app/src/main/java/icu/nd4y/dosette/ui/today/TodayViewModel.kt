@@ -6,7 +6,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import icu.nd4y.dosette.data.repository.DoseLogRepository
 import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
-import icu.nd4y.dosette.data.repository.PrnRecorder
 import icu.nd4y.dosette.data.repository.ProfileRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.DoseLog
@@ -16,11 +15,13 @@ import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.ScheduleType
 import icu.nd4y.dosette.domain.nag.SnoozeTarget
 import icu.nd4y.dosette.domain.schedule.OccurrenceGenerator
+import icu.nd4y.dosette.reminders.PrnIntakes
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.UserDoseAction
-import icu.nd4y.dosette.ui.cabinet.formatAmount
+import icu.nd4y.dosette.reminders.WidgetRefresher
+import icu.nd4y.dosette.ui.common.dayTicker
+import icu.nd4y.dosette.ui.common.strengthLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,13 +29,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import javax.inject.Inject
@@ -114,36 +113,22 @@ class TodayViewModel
         private val doseLogRepository: DoseLogRepository,
         private val settingsRepository: SettingsRepository,
         private val profileRepository: ProfileRepository,
-        private val prnRecorder: PrnRecorder,
         private val engine: ReminderEngine,
+        private val prnIntakes: PrnIntakes,
+        private val widgetRefresher: WidgetRefresher,
         private val clock: Clock,
     ) : ViewModel() {
-        private val today: LocalDate get() = clock.instant().atZone(clock.zone).toLocalDate()
-
-        private val _prnTaken = MutableSharedFlow<PrnTaken>(extraBufferCapacity = 1)
+        // Snackbars display sequentially for seconds each; a buffer of one
+        // would silently drop quick consecutive intakes.
+        private val _prnTaken = MutableSharedFlow<PrnTaken>(extraBufferCapacity = 16)
 
         /** Fires after each PRN intake so the screen can offer an undo snackbar. */
         val prnTaken: SharedFlow<PrnTaken> = _prnTaken
 
-        /** Emits today's date and re-emits right after midnight so the screen rolls over. */
-        private val dateTicker =
-            flow {
-                while (true) {
-                    val date = today
-                    emit(date)
-                    val nextMidnight =
-                        date
-                            .plusDays(1)
-                            .atStartOfDay(clock.zone)
-                            .toInstant()
-                    delay(Duration.between(clock.instant(), nextMidnight).toMillis().coerceAtLeast(1_000))
-                }
-            }
-
         val uiState: StateFlow<TodayUiState> =
             combine(
                 settingsRepository.settings,
-                dateTicker,
+                dayTicker(clock),
             ) { settings, date -> Triple(settings.activeProfileId, settings.places, date) }
                 .distinctUntilChanged()
                 .flatMapLatest { (profileId, places, date) ->
@@ -173,7 +158,13 @@ class TodayViewModel
         }
 
         fun selectProfile(id: String) {
-            viewModelScope.launch { settingsRepository.setActiveProfileId(id) }
+            viewModelScope.launch {
+                settingsRepository.setActiveProfileId(id)
+                // Glance sessions expire; without an explicit refresh the
+                // widget keeps showing the previous profile until the next
+                // alarm fires.
+                widgetRefresher.refresh()
+            }
         }
 
         private fun buildState(
@@ -191,10 +182,7 @@ class TodayViewModel
                         PrnMed(
                             medicationId = med.medication.id,
                             name = med.medication.name,
-                            strengthText =
-                                med.medication.strengthValue?.let {
-                                    "${formatAmount(it)} ${med.medication.strengthUnit.orEmpty()}".trim()
-                                },
+                            strengthText = strengthLabel(med.medication.strengthValue, med.medication.strengthUnit),
                             form = med.medication.form,
                             colorSeed = med.medication.colorSeed,
                         )
@@ -230,13 +218,14 @@ class TodayViewModel
 
         fun takePrn(prnMed: PrnMed) {
             viewModelScope.launch {
-                val intake = prnRecorder.record(prnMed.medicationId) ?: return@launch
+                // The shared path adds the low-stock check and widget refresh.
+                val intake = prnIntakes.take(prnMed.medicationId) ?: return@launch
                 _prnTaken.tryEmit(PrnTaken(logId = intake.logId, medicationName = intake.medicationName))
             }
         }
 
         /** Snackbar undo: removes the PRN log and returns the consumed stock. */
         fun undoPrn(logId: String) {
-            viewModelScope.launch { doseLogRepository.undoPrn(logId) }
+            viewModelScope.launch { prnIntakes.undo(logId) }
         }
     }

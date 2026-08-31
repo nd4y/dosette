@@ -47,7 +47,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.ui.common.currentLocale
-import icu.nd4y.dosette.ui.designsystem.strokeGlyph
+import icu.nd4y.dosette.ui.designsystem.DosetteIcons
+import icu.nd4y.dosette.ui.designsystem.ScreenHeader
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -93,6 +94,10 @@ fun AppointmentEditContent(
     var timePickerOpen by remember { mutableStateOf(false) }
     var deleteConfirmOpen by remember { mutableStateOf(false) }
 
+    // An existing appointment loads asynchronously; rendering the empty
+    // draft first would let typed text be overwritten by the loaded one.
+    if (!draft.loaded) return
+
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier =
@@ -102,24 +107,17 @@ fun AppointmentEditContent(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                Icon(BackIcon, contentDescription = stringResource(R.string.action_back))
-            }
-            Text(
-                text =
-                    stringResource(
-                        if (draft.editingExisting) {
-                            R.string.appointment_edit_title
-                        } else {
-                            R.string.appointment_new_title
-                        },
-                    ),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        ScreenHeader(
+            title =
+                stringResource(
+                    if (draft.editingExisting) {
+                        R.string.appointment_edit_title
+                    } else {
+                        R.string.appointment_new_title
+                    },
+                ),
+            onBack = onBack,
+        )
 
         OutlinedTextField(
             value = draft.title,
@@ -306,7 +304,7 @@ private fun DateTimeRow(
             color = MaterialTheme.colorScheme.primary,
         )
         Icon(
-            imageVector = ChevronRight,
+            imageVector = DosetteIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
@@ -395,22 +393,4 @@ private fun formatTime(time: LocalTime): String {
     val locale = currentLocale()
     val format = remember(locale) { DateTimeFormatter.ofPattern("HH:mm", locale) }
     return format.format(time)
-}
-
-private val BackIcon: ImageVector by lazy {
-    strokeGlyph("Back", strokeWidth = 2.2f) {
-        moveTo(19f, 12f)
-        lineTo(5f, 12f)
-        moveTo(11f, 6f)
-        lineToRelative(-6f, 6f)
-        lineToRelative(6f, 6f)
-    }
-}
-
-private val ChevronRight: ImageVector by lazy {
-    strokeGlyph("ChevronRight") {
-        moveTo(9f, 6f)
-        lineToRelative(6f, 6f)
-        lineToRelative(-6f, 6f)
-    }
 }

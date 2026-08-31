@@ -1,7 +1,6 @@
 package icu.nd4y.dosette.ui.more
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,8 +33,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.BuildConfig
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.domain.model.Profile
+import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.MedPalette
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
+import icu.nd4y.dosette.ui.theme.LocalDarkTheme
 
 @Composable
 fun MoreScreen(
@@ -167,7 +168,7 @@ private fun ProfilesCard(
             modifier = Modifier.padding(16.dp),
         ) {
             Row {
-                val dark = isSystemInDarkTheme()
+                val dark = LocalDarkTheme.current
                 profiles.take(3).forEachIndexed { index, profile ->
                     val color = MedPalette.resolve(profile.colorSeed, dark)
                     Box(
@@ -202,7 +203,7 @@ private fun ProfilesCard(
                 )
             }
             Icon(
-                imageVector = ChevronRight,
+                imageVector = DosetteIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(18.dp),
@@ -218,6 +219,7 @@ private fun MoreRow(
     subtitle: String?,
     enabled: Boolean,
     onClick: () -> Unit,
+    comingSoon: Boolean = false,
 ) {
     Surface(
         onClick = onClick,
@@ -267,19 +269,25 @@ private fun MoreRow(
                     )
                 }
             }
-            if (!enabled) {
-                Text(
-                    text = stringResource(R.string.coming_soon_badge),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-            } else {
-                Icon(
-                    imageVector = ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
+            // A disabled row is not automatically an unfinished feature:
+            // the About row is disabled and gets neither badge nor chevron.
+            when {
+                comingSoon -> {
+                    Text(
+                        text = stringResource(R.string.coming_soon_badge),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+
+                enabled -> {
+                    Icon(
+                        imageVector = DosetteIcons.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
     }
@@ -393,13 +401,5 @@ private val InfoIcon: ImageVector by lazy {
         lineToRelative(0f, 6f)
         moveTo(12f, 7.5f)
         lineToRelative(0f, 0.5f)
-    }
-}
-
-private val ChevronRight: ImageVector by lazy {
-    strokeGlyph("ChevronRight") {
-        moveTo(9f, 6f)
-        lineToRelative(6f, 6f)
-        lineToRelative(-6f, 6f)
     }
 }

@@ -3,6 +3,7 @@ package icu.nd4y.dosette.reminders
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
 import icu.nd4y.dosette.di.IoDispatcher
 import icu.nd4y.dosette.domain.model.OccurrenceKey
@@ -34,12 +35,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val result = goAsync()
         CoroutineScope(ioDispatcher).launch {
             try {
-                when (action) {
-                    ACTION_TAKE -> engine.onUserAction(key, UserDoseAction.TAKE)
-                    ACTION_SKIP -> engine.onUserAction(key, UserDoseAction.SKIP)
-                    ACTION_SNOOZE -> engine.onUserAction(key, UserDoseAction.SNOOZE)
-                    ACTION_DISMISSED -> engine.onDismissed(key)
-                }
+                runCatching {
+                    when (action) {
+                        ACTION_TAKE -> engine.onUserAction(key, UserDoseAction.TAKE)
+                        ACTION_SKIP -> engine.onUserAction(key, UserDoseAction.SKIP)
+                        ACTION_SNOOZE -> engine.onUserAction(key, UserDoseAction.SNOOZE)
+                        ACTION_DISMISSED -> engine.onDismissed(key)
+                    }
+                }.onFailure { Log.e("NotificationAction", "engine pass failed", it) }
             } finally {
                 result.finish()
             }

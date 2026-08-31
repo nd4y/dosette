@@ -5,6 +5,7 @@ import icu.nd4y.dosette.domain.backup.BackupSnapshot
 import icu.nd4y.dosette.domain.backup.ProfileBackup
 import icu.nd4y.dosette.domain.backup.SettingsBackup
 import icu.nd4y.dosette.domain.model.Appointment
+import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.Medication
 import icu.nd4y.dosette.domain.model.MedicationVariant
@@ -111,8 +112,14 @@ object BackupMapper {
         val scheduleIds = data.schedules.mapTo(mutableSetOf()) { it.id }
         val variantsByMed = data.variants.groupBy({ it.medicationId }, { it.id })
 
+        // Duplicate ids must fail here with a readable message, not surface
+        // as a raw SQLite constraint error from the import transaction.
         check(profileIds.size == data.profiles.size) { "duplicate profile ids" }
         check(medIds.size == data.medications.size) { "duplicate medication ids" }
+        check(scheduleIds.size == data.schedules.size) { "duplicate schedule ids" }
+        check(data.variants.distinctBy { it.id }.size == data.variants.size) { "duplicate variant ids" }
+        check(data.doseLogs.distinctBy { it.id }.size == data.doseLogs.size) { "duplicate dose log ids" }
+        check(data.appointments.distinctBy { it.id }.size == data.appointments.size) { "duplicate appointment ids" }
 
         data.settings.activeProfileId?.let {
             check(it in profileIds) { "active_profile_id $it points to a missing profile" }
@@ -126,6 +133,11 @@ object BackupMapper {
         }
         for (log in data.doseLogs) {
             check(log.medicationId in medIds) { "dose log ${log.id} references missing medication ${log.medicationId}" }
+            // A scheduled log without a planned time has no occurrence
+            // identity and would crash every reminder pass after import.
+            if (log.kind == DoseKind.SCHEDULED) {
+                check(log.time != null) { "scheduled dose log ${log.id} has no time" }
+            }
             log.scheduleId?.let {
                 check(it in scheduleIds) { "dose log ${log.id} references missing schedule $it" }
             }

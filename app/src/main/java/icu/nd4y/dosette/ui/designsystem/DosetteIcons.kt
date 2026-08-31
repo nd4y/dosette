@@ -99,6 +99,32 @@ object DosetteIcons {
             }.build()
     }
 
+    val Back: ImageVector by lazy {
+        strokeGlyph("Back", strokeWidth = 2.2f) {
+            moveTo(19f, 12f)
+            lineTo(5f, 12f)
+            moveTo(11f, 6f)
+            lineToRelative(-6f, 6f)
+            lineToRelative(6f, 6f)
+        }
+    }
+
+    val ChevronRight: ImageVector by lazy {
+        strokeGlyph("ChevronRight") {
+            moveTo(9f, 6f)
+            lineToRelative(6f, 6f)
+            lineToRelative(-6f, 6f)
+        }
+    }
+
+    val Check: ImageVector by lazy {
+        strokeGlyph("Check", strokeWidth = 3f) {
+            moveTo(5f, 13f)
+            lineToRelative(4f, 4f)
+            lineTo(19f, 7f)
+        }
+    }
+
     private fun strokeIcon(
         name: String,
         pathContent: PathBuilder.() -> Unit,

@@ -12,7 +12,7 @@ Offline medication tracker for Android. Material 3 Expressive, no accounts, no n
 - **Stock tracking** with low-stock notifications and refill amounts.
 - **Multiple profiles** — family members in one app, reminders fire for everyone.
 - **Doctor appointments** with reminders (1 day / 2 h / 30 min before).
-- **Full backup as versioned YAML** — export/import through any documents provider (local file, Google Drive), optionally **password-encrypted** (PBKDF2 + AES-256-GCM, `.yaml.enc`). Import validates the file, previews the contents and auto-saves the current data first. The medication database is excluded from Android's cloud backup — data leaves the device only as your own (optionally encrypted) export.
+- **Full backup as versioned YAML** — export/import through any documents provider (local file, Google Drive), optionally **password-encrypted** (PBKDF2 + AES-256-GCM, `.yaml.enc`). Import validates the file, previews the contents and auto-saves the current data first. Everything the app stores (the medication database, settings, configured places) is excluded from Android's cloud backup — data leaves the device only as your own (optionally encrypted) export; direct device-to-device transfer keeps everything.
 - **Home-screen widget** (2×2 / 4×2 / 4×4 via resize): the day ring, upcoming doses and one-tap
   take right from the launcher; follows Material You dynamic color and updates on the same
   alarms as the reminders.

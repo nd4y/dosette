@@ -4,16 +4,12 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
 import icu.nd4y.dosette.data.db.entity.MedicationVariantEntity
-import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
 @Dao
 interface MedicationVariantDao {
     @Query("SELECT * FROM medication_variants WHERE medicationId = :medicationId ORDER BY sortOrder")
     suspend fun getByMedication(medicationId: String): List<MedicationVariantEntity>
-
-    @Query("SELECT * FROM medication_variants WHERE medicationId = :medicationId ORDER BY sortOrder")
-    fun observeByMedication(medicationId: String): Flow<List<MedicationVariantEntity>>
 
     @Query("SELECT * FROM medication_variants WHERE id = :id")
     suspend fun getById(id: String): MedicationVariantEntity?

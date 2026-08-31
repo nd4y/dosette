@@ -1,5 +1,7 @@
 package icu.nd4y.dosette.data.repository
 
+import androidx.room.withTransaction
+import icu.nd4y.dosette.data.db.AppDatabase
 import icu.nd4y.dosette.data.db.dao.DoseLogDao
 import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
 import icu.nd4y.dosette.data.db.toDomain
@@ -14,14 +16,6 @@ import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
-
-data class AdherenceCounts(
-    val taken: Int = 0,
-    val skipped: Int = 0,
-    val missed: Int = 0,
-) {
-    val total: Int get() = taken + skipped + missed
-}
 
 interface DoseLogRepository {
     fun observeRange(
@@ -48,24 +42,10 @@ interface DoseLogRepository {
      */
     suspend fun finalizeScheduled(log: DoseLog)
 
-    suspend fun upsert(log: DoseLog)
-
     suspend fun recordPrn(log: DoseLog)
 
     /** Undo of [recordPrn]: deletes the log and returns the consumed stock. */
     suspend fun undoPrn(logId: String)
-
-    suspend fun adherence(
-        profileId: String,
-        from: LocalDate,
-        to: LocalDate,
-    ): AdherenceCounts
-
-    suspend fun adherenceForMedication(
-        medicationId: String,
-        from: LocalDate,
-        to: LocalDate,
-    ): AdherenceCounts
 
     suspend fun getById(id: String): DoseLog?
 
@@ -76,6 +56,7 @@ interface DoseLogRepository {
 class DoseLogRepositoryImpl
     @Inject
     constructor(
+        private val db: AppDatabase,
         private val doseLogDao: DoseLogDao,
         private val variantDao: MedicationVariantDao,
     ) : DoseLogRepository {
@@ -116,44 +97,28 @@ class DoseLogRepositoryImpl
             }
         }
 
-        override suspend fun upsert(log: DoseLog) = doseLogDao.upsert(log.toEntity())
-
-        override suspend fun recordPrn(log: DoseLog) {
-            doseLogDao.insert(log.toEntity())
-            if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
-                variantDao.decrement(log.variantId, log.consumedUnits)
+        // Log and stock move together: process death between the two writes
+        // would leave a recorded intake without the decrement (or a returned
+        // stock with the log still present, ready for a second undo).
+        override suspend fun recordPrn(log: DoseLog) =
+            db.withTransaction {
+                doseLogDao.insert(log.toEntity())
+                if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
+                    variantDao.decrement(log.variantId, log.consumedUnits)
+                }
             }
-        }
 
-        override suspend fun undoPrn(logId: String) {
-            val log = getById(logId) ?: return
-            if (log.kind != DoseKind.PRN) return
-            if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
-                variantDao.increment(log.variantId, log.consumedUnits)
+        override suspend fun undoPrn(logId: String) =
+            db.withTransaction {
+                val log = getById(logId) ?: return@withTransaction
+                if (log.kind != DoseKind.PRN) return@withTransaction
+                if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
+                    variantDao.increment(log.variantId, log.consumedUnits)
+                }
+                doseLogDao.delete(logId)
             }
-            doseLogDao.delete(logId)
-        }
-
-        override suspend fun adherence(
-            profileId: String,
-            from: LocalDate,
-            to: LocalDate,
-        ): AdherenceCounts = doseLogDao.adherenceCounts(profileId, from, to).toAdherence()
-
-        override suspend fun adherenceForMedication(
-            medicationId: String,
-            from: LocalDate,
-            to: LocalDate,
-        ): AdherenceCounts = doseLogDao.adherenceCountsForMedication(medicationId, from, to).toAdherence()
 
         override suspend fun getById(id: String): DoseLog? = doseLogDao.getById(id)?.toDomain()
 
         override suspend fun delete(id: String) = doseLogDao.delete(id)
-
-        private fun List<icu.nd4y.dosette.data.db.dao.StatusCount>.toAdherence(): AdherenceCounts =
-            AdherenceCounts(
-                taken = firstOrNull { it.status == DoseStatus.TAKEN.name }?.count ?: 0,
-                skipped = firstOrNull { it.status == DoseStatus.SKIPPED.name }?.count ?: 0,
-                missed = firstOrNull { it.status == DoseStatus.MISSED.name }?.count ?: 0,
-            )
     }

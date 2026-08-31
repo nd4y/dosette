@@ -8,7 +8,17 @@ import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+
+/**
+ * Whether the app is themed dark RIGHT NOW. The theme is a setting, not
+ * necessarily the system state — anything resolving light/dark assets
+ * (the medication palette above all) must read this, never
+ * [isSystemInDarkTheme] directly.
+ */
+val LocalDarkTheme = staticCompositionLocalOf { false }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -33,9 +43,11 @@ fun DosetteTheme(
             }
         }
 
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
-        motionScheme = MotionScheme.expressive(),
-        content = content,
-    )
+    CompositionLocalProvider(LocalDarkTheme provides darkTheme) {
+        MaterialExpressiveTheme(
+            colorScheme = colorScheme,
+            motionScheme = MotionScheme.expressive(),
+            content = content,
+        )
+    }
 }

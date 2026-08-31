@@ -120,7 +120,7 @@ class ReminderEngine
         suspend fun undoDose(key: OccurrenceKey): Unit =
             mutex.withLock {
                 val log = doseLogRepository.getScheduled(key) ?: return
-                restoreStock(log)
+                medicationRepository.restoreStockOf(log)
                 doseLogRepository.delete(log.id)
                 processDueLocked()
             }
@@ -147,7 +147,7 @@ class ReminderEngine
                                 notifier.cancelReminder(occurrence.key)
                             }
                             doseLogRepository.getScheduled(occurrence.key)?.let { log ->
-                                restoreStock(log)
+                                medicationRepository.restoreStockOf(log)
                                 doseLogRepository.delete(log.id)
                             }
                         }
@@ -155,12 +155,6 @@ class ReminderEngine
                 }
                 processDueLocked()
             }
-
-        private suspend fun restoreStock(log: DoseLog) {
-            if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
-                medicationRepository.incrementStock(log.variantId, log.consumedUnits)
-            }
-        }
 
         /** Geofence fired: wake every reminder waiting for [place]. */
         suspend fun onPlaceReached(place: PlaceId): Unit =
@@ -269,12 +263,26 @@ class ReminderEngine
             slackEnd: Instant,
         ) {
             for (state in world.states) {
+                // Orphaned state: its medication is gone (profile removal,
+                // med deletion, import) or archived — cancel it instead of
+                // nagging forever with a raw UUID as the title.
+                if (world.medicationById[state.occurrenceKey.medicationId] == null) {
+                    reminderStateRepository.delete(state.occurrenceKey)
+                    world.stateByKey.remove(state.occurrenceKey)
+                    notifier.cancelReminder(state.occurrenceKey)
+                    continue
+                }
                 val graceEnd =
                     state.graceAnchor.plus(Duration.ofMinutes(world.settings.missedGraceMin.toLong()))
                 when (state.phase) {
                     ReminderPhase.ACTIVE -> {
+                        // The nag-budget guard mirrors AlarmPlanner: once nags
+                        // are exhausted the planner stops scheduling ticks, and
+                        // a pass triggered by anything else must not deliver
+                        // the tick that would finalize the dose early.
                         val tickDue =
                             world.settings.nagIntervalMin > 0 &&
+                                state.nagCount + 1 < world.settings.nagMaxCount &&
                                 !state.lastAlertAt
                                     .plus(Duration.ofMinutes(world.settings.nagIntervalMin.toLong()))
                                     .isAfter(slackEnd)
@@ -285,7 +293,7 @@ class ReminderEngine
                     }
 
                     ReminderPhase.SNOOZED -> {
-                        handleSnoozedState(world, state, now, slackEnd, graceEnd)
+                        handleSnoozedState(world, state, slackEnd)
                     }
                 }
             }
@@ -295,24 +303,24 @@ class ReminderEngine
         private suspend fun handleSnoozedState(
             world: World,
             state: ReminderState,
-            now: Instant,
             slackEnd: Instant,
-            graceEnd: Instant,
         ) {
             val place = state.snoozedUntilPlace
             if (place != null) {
-                // No time expiry while waiting for a place; the Wi-Fi
-                // check here is the fallback for a missed geofence.
+                // No time expiry while waiting for a place; the Wi-Fi check
+                // is the fallback for a missed geofence, and a place cleared
+                // in settings after the snooze can never signal — reactivate
+                // then instead of polling forever.
                 val config = world.places[place]?.takeIf { it.isConfigured }
-                if (config != null && placeMonitor.isCurrentlyAt(config)) {
+                if (config == null || placeMonitor.isCurrentlyAt(config)) {
                     applyEvent(world, state.occurrenceKey, NagEvent.PlaceReached(place))
                 }
             } else {
+                // Grace deliberately does not end a snooze early: waking from
+                // one restarts the grace window (NagStateMachine.onSnoozeExpired),
+                // so only the expiry itself matters here.
                 val snoozeOver = state.snoozedUntil?.isAfter(slackEnd) == false
-                when {
-                    now.isAfter(graceEnd) -> applyEvent(world, state.occurrenceKey, NagEvent.GraceExpired)
-                    snoozeOver -> applyEvent(world, state.occurrenceKey, NagEvent.SnoozeExpired)
-                }
+                if (snoozeOver) applyEvent(world, state.occurrenceKey, NagEvent.SnoozeExpired)
             }
         }
 
@@ -328,13 +336,14 @@ class ReminderEngine
             placeMonitor.syncGeofences(waiting)
         }
 
-        private fun handleAppointments(
+        private suspend fun handleAppointments(
             world: World,
             now: Instant,
             slackEnd: Instant,
         ) {
             val zone = clock.zone
             val windowStart = now.minus(APPOINTMENT_WINDOW)
+            var posted = false
             for (appointment in world.appointments) {
                 val startsAt =
                     appointment.date
@@ -343,11 +352,17 @@ class ReminderEngine
                         .toInstant()
                 for (offset in appointment.reminderOffsetsMin) {
                     val remindAt = startsAt.minus(Duration.ofMinutes(offset.toLong()))
-                    if (remindAt.isAfter(windowStart) && !remindAt.isAfter(slackEnd)) {
+                    val fresh = world.appointmentSweepMark?.isBefore(remindAt) != false
+                    if (fresh && remindAt.isAfter(windowStart) && !remindAt.isAfter(slackEnd)) {
                         notifier.postAppointment(appointment, offset)
+                        posted = true
                     }
                 }
             }
+            // The watermark keeps later passes inside the window from
+            // re-posting (and re-sounding) the same reminder — a dismissed
+            // appointment notice stays dismissed.
+            if (posted) settingsRepository.setLastAppointmentSweepAt(slackEnd)
         }
 
         private suspend fun applyEvent(
@@ -368,16 +383,26 @@ class ReminderEngine
             }
 
             val med = world.medicationById[key.medicationId] ?: medicationRepository.getDetails(key.medicationId)
+            // The existing log guards the stock effects below: whether this
+            // occurrence was already counted as taken decides if a decrement
+            // (or a restore before an overwrite) is due.
+            val priorLog =
+                if (transition.effects.any { it is NagEffect.FinalizeDose || it == NagEffect.DecrementStock }) {
+                    doseLogRepository.getScheduled(key)
+                } else {
+                    null
+                }
+            val prior = Prior(state, priorLog)
             for (effect in transition.effects) {
-                executeEffect(world, key, state, med, effect)
+                executeEffect(world, key, med, prior, effect)
             }
         }
 
         private suspend fun executeEffect(
             world: World,
             key: OccurrenceKey,
-            previousState: ReminderState?,
             med: MedicationDetails?,
+            prior: Prior,
             effect: NagEffect,
         ) {
             when (effect) {
@@ -390,22 +415,13 @@ class ReminderEngine
                 }
 
                 is NagEffect.FinalizeDose -> {
-                    if (med != null) {
-                        val occurrence = occurrenceFor(med, key)
-                        val scheduledAt =
-                            previousState?.scheduledAt ?: key.date
-                                .atTime(key.time)
-                                .atZone(clock.zone)
-                                .toInstant()
-                        val actedAt = if (effect.status == DoseStatus.MISSED) null else clock.instant()
-                        doseLogRepository.finalizeScheduled(
-                            buildLog(med, occurrence, scheduledAt, effect.status, actedAt),
-                        )
-                    }
+                    if (med != null) finalizeFromEffect(key, med, prior, effect.status)
                 }
 
                 NagEffect.DecrementStock -> {
-                    decrementStock(world, med)
+                    // Already counted as taken: a repeated Take (double tap,
+                    // queued broadcast) must not drain the stock again.
+                    if (prior.log?.status != DoseStatus.TAKEN) decrementStock(world, med, key)
                 }
 
                 NagEffect.PostMissedNotice -> {
@@ -418,12 +434,41 @@ class ReminderEngine
             }
         }
 
+        private suspend fun finalizeFromEffect(
+            key: OccurrenceKey,
+            med: MedicationDetails,
+            prior: Prior,
+            status: DoseStatus,
+        ) {
+            // No occurrence — the schedule was deleted or replaced under a
+            // live state; nothing to record. A log already in this status is
+            // left alone so its actedAt survives repeated delivery.
+            val occurrence = occurrenceFor(med, key) ?: return
+            if (prior.log?.status == status) return
+            // Flipping an already-taken dose away from TAKEN returns the
+            // stock its log consumed before the row is overwritten (and its
+            // consumed units are lost).
+            if (prior.log?.status == DoseStatus.TAKEN) medicationRepository.restoreStockOf(prior.log)
+            val scheduledAt =
+                prior.state?.scheduledAt ?: key.date
+                    .atTime(key.time)
+                    .atZone(clock.zone)
+                    .toInstant()
+            val actedAt = if (status == DoseStatus.MISSED) null else clock.instant()
+            doseLogRepository.finalizeScheduled(
+                buildLog(med, occurrence, scheduledAt, status, actedAt),
+            )
+        }
+
         private suspend fun decrementStock(
             world: World,
             med: MedicationDetails?,
+            key: OccurrenceKey,
         ) {
             val variant = med?.defaultVariant?.takeIf { it.trackingEnabled } ?: return
-            val amount = occurrenceFor(med, null)?.amount ?: med.schedules.firstOrNull()?.defaultDoseAmount ?: 1.0
+            // The amount of THIS slot, not today's first one: slots can carry
+            // different doses, and the decrement must match the log.
+            val amount = occurrenceFor(med, key)?.amount ?: med.schedules.firstOrNull()?.defaultDoseAmount ?: 1.0
             val units =
                 InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, variant.strengthValue)
             val before = medicationRepository.getVariant(variant.id)?.currentStock ?: return
@@ -438,13 +483,12 @@ class ReminderEngine
 
         private fun buildLog(
             med: MedicationDetails,
-            occurrence: Occurrence?,
+            occurrence: Occurrence,
             scheduledAt: Instant,
             status: DoseStatus,
             actedAt: Instant?,
         ): DoseLog {
-            val key =
-                occurrence?.key ?: error("scheduled log needs an occurrence")
+            val key = occurrence.key
             val amount = occurrence.amount
             val variant = if (status == DoseStatus.TAKEN) med.defaultVariant else null
             val consumed =
@@ -470,19 +514,14 @@ class ReminderEngine
             )
         }
 
-        /** Occurrence matching [key]; when key is null — today's first occurrence (dose amount lookup). */
+        /** Occurrence matching [key], or null when its schedule no longer produces it. */
         private fun occurrenceFor(
             med: MedicationDetails,
-            key: OccurrenceKey?,
-        ): Occurrence? {
-            val date = key?.date ?: clock.instant().atZone(clock.zone).toLocalDate()
-            val occurrences = OccurrenceGenerator.occurrencesOn(med.schedules, date)
-            return if (key == null) {
-                occurrences.firstOrNull()
-            } else {
-                occurrences.firstOrNull { it.time == key.time }
-            }
-        }
+            key: OccurrenceKey,
+        ): Occurrence? =
+            OccurrenceGenerator
+                .occurrencesOn(med.schedules, key.date)
+                .firstOrNull { it.time == key.time }
 
         private suspend fun rescheduleLocked(settings: NagSettings) {
             val schedules =
@@ -528,6 +567,7 @@ class ReminderEngine
             val settings = settingsRepository.settings.first()
             val medications = medicationRepository.getAllActive()
             val profiles = profileRepository.getAll()
+            val states = reminderStateRepository.getAll()
             val today = clock.instant().atZone(clock.zone).toLocalDate()
             return World(
                 settings =
@@ -539,24 +579,29 @@ class ReminderEngine
                     ),
                 lowStockNotifyEnabled = settings.lowStockNotifyEnabled,
                 places = settings.places,
+                appointmentSweepMark = settings.lastAppointmentSweepAt,
                 medications = medications,
                 medicationById = medications.associateBy { it.medication.id },
-                states = reminderStateRepository.getAll(),
-                stateByKey =
-                    reminderStateRepository
-                        .getAll()
-                        .associateBy { it.occurrenceKey }
-                        .toMutableMap(),
+                states = states,
+                stateByKey = states.associateBy { it.occurrenceKey }.toMutableMap(),
                 appointments = appointmentRepository.getAllFrom(today),
                 profileNames = profiles.associate { it.id to it.name },
                 multiProfile = profiles.size > 1,
             )
         }
 
+        /** What was true for the occurrence before this event's effects run. */
+        private data class Prior(
+            val state: ReminderState?,
+            val log: DoseLog?,
+        )
+
         private data class World(
             val settings: NagSettings,
             val lowStockNotifyEnabled: Boolean,
             val places: Map<PlaceId, PlaceConfig>,
+            /** Appointment reminders up to this instant were already posted. */
+            val appointmentSweepMark: Instant?,
             val medications: List<MedicationDetails>,
             val medicationById: Map<String, MedicationDetails>,
             val states: List<ReminderState>,
@@ -573,7 +618,14 @@ class ReminderEngine
         }
     }
 
-private fun medicationTitle(med: MedicationDetails): String {
+/** Returns the stock a taken dose's log consumed (no-op for other logs). */
+private suspend fun MedicationRepository.restoreStockOf(log: DoseLog) {
+    if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
+        incrementStock(log.variantId, log.consumedUnits)
+    }
+}
+
+internal fun medicationTitle(med: MedicationDetails): String {
     val strength =
         med.medication.strengthValue?.let { value ->
             "${formatUnits(value)} ${med.medication.strengthUnit.orEmpty()}".trim()
@@ -581,5 +633,5 @@ private fun medicationTitle(med: MedicationDetails): String {
     return listOfNotNull(med.medication.name, strength).joinToString(" ")
 }
 
-private fun formatUnits(value: Double): String =
+internal fun formatUnits(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()

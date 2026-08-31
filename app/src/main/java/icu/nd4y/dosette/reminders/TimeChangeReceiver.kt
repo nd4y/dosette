@@ -3,6 +3,7 @@ package icu.nd4y.dosette.reminders
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
 import icu.nd4y.dosette.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
@@ -30,7 +31,8 @@ class TimeChangeReceiver : BroadcastReceiver() {
         val result = goAsync()
         CoroutineScope(ioDispatcher).launch {
             try {
-                engine.processDueEvents()
+                runCatching { engine.processDueEvents() }
+                    .onFailure { Log.e("TimeChangeReceiver", "engine pass failed", it) }
             } finally {
                 result.finish()
             }

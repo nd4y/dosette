@@ -11,6 +11,7 @@ import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator
 import icu.nd4y.dosette.domain.stats.StreakCalculator
+import icu.nd4y.dosette.ui.common.dayTicker
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -57,14 +58,15 @@ class StatsViewModel
         private val clock: Clock,
     ) : ViewModel() {
         val uiState: StateFlow<StatsUiState> =
-            settingsRepository.settings
-                .map { it.activeProfileId }
-                .distinctUntilChanged()
-                .flatMapLatest { profileId ->
+            combine(
+                settingsRepository.settings.map { it.activeProfileId }.distinctUntilChanged(),
+                // The 30-day window slides at midnight, not on data changes.
+                dayTicker(clock),
+            ) { profileId, today -> profileId to today }
+                .flatMapLatest { (profileId, today) ->
                     if (profileId == null) {
                         flowOf(StatsUiState(loading = false))
                     } else {
-                        val today = LocalDate.now(clock)
                         combine(
                             medicationRepository.observeByProfile(profileId),
                             doseLogRepository.observeRange(

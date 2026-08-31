@@ -44,6 +44,7 @@
         <item quantity="other">%d days a week</item>
     </plurals>
     <string name="schedule_every_n_days">Every %d days</string>
+    <string name="schedule_every_day">Every day</string>
     <string name="schedule_every_other_day">Every other day</string>
     <string name="schedule_cycle_summary">%1$d days on / %2$d off</string>
     <string name="schedule_as_needed">As needed</string>
@@ -279,16 +280,17 @@
 
     <string name="profiles_title">Profiles</string>
     <string name="profiles_add">Add profile</string>
+    <string name="profile_edit">Edit profile</string>
     <string name="profiles_active">active</string>
     <string name="profile_name_label">Name</string>
     <string name="profile_delete">Delete profile</string>
     <string name="profile_delete_warning">All medications, history and appointments of this profile will be deleted permanently.</string>
     <string name="action_edit">Edit</string>
+    <string name="action_ok">OK</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
 
     <string name="action_next">Next</string>
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>
-    <string name="action_close">Close</string>
 </resources>

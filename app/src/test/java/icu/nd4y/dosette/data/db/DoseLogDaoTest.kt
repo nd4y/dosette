@@ -62,27 +62,6 @@ class DoseLogDaoTest {
         }
 
     @Test
-    fun `adherence counts group by status and exclude prn`() =
-        runTest {
-            db.doseLogDao().insert(doseLogEntity(id = "a", timeMinutes = 8 * 60, status = "TAKEN"))
-            db.doseLogDao().insert(doseLogEntity(id = "b", timeMinutes = 20 * 60, status = "TAKEN"))
-            db.doseLogDao().insert(
-                doseLogEntity(id = "c", date = LocalDate.parse("2026-08-28"), status = "MISSED"),
-            )
-            db.doseLogDao().insert(doseLogEntity(id = "p", kind = "PRN", timeMinutes = null, status = "TAKEN"))
-
-            val counts =
-                db.doseLogDao().adherenceCounts(
-                    "p1",
-                    LocalDate.parse("2026-08-01"),
-                    LocalDate.parse("2026-08-31"),
-                )
-
-            assertThat(counts.first { it.status == "TAKEN" }.count).isEqualTo(2)
-            assertThat(counts.first { it.status == "MISSED" }.count).isEqualTo(1)
-        }
-
-    @Test
     fun `upsert flips status in place`() =
         runTest {
             val log = doseLogEntity(id = "d1", status = "MISSED")

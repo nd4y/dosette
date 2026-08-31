@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import dagger.hilt.android.qualifiers.ApplicationContext
 import icu.nd4y.dosette.MainActivity
 import java.time.Instant
@@ -26,14 +27,18 @@ class AlarmScheduler
         fun scheduleExact(at: Instant) {
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             val triggerAtMillis = maxOf(at.toEpochMilli(), System.currentTimeMillis() + MIN_LEAD_MILLIS)
+            // On API 31-32 the exact-alarm special access is revocable and
+            // setAlarmClock then throws SecurityException from every engine
+            // pass — degrade to an inexact alarm so the chain stays alive
+            // (ExactAlarmPermissionReceiver re-arms exactly on re-grant).
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, alarmIntent())
+                return
+            }
             alarmManager.setAlarmClock(
                 AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent()),
                 alarmIntent(),
             )
-        }
-
-        fun cancel() {
-            context.getSystemService(AlarmManager::class.java).cancel(alarmIntent())
         }
 
         private fun alarmIntent(): PendingIntent =

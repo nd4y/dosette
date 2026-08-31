@@ -10,6 +10,16 @@ import java.time.format.DateTimeFormatter
 
 val TimeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
+/** 1.0 -> "1", 0.5 -> "0.5" — dose amounts without a trailing ".0". */
+fun formatAmount(value: Double): String =
+    if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+
+/** "150 mg" from strength value + unit; null when there is no strength. */
+fun strengthLabel(
+    value: Double?,
+    unit: String?,
+): String? = value?.let { "${formatAmount(it)} ${unit.orEmpty()}".trim() }
+
 /** Observable current locale (java.util flavor) — recomposes on language change. */
 @Composable
 fun currentLocale(): java.util.Locale =
@@ -20,6 +30,15 @@ fun currentLocale(): java.util.Locale =
         )
 
 fun List<LocalTime>.joinTimes(): String = joinToString(", ") { it.format(TimeFormat) }
+
+/** "Every day" / "Every other day" / "Every N days" — 1 and 2 read as words. */
+@Composable
+fun everyNDaysText(interval: Int): String =
+    when (interval) {
+        1 -> stringResource(R.string.schedule_every_day)
+        2 -> stringResource(R.string.schedule_every_other_day)
+        else -> stringResource(R.string.schedule_every_n_days, interval)
+    }
 
 @Composable
 fun ScheduleBrief.asText(): String =
@@ -40,11 +59,7 @@ fun ScheduleBrief.asText(): String =
 
         is ScheduleBrief.EveryNDays -> {
             listOf(
-                if (interval == 2) {
-                    stringResource(R.string.schedule_every_other_day)
-                } else {
-                    stringResource(R.string.schedule_every_n_days, interval)
-                },
+                everyNDaysText(interval),
                 times.joinTimes(),
             ).joinToString(" · ")
         }

@@ -152,10 +152,20 @@ class MedEditViewModel
             return true
         }
 
+        /** A double tap on Save must not create the medication twice. */
+        private var saveInFlight = false
+
         private fun save() {
+            if (saveInFlight) return
+            saveInFlight = true
             val state = _uiState.value
             viewModelScope.launch {
-                val profileId = settingsRepository.settings.first().activeProfileId ?: return@launch
+                val profileId =
+                    settingsRepository.settings.first().activeProfileId
+                        ?: run {
+                            saveInFlight = false
+                            return@launch
+                        }
                 val now = clock.instant()
                 val medicationId = UUID.randomUUID().toString()
 
@@ -237,8 +247,11 @@ class MedEditViewModel
                 if (state.scheduleType == ScheduleType.AS_NEEDED) {
                     emptyList()
                 } else {
+                    // Two slots at the same wall-clock minute would collapse
+                    // into one occurrence identity anyway — keep the first.
                     state.times
                         .sortedBy { it.time }
+                        .distinctBy { it.time }
                         .mapIndexed { index, slot ->
                             ScheduleTime(
                                 id = UUID.randomUUID().toString(),

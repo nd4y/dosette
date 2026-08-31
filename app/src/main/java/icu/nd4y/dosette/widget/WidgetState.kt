@@ -65,6 +65,9 @@ class WidgetStateLoader
                 .map { it.activeProfileId }
                 .distinctUntilChanged()
                 .flatMapLatest { profileId ->
+                    // The same date for the log query and the render: mixing a
+                    // captured date with a re-read one around midnight would
+                    // pair the new day's doses with the old day's logs.
                     val date = today()
                     if (profileId == null) {
                         flowOf(WidgetState(date))
@@ -72,7 +75,7 @@ class WidgetStateLoader
                         combine(
                             medicationRepository.observeByProfile(profileId),
                             doseLogRepository.observeRange(profileId, date, date),
-                        ) { meds, logs -> build(meds, logs) }
+                        ) { meds, logs -> build(date, meds, logs) }
                     }
                 }
 
@@ -81,11 +84,11 @@ class WidgetStateLoader
         private fun today() = clock.instant().atZone(clock.zone).toLocalDate()
 
         private fun build(
+            date: LocalDate,
             meds: List<MedicationDetails>,
             logs: List<DoseLog>,
         ): WidgetState {
             val now = clock.instant()
-            val date = today()
             val doses = buildDayDoses(date, meds, logs, clock.zone)
 
             val prn =
