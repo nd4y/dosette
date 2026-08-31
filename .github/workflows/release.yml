@@ -22,8 +22,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       # A tag can land on any commit; do not sign what does not pass tests.
+      # AGP creates unit tests only for the debug build type.
       - name: Unit tests
-        run: ./gradlew :app:testReleaseUnitTest --stacktrace
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
