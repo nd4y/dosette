@@ -35,6 +35,7 @@ import icu.nd4y.dosette.ui.stats.StatsUiState
 import icu.nd4y.dosette.ui.theme.DosetteTheme
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
+import icu.nd4y.dosette.ui.today.TimelineDay
 import icu.nd4y.dosette.ui.today.TodayContent
 import icu.nd4y.dosette.ui.today.TodayDose
 import icu.nd4y.dosette.ui.today.TodayUiState
@@ -221,9 +222,10 @@ class ScreenshotTests {
         status: DoseUiStatus,
         actedTime: LocalTime? = null,
         instructions: String? = null,
+        date: LocalDate = LocalDate.parse("2026-08-29"),
     ) = TodayDose(
         medicationId = medicationId,
-        date = LocalDate.parse("2026-08-29"),
+        date = date,
         time = time,
         name = name,
         strengthText = strength,
@@ -239,58 +241,99 @@ class ScreenshotTests {
         TodayUiState(
             loading = false,
             date = LocalDate.parse("2026-08-29"),
-            doses =
+            days =
                 listOf(
-                    todayDose(
-                        "m1",
-                        "Метформин",
-                        "500 мг",
-                        LocalTime.of(8, 0),
-                        MedicationForm.TABLET,
-                        0,
-                        DoseUiStatus.TAKEN,
-                        LocalTime.of(8, 4),
+                    // A snooze that crossed midnight: the timeline lands here.
+                    TimelineDay(
+                        date = LocalDate.parse("2026-08-28"),
+                        doses =
+                            listOf(
+                                todayDose(
+                                    "m6",
+                                    "Мелатонин",
+                                    "3 мг",
+                                    LocalTime.of(23, 50),
+                                    MedicationForm.TABLET,
+                                    5,
+                                    DoseUiStatus.PENDING,
+                                    date = LocalDate.parse("2026-08-28"),
+                                ),
+                            ),
                     ),
-                    todayDose(
-                        "m2",
-                        "Лизиноприл",
-                        "10 мг",
-                        LocalTime.of(8, 0),
-                        MedicationForm.TABLET,
-                        1,
-                        DoseUiStatus.TAKEN,
-                        LocalTime.of(8, 4),
+                    TimelineDay(
+                        date = LocalDate.parse("2026-08-29"),
+                        doses =
+                            listOf(
+                                todayDose(
+                                    "m1",
+                                    "Метформин",
+                                    "500 мг",
+                                    LocalTime.of(8, 0),
+                                    MedicationForm.TABLET,
+                                    0,
+                                    DoseUiStatus.TAKEN,
+                                    LocalTime.of(8, 4),
+                                ),
+                                todayDose(
+                                    "m2",
+                                    "Лизиноприл",
+                                    "10 мг",
+                                    LocalTime.of(8, 0),
+                                    MedicationForm.TABLET,
+                                    1,
+                                    DoseUiStatus.TAKEN,
+                                    LocalTime.of(8, 4),
+                                ),
+                                todayDose(
+                                    "m4",
+                                    "Витамин D",
+                                    "2000 МЕ",
+                                    LocalTime.of(8, 0),
+                                    MedicationForm.DROPS,
+                                    3,
+                                    DoseUiStatus.TAKEN,
+                                    LocalTime.of(8, 5),
+                                ),
+                                todayDose(
+                                    "m1",
+                                    "Метформин",
+                                    "500 мг",
+                                    LocalTime.of(20, 0),
+                                    MedicationForm.TABLET,
+                                    0,
+                                    DoseUiStatus.PENDING,
+                                    instructions = "с едой",
+                                ),
+                                todayDose(
+                                    "m3",
+                                    "Аторвастатин",
+                                    "20 мг",
+                                    LocalTime.of(20, 0),
+                                    MedicationForm.CAPSULE,
+                                    2,
+                                    DoseUiStatus.PENDING,
+                                ),
+                            ),
                     ),
-                    todayDose(
-                        "m4",
-                        "Витамин D",
-                        "2000 МЕ",
-                        LocalTime.of(8, 0),
-                        MedicationForm.DROPS,
-                        3,
-                        DoseUiStatus.TAKEN,
-                        LocalTime.of(8, 5),
-                    ),
-                    todayDose(
-                        "m1",
-                        "Метформин",
-                        "500 мг",
-                        LocalTime.of(20, 0),
-                        MedicationForm.TABLET,
-                        0,
-                        DoseUiStatus.PENDING,
-                        instructions = "с едой",
-                    ),
-                    todayDose(
-                        "m3",
-                        "Аторвастатин",
-                        "20 мг",
-                        LocalTime.of(20, 0),
-                        MedicationForm.CAPSULE,
-                        2,
-                        DoseUiStatus.PENDING,
+                    // Tomorrow: read-only preview rows.
+                    TimelineDay(
+                        date = LocalDate.parse("2026-08-30"),
+                        doses =
+                            listOf(
+                                todayDose(
+                                    "m1",
+                                    "Метформин",
+                                    "500 мг",
+                                    LocalTime.of(8, 0),
+                                    MedicationForm.TABLET,
+                                    0,
+                                    DoseUiStatus.PENDING,
+                                    date = LocalDate.parse("2026-08-30"),
+                                ),
+                            ),
                     ),
                 ),
+            anchorDate = LocalDate.parse("2026-08-28"),
             prn = listOf(PrnMed("m5", "Ибупрофен", "400 мг", MedicationForm.TABLET, 4)),
             takenCount = 3,
             plannedCount = 5,
@@ -342,6 +385,29 @@ class ScreenshotTests {
                 month = month,
                 days = days,
                 monthAdherencePercent = 92,
+                selectedDate = today,
+                selectedDoses =
+                    listOf(
+                        todayDose(
+                            "m1",
+                            "Метформин",
+                            "500 мг",
+                            LocalTime.of(8, 0),
+                            MedicationForm.TABLET,
+                            0,
+                            DoseUiStatus.TAKEN,
+                            LocalTime.of(8, 4),
+                        ),
+                        todayDose(
+                            "m3",
+                            "Аторвастатин",
+                            "20 мг",
+                            LocalTime.of(20, 0),
+                            MedicationForm.CAPSULE,
+                            2,
+                            DoseUiStatus.PENDING,
+                        ),
+                    ),
             )
         }
 

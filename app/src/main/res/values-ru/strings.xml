@@ -47,6 +47,9 @@
     </plurals>
     <string name="schedule_every_n_days">Каждые %d дн.</string>
     <string name="schedule_every_day">Каждый день</string>
+    <string name="day_yesterday">Вчера</string>
+    <string name="day_tomorrow">Завтра</string>
+    <string name="timeline_day_empty">Назначений нет</string>
     <string name="schedule_every_other_day">Через день</string>
     <string name="schedule_cycle_summary">%1$d дн. приёма / %2$d перерыва</string>
     <string name="schedule_as_needed">По необходимости</string>
