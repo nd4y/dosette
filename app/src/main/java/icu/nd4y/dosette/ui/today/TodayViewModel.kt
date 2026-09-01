@@ -263,8 +263,12 @@ class TodayViewModel
         }
 
         companion object {
-            /** The Google-Calendar-style scroll window around today. */
-            const val PAST_DAYS = 7L
+            /**
+             * The agenda window around today. One day back is enough: the
+             * only unresolved past doses the engine keeps alive are the ones
+             * from the night before, and deeper history lives in Calendar.
+             */
+            const val PAST_DAYS = 1L
             const val FUTURE_DAYS = 7L
         }
     }

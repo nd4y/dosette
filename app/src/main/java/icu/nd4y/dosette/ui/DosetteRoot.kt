@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -68,6 +69,9 @@ private enum class DosetteTab(
 @Composable
 fun DosetteRoot(modifier: Modifier = Modifier) {
     var selectedTab by rememberSaveable { mutableIntStateOf(DosetteTab.Today.ordinal) }
+    // Bumped when the Today tab is tapped while already selected — the
+    // timeline scrolls back to today (a tab reused as a "go home" button).
+    var todayReselects by remember { mutableIntStateOf(0) }
     val tabs = DosetteTab.entries
 
     val cabinetBackStack = rememberNavBackStack(CabinetKey)
@@ -91,7 +95,13 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
                     tabs.forEachIndexed { index, tab ->
                         NavigationBarItem(
                             selected = index == selectedTab,
-                            onClick = { selectedTab = index },
+                            onClick = {
+                                if (index == selectedTab && tab == DosetteTab.Today) {
+                                    todayReselects++
+                                } else {
+                                    selectedTab = index
+                                }
+                            },
                             icon = { Icon(tab.icon, contentDescription = null) },
                             label = { Text(stringResource(tab.label)) },
                         )
@@ -111,6 +121,7 @@ fun DosetteRoot(modifier: Modifier = Modifier) {
                 padding = padding,
                 cabinetBackStack = cabinetBackStack,
                 moreBackStack = moreBackStack,
+                todayReselects = todayReselects,
             )
         }
     }
@@ -122,6 +133,7 @@ private fun TabContent(
     padding: PaddingValues,
     cabinetBackStack: NavBackStack<NavKey>,
     moreBackStack: NavBackStack<NavKey>,
+    todayReselects: Int,
 ) {
     val navMotion = rememberDirectionalMotion()
     when (tab) {
@@ -165,7 +177,7 @@ private fun TabContent(
         }
 
         DosetteTab.Today -> {
-            TodayScreen(contentPadding = padding)
+            TodayScreen(contentPadding = padding, reselectTick = todayReselects)
         }
 
         DosetteTab.Calendar -> {
