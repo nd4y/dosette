@@ -108,16 +108,36 @@ fun CalendarContent(
 ) {
     var monthPickerOpen by remember { mutableStateOf(false) }
 
+    // The month grid sits at the BOTTOM, in one-handed thumb reach; the
+    // selected day's details and the month summary scroll above it.
     Column(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier =
             modifier
                 .fillMaxSize()
                 .padding(contentPadding)
-                .padding(horizontal = 20.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(horizontal = 20.dp),
     ) {
         CalendarHeader(state, onPreviousMonth, onNextMonth, onTitleClick = { monthPickerOpen = true })
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+        ) {
+            DayPanel(
+                date = state.selectedDate,
+                doses = state.selectedDoses,
+                medications = state.medications,
+                onMark = onMark,
+                onUndo = onUndo,
+                onAddOneOff = onAddOneOff,
+                onDeleteOneOff = onDeleteOneOff,
+            )
+            AdherenceCard(state)
+        }
+        Legend()
         WeekdayRow()
         val monthMotion = rememberDirectionalMotion()
         AnimatedContent(
@@ -126,35 +146,24 @@ fun CalendarContent(
             transitionSpec = { monthMotion.transform(forward = targetState.month > initialState.month) },
             label = "month",
             modifier =
-                Modifier.pointerInput(Unit) {
-                    // Horizontal swipe between months; threshold keeps taps intact.
-                    var dragTotal = 0f
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragTotal = 0f },
-                        onDragEnd = {
-                            when {
-                                dragTotal > SWIPE_THRESHOLD_PX -> onPreviousMonth()
-                                dragTotal < -SWIPE_THRESHOLD_PX -> onNextMonth()
-                            }
-                        },
-                    ) { _, dragAmount -> dragTotal += dragAmount }
-                },
+                Modifier
+                    .padding(bottom = 8.dp)
+                    .pointerInput(Unit) {
+                        // Horizontal swipe between months; threshold keeps taps intact.
+                        var dragTotal = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { dragTotal = 0f },
+                            onDragEnd = {
+                                when {
+                                    dragTotal > SWIPE_THRESHOLD_PX -> onPreviousMonth()
+                                    dragTotal < -SWIPE_THRESHOLD_PX -> onNextMonth()
+                                }
+                            },
+                        ) { _, dragAmount -> dragTotal += dragAmount }
+                    },
         ) { monthState ->
             MonthGrid(monthState, onSelect)
         }
-        Legend()
-        // The tapped day's details live right here instead of a modal
-        // sheet — the lower half of the screen was sitting empty.
-        DayPanel(
-            date = state.selectedDate,
-            doses = state.selectedDoses,
-            medications = state.medications,
-            onMark = onMark,
-            onUndo = onUndo,
-            onAddOneOff = onAddOneOff,
-            onDeleteOneOff = onDeleteOneOff,
-        )
-        AdherenceCard(state)
     }
 
     if (monthPickerOpen) {

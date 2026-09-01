@@ -75,6 +75,8 @@ import java.time.format.DateTimeFormatter
 fun TodayScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    /** Bumped when the Today tab is re-tapped: scroll back to today. */
+    reselectTick: Int = 0,
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -106,6 +108,7 @@ fun TodayScreen(
             onUndo = viewModel::undo,
             onTakePrn = viewModel::takePrn,
             onSelectProfile = viewModel::selectProfile,
+            reselectTick = reselectTick,
         )
         SnackbarHost(
             hostState = snackbarHost,
@@ -129,6 +132,7 @@ fun TodayContent(
     onTakePrn: (PrnMed) -> Unit,
     onSelectProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
+    reselectTick: Int = 0,
 ) {
     if (!state.loading && state.days.all { it.doses.isEmpty() } && state.prn.isEmpty()) {
         // Same horizontal inset as the list below, or switching to an
@@ -161,6 +165,13 @@ fun TodayContent(
         if (!state.loading && !anchored && timeline.isNotEmpty()) {
             listState.scrollToItem(anchorIndex(timeline, state))
             anchored = true
+        }
+    }
+    // Re-tapping the Today tab brings the timeline home.
+    LaunchedEffect(reselectTick) {
+        if (reselectTick > 0) {
+            val home = timeline.indexOfFirst { it.key == TimelineItem.Title.key }
+            if (home >= 0) listState.animateScrollToItem(home)
         }
     }
 
