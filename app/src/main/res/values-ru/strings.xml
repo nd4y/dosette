@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="tab_today">Сегодня</string>
-    <string name="tab_calendar">Календарь</string>
     <string name="tab_cabinet">Аптечка</string>
     <string name="tab_more">Ещё</string>
 
@@ -50,6 +49,9 @@
     <string name="day_yesterday">Вчера</string>
     <string name="day_tomorrow">Завтра</string>
     <string name="timeline_day_empty">Назначений нет</string>
+    <string name="calendar_toggle">Открыть календарь</string>
+    <string name="back_to_today">Сегодня</string>
+    <string name="unresolved_yesterday_banner">За вчера остался неотмеченный приём</string>
     <string name="schedule_every_other_day">Через день</string>
     <string name="schedule_cycle_summary">%1$d дн. приёма / %2$d перерыва</string>
     <string name="schedule_as_needed">По необходимости</string>

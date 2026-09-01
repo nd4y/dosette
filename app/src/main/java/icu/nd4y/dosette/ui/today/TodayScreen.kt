@@ -1,9 +1,15 @@
 package icu.nd4y.dosette.ui.today
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,7 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -35,6 +42,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,7 +53,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +66,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.nag.SnoozeTarget
+import icu.nd4y.dosette.ui.calendar.AddOneOffDialog
+import icu.nd4y.dosette.ui.calendar.CalendarPanel
 import icu.nd4y.dosette.ui.common.TimeFormat
 import icu.nd4y.dosette.ui.common.currentLocale
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
@@ -75,7 +88,7 @@ import java.time.format.DateTimeFormatter
 fun TodayScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
-    /** Bumped when the Today tab is re-tapped: scroll back to today. */
+    /** Bumped when the Today tab is re-tapped: back to today. */
     reselectTick: Int = 0,
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
@@ -106,8 +119,17 @@ fun TodayScreen(
             onSkip = viewModel::skip,
             onSnooze = viewModel::snooze,
             onUndo = viewModel::undo,
+            onDeleteOneOff = viewModel::deleteOneOff,
             onTakePrn = viewModel::takePrn,
             onSelectProfile = viewModel::selectProfile,
+            onSelectDate = viewModel::select,
+            onGoToday = viewModel::goToday,
+            onPreviousDay = viewModel::previousDay,
+            onNextDay = viewModel::nextDay,
+            onPreviousMonth = viewModel::previousMonth,
+            onNextMonth = viewModel::nextMonth,
+            onShowMonth = viewModel::showMonth,
+            onAddOneOff = viewModel::addOneOff,
             reselectTick = reselectTick,
         )
         SnackbarHost(
@@ -129,283 +151,329 @@ fun TodayContent(
     onSkip: (TodayDose) -> Unit,
     onSnooze: (TodayDose, SnoozeTarget) -> Unit,
     onUndo: (TodayDose) -> Unit,
+    onDeleteOneOff: (TodayDose) -> Unit,
     onTakePrn: (PrnMed) -> Unit,
     onSelectProfile: (String) -> Unit,
+    onSelectDate: (LocalDate) -> Unit,
+    onGoToday: () -> Unit,
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onShowMonth: (java.time.YearMonth) -> Unit,
+    onAddOneOff: (String, java.time.LocalTime, Double) -> Unit,
     modifier: Modifier = Modifier,
     reselectTick: Int = 0,
+    calendarExpandedInitially: Boolean = false,
 ) {
-    if (!state.loading && state.days.all { it.doses.isEmpty() } && state.prn.isEmpty()) {
-        // Same horizontal inset as the list below, or switching to an
-        // empty profile visibly shifts the header to the screen edge.
-        Column(
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .padding(contentPadding)
-                    .padding(horizontal = 20.dp),
-        ) {
-            TodayHeader(state)
-            ProfileChips(state, onSelectProfile)
-            EmptyState(
-                icon = DosetteIcons.Today,
-                title = stringResource(R.string.today_empty_title),
-                subtitle = stringResource(R.string.today_empty_subtitle),
-            )
-        }
-        return
-    }
+    var calendarExpanded by rememberSaveable { mutableStateOf(calendarExpandedInitially) }
+    var addDialogOpen by remember { mutableStateOf(false) }
 
-    val timeline = timelineItems(state)
-    val listState = rememberLazyListState()
-    var anchored by rememberSaveable { mutableStateOf(false) }
-    // Past days sit above the today block; land the list on the anchor
-    // (today, or the earliest unresolved past day) once data is here —
-    // like a calendar agenda, the past is one scroll up, not the start.
-    LaunchedEffect(state.loading) {
-        if (!state.loading && !anchored && timeline.isNotEmpty()) {
-            listState.scrollToItem(anchorIndex(timeline, state))
-            anchored = true
-        }
-    }
-    // Re-tapping the Today tab brings the timeline home.
+    // Re-tapping the Today tab: back to today, calendar folded away.
     LaunchedEffect(reselectTick) {
         if (reselectTick > 0) {
-            val home = timeline.indexOfFirst { it.key == TimelineItem.Title.key }
-            if (home >= 0) listState.animateScrollToItem(home)
+            calendarExpanded = false
+            onGoToday()
         }
     }
 
-    LazyColumn(
-        state = listState,
-        contentPadding =
-            PaddingValues(
-                start = 20.dp,
-                end = 20.dp,
-                top = contentPadding.calculateTopPadding(),
-                bottom = contentPadding.calculateBottomPadding() + 24.dp,
-            ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier.fillMaxSize(),
+    Column(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .padding(contentPadding)
+                .padding(horizontal = 20.dp),
     ) {
-        items(items = timeline, key = { it.key }, contentType = { it::class }) { item ->
-            Box(modifier = Modifier.animateItem()) {
-                TimelineEntry(
-                    item = item,
-                    state = state,
-                    onTake = onTake,
-                    onSkip = onSkip,
-                    onSnooze = onSnooze,
-                    onUndo = onUndo,
-                    onTakePrn = onTakePrn,
-                    onSelectProfile = onSelectProfile,
+        DayHeaderRow(
+            state = state,
+            calendarExpanded = calendarExpanded,
+            onToggleCalendar = { calendarExpanded = !calendarExpanded },
+            onGoToday = onGoToday,
+        )
+        ProfileChips(state, onSelectProfile)
+        AnimatedVisibility(
+            visible = calendarExpanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            CalendarPanel(
+                month = state.month,
+                days = state.calendarDays,
+                selectedDate = state.selectedDate,
+                monthAdherencePercent = state.monthAdherencePercent,
+                onPreviousMonth = onPreviousMonth,
+                onNextMonth = onNextMonth,
+                onShowMonth = onShowMonth,
+                onSelect = { date ->
+                    calendarExpanded = false
+                    onSelectDate(date)
+                },
+                modifier = Modifier.padding(bottom = 10.dp),
+            )
+        }
+
+        val dayMotion = effectsSpec<Float>()
+        AnimatedContent(
+            targetState = state,
+            contentKey = { it.selectedDate },
+            transitionSpec = {
+                // Next day slides in from below (the swipe-up direction),
+                // the previous one from above.
+                val forward = targetState.selectedDate > initialState.selectedDate
+                if (forward) {
+                    (slideInVertically { it / 3 } + fadeIn(dayMotion)) togetherWith
+                        (slideOutVertically { -it / 3 } + fadeOut(dayMotion))
+                } else {
+                    (slideInVertically { -it / 3 } + fadeIn(dayMotion)) togetherWith
+                        (slideOutVertically { it / 3 } + fadeOut(dayMotion))
+                } using SizeTransform(clip = true)
+            },
+            label = "day",
+            modifier = Modifier.weight(1f),
+        ) { dayState ->
+            DayContent(
+                state = dayState,
+                onTake = onTake,
+                onSkip = onSkip,
+                onSnooze = onSnooze,
+                onUndo = onUndo,
+                onDeleteOneOff = onDeleteOneOff,
+                onTakePrn = onTakePrn,
+                onSelectDate = onSelectDate,
+                onPreviousDay = onPreviousDay,
+                onNextDay = onNextDay,
+                onAddOneOff = { addDialogOpen = true },
+            )
+        }
+    }
+
+    if (addDialogOpen && state.medications.isNotEmpty()) {
+        AddOneOffDialog(
+            medications = state.medications,
+            onConfirm = { medicationId, time, amount ->
+                addDialogOpen = false
+                onAddOneOff(medicationId, time, amount)
+            },
+            onDismiss = { addDialogOpen = false },
+        )
+    }
+}
+
+/** «Сегодня ⌄» / «Вчера ⌄» — the day title with the calendar toggle. */
+@Composable
+private fun DayHeaderRow(
+    state: TodayUiState,
+    calendarExpanded: Boolean,
+    onToggleCalendar: () -> Unit,
+    onGoToday: () -> Unit,
+) {
+    val locale = currentLocale()
+    val formatted =
+        remember(state.selectedDate, locale) {
+            val raw = state.selectedDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", locale))
+            if (locale.language == "ru") raw.replaceFirstChar { it.lowercase(locale) } else raw
+        }
+    val title =
+        when (state.selectedDate) {
+            state.date -> stringResource(R.string.tab_today)
+            state.date.minusDays(1) -> stringResource(R.string.day_yesterday)
+            state.date.plusDays(1) -> stringResource(R.string.day_tomorrow)
+            else -> formatted
+        }
+    val subtitle = if (title == formatted) null else formatted
+    val chevronAngle by animateFloatAsState(if (calendarExpanded) 180f else 0f, label = "chevron")
+
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(onClick = onToggleCalendar),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
+                Icon(
+                    imageVector = ChevronDown,
+                    contentDescription = stringResource(R.string.calendar_toggle),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp).rotate(chevronAngle),
+                )
+            }
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (!state.isToday) {
+            TextButton(onClick = onGoToday) {
+                Text(stringResource(R.string.back_to_today))
             }
         }
     }
 }
 
+/** One day of doses; edge swipes hand over to the neighbouring days. */
 @Composable
-private fun TimelineEntry(
-    item: TimelineItem,
+private fun DayContent(
     state: TodayUiState,
     onTake: (TodayDose) -> Unit,
     onSkip: (TodayDose) -> Unit,
     onSnooze: (TodayDose, SnoozeTarget) -> Unit,
     onUndo: (TodayDose) -> Unit,
+    onDeleteOneOff: (TodayDose) -> Unit,
     onTakePrn: (PrnMed) -> Unit,
-    onSelectProfile: (String) -> Unit,
+    onSelectDate: (LocalDate) -> Unit,
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit,
+    onAddOneOff: () -> Unit,
 ) {
-    when (item) {
-        is TimelineItem.DayHeader -> {
-            DayHeader(date = item.date, today = state.date)
-        }
-
-        TimelineItem.Title -> {
-            TodayHeader(state)
-        }
-
-        TimelineItem.Profiles -> {
-            ProfileChips(state, onSelectProfile)
-        }
-
-        TimelineItem.Hero -> {
-            HeroCard(state)
-        }
-
-        is TimelineItem.Slot -> {
-            SlotHeader(
-                slot = item.doses.first().slot,
-                doses = item.doses,
-                modifier = Modifier.padding(top = 10.dp),
-            )
-        }
-
-        is TimelineItem.Dose -> {
-            DoseItem(
-                dose = item.dose,
-                readOnly = item.readOnly,
-                snoozePlaces = state.snoozePlaces,
-                onTake = onTake,
-                onSkip = onSkip,
-                onSnooze = onSnooze,
-                onUndo = onUndo,
-            )
-        }
-
-        TimelineItem.TodayEmpty -> {
-            Text(
-                text = stringResource(R.string.timeline_day_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 10.dp),
-            )
-        }
-
-        TimelineItem.PrnHeader -> {
-            Text(
-                text = stringResource(R.string.today_prn_section),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp),
-            )
-        }
-
-        is TimelineItem.Prn -> {
-            PrnRow(prnMed = item.med, onTake = { onTakePrn(item.med) })
-        }
+    if (state.showEmptyState) {
+        EmptyState(
+            icon = DosetteIcons.Today,
+            title = stringResource(R.string.today_empty_title),
+            subtitle = stringResource(R.string.today_empty_subtitle),
+        )
+        return
     }
-}
 
-@Composable
-private fun DoseItem(
-    dose: TodayDose,
-    readOnly: Boolean,
-    snoozePlaces: Set<PlaceId>,
-    onTake: (TodayDose) -> Unit,
-    onSkip: (TodayDose) -> Unit,
-    onSnooze: (TodayDose, SnoozeTarget) -> Unit,
-    onUndo: (TodayDose) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val fade = effectsSpec<Float>()
-    AnimatedContent(
-        targetState = dose,
-        contentKey = { it.status },
-        transitionSpec = {
-            (fadeIn(fade) togetherWith fadeOut(fade)) using SizeTransform(clip = false)
-        },
-        label = "dose",
-        modifier = modifier,
-    ) { animatedDose ->
-        when {
-            animatedDose.status != DoseUiStatus.PENDING -> {
-                ActedDoseRow(
-                    dose = animatedDose,
-                    onTake = { onTake(animatedDose) },
-                    onUndo = { onUndo(animatedDose) },
-                )
-            }
-
-            readOnly -> {
-                PlannedDoseRow(animatedDose)
-            }
-
-            else -> {
-                PendingDoseCard(
-                    dose = animatedDose,
-                    snoozePlaces = snoozePlaces,
-                    onTake = { onTake(animatedDose) },
-                    onSkip = { onSkip(animatedDose) },
-                    onSnooze = { target -> onSnooze(animatedDose, target) },
-                )
-            }
+    val thresholdPx = with(LocalDensity.current) { DAY_SWITCH_THRESHOLD.toPx() }
+    val daySwitch =
+        remember(state.selectedDate) {
+            DaySwitchConnection(thresholdPx, onPreviousDay, onNextDay)
         }
-    }
-}
 
-/** A future dose: same anatomy, no actions — the day has not come yet. */
-@Composable
-private fun PlannedDoseRow(dose: TodayDose) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    LazyColumn(
+        state = rememberLazyListState(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
             Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .fillMaxSize()
+                .nestedScroll(daySwitch),
     ) {
-        MedIconBox(form = dose.form, colorSeed = dose.colorSeed, size = 36.dp)
-        Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f)) {
-            Text(
-                text = dose.name,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text =
-                    listOfNotNull(dose.strengthText, stringResource(R.string.unit_pieces, dose.amountText))
-                        .joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (state.isToday && state.unresolvedYesterday) {
+            item(key = "carryover-banner") {
+                CarryoverBanner(onClick = { onSelectDate(state.date.minusDays(1)) })
+            }
         }
-        Text(
-            text = dose.time.format(TimeFormat),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (state.isToday) {
+            item(key = "hero") { HeroCard(state) }
+        }
+        if (state.doses.isEmpty()) {
+            item(key = "day-empty") {
+                Text(
+                    text = stringResource(R.string.timeline_day_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+        }
+        doseItems(state, DoseActions(onTake, onSkip, onSnooze, onUndo, onDeleteOneOff))
+        if (state.medications.isNotEmpty()) {
+            item(key = "oneoff-add") {
+                TextButton(onClick = onAddOneOff) {
+                    Text(stringResource(R.string.oneoff_add))
+                }
+            }
+        }
+        prnItems(state, onTakePrn)
     }
 }
 
-/** «Вчера · воскресенье, 31 августа» — a day boundary in the timeline. */
-@Composable
-private fun DayHeader(
-    date: LocalDate,
-    today: LocalDate,
+/** The per-dose callbacks bundled, so item builders stay small. */
+private class DoseActions(
+    val onTake: (TodayDose) -> Unit,
+    val onSkip: (TodayDose) -> Unit,
+    val onSnooze: (TodayDose, SnoozeTarget) -> Unit,
+    val onUndo: (TodayDose) -> Unit,
+    val onDeleteOneOff: (TodayDose) -> Unit,
+)
+
+private fun LazyListScope.doseItems(
+    state: TodayUiState,
+    actions: DoseActions,
 ) {
-    val locale = currentLocale()
-    val formatted =
-        remember(date, locale) {
-            val raw = date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", locale))
-            if (locale.language == "ru") raw.replaceFirstChar { it.lowercase(locale) } else raw
+    val readOnly = state.selectedDate > state.date
+    slotSections(state.doses).forEach { doses ->
+        item(key = "slot-${doses.first().slot}-${doses.first().time}") {
+            SlotHeader(slot = doses.first().slot, doses = doses, modifier = Modifier.padding(top = 10.dp))
         }
-    val relative =
-        when (date) {
-            today.minusDays(1) -> stringResource(R.string.day_yesterday)
-            today.plusDays(1) -> stringResource(R.string.day_tomorrow)
-            else -> null
+        doses.forEach { dose ->
+            item(key = "dose-${dose.key.encode()}") {
+                DoseItem(
+                    dose = dose,
+                    readOnly = readOnly,
+                    snoozePlaces = state.snoozePlaces,
+                    onTake = actions.onTake,
+                    onSkip = actions.onSkip,
+                    onSnooze = actions.onSnooze,
+                    onUndo = actions.onUndo,
+                    onDeleteOneOff = actions.onDeleteOneOff,
+                    modifier = Modifier.animateItem(),
+                )
+            }
         }
-    Text(
-        text = relative?.let { "$it · $formatted" } ?: formatted,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(top = 18.dp),
-    )
+    }
 }
 
-@Composable
-private fun TodayHeader(state: TodayUiState) {
-    val locale = currentLocale()
-    val formatted =
-        remember(state.date, locale) {
-            val raw = state.date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", locale))
-            if (locale.language == "ru") raw.replaceFirstChar { it.lowercase(locale) } else raw
-        }
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+private fun LazyListScope.prnItems(
+    state: TodayUiState,
+    onTakePrn: (PrnMed) -> Unit,
+) {
+    if (!state.isToday || state.prn.isEmpty()) return
+    item(key = "prn-header") {
         Text(
-            text = stringResource(R.string.tab_today),
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = formatted,
-            style = MaterialTheme.typography.bodyMedium,
+            text = stringResource(R.string.today_prn_section),
+            style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 12.dp),
         )
+    }
+    state.prn.forEach { prnMed ->
+        item(key = "prn-${prnMed.medicationId}") {
+            PrnRow(prnMed = prnMed, onTake = { onTakePrn(prnMed) })
+        }
+    }
+}
+
+/** «За вчера остался неотмеченный приём» — one tap away. */
+@Composable
+private fun CarryoverBanner(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.unresolved_yesterday_banner),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = DosetteIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -435,7 +503,7 @@ private fun HeroCard(state: TodayUiState) {
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
-                val pending = state.todayDoses.count { it.status == DoseUiStatus.PENDING }
+                val pending = state.doses.count { it.status == DoseUiStatus.PENDING }
                 Text(
                     text =
                         when {
@@ -500,6 +568,91 @@ private fun SlotHeader(
                 color = MaterialTheme.colorScheme.primary,
             )
         }
+    }
+}
+
+@Composable
+private fun DoseItem(
+    dose: TodayDose,
+    readOnly: Boolean,
+    snoozePlaces: Set<PlaceId>,
+    onTake: (TodayDose) -> Unit,
+    onSkip: (TodayDose) -> Unit,
+    onSnooze: (TodayDose, SnoozeTarget) -> Unit,
+    onUndo: (TodayDose) -> Unit,
+    onDeleteOneOff: (TodayDose) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val fade = effectsSpec<Float>()
+    AnimatedContent(
+        targetState = dose,
+        contentKey = { it.status },
+        transitionSpec = {
+            (fadeIn(fade) togetherWith fadeOut(fade)) using SizeTransform(clip = false)
+        },
+        label = "dose",
+        modifier = modifier,
+    ) { animatedDose ->
+        when {
+            animatedDose.status != DoseUiStatus.PENDING -> {
+                ActedDoseRow(
+                    dose = animatedDose,
+                    onTake = { onTake(animatedDose) },
+                    onUndo = { onUndo(animatedDose) },
+                )
+            }
+
+            readOnly -> {
+                PlannedDoseRow(animatedDose)
+            }
+
+            else -> {
+                PendingDoseCard(
+                    dose = animatedDose,
+                    snoozePlaces = snoozePlaces,
+                    onTake = { onTake(animatedDose) },
+                    onSkip = { onSkip(animatedDose) },
+                    onSnooze = { target -> onSnooze(animatedDose, target) },
+                    onDeleteOneOff = if (animatedDose.oneOff) ({ onDeleteOneOff(animatedDose) }) else null,
+                )
+            }
+        }
+    }
+}
+
+/** A future dose: same anatomy, no actions — the day has not come yet. */
+@Composable
+private fun PlannedDoseRow(dose: TodayDose) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        MedIconBox(form = dose.form, colorSeed = dose.colorSeed, size = 36.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f)) {
+            Text(
+                text = dose.name,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text =
+                    listOfNotNull(dose.strengthText, stringResource(R.string.unit_pieces, dose.amountText))
+                        .joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = dose.time.format(TimeFormat),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -695,6 +848,7 @@ private fun PendingDoseCard(
     onTake: () -> Unit,
     onSkip: () -> Unit,
     onSnooze: (SnoozeTarget) -> Unit,
+    onDeleteOneOff: (() -> Unit)? = null,
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -730,6 +884,7 @@ private fun PendingDoseCard(
                 onTake = onTake,
                 onSkip = onSkip,
                 onSnooze = onSnooze,
+                onDeleteOneOff = onDeleteOneOff,
             )
         }
     }
@@ -741,6 +896,7 @@ private fun TakeSplitButton(
     onTake: () -> Unit,
     onSkip: () -> Unit,
     onSnooze: (SnoozeTarget) -> Unit,
+    onDeleteOneOff: (() -> Unit)?,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -806,6 +962,15 @@ private fun TakeSplitButton(
                         },
                     )
                 }
+                if (onDeleteOneOff != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.oneoff_delete)) },
+                        onClick = {
+                            menuOpen = false
+                            onDeleteOneOff()
+                        },
+                    )
+                }
             }
         }
     }
@@ -859,6 +1024,8 @@ private fun PrnRow(
         }
     }
 }
+
+private val DAY_SWITCH_THRESHOLD = 96.dp
 
 private val CrossIcon: ImageVector by lazy {
     strokeGlyph("Cross", strokeWidth = 3f) {

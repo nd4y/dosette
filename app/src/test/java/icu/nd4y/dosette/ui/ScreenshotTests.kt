@@ -19,9 +19,8 @@ import icu.nd4y.dosette.ui.cabinet.CabinetContent
 import icu.nd4y.dosette.ui.cabinet.CabinetUiState
 import icu.nd4y.dosette.ui.cabinet.MedCard
 import icu.nd4y.dosette.ui.cabinet.ScheduleBrief
-import icu.nd4y.dosette.ui.calendar.CalendarContent
 import icu.nd4y.dosette.ui.calendar.CalendarDay
-import icu.nd4y.dosette.ui.calendar.CalendarUiState
+import icu.nd4y.dosette.ui.calendar.OneOffMedOption
 import icu.nd4y.dosette.ui.mededit.MedEditContent
 import icu.nd4y.dosette.ui.mededit.MedEditUiState
 import icu.nd4y.dosette.ui.mededit.VariantDraft
@@ -35,7 +34,6 @@ import icu.nd4y.dosette.ui.stats.StatsUiState
 import icu.nd4y.dosette.ui.theme.DosetteTheme
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
-import icu.nd4y.dosette.ui.today.TimelineDay
 import icu.nd4y.dosette.ui.today.TodayContent
 import icu.nd4y.dosette.ui.today.TodayDose
 import icu.nd4y.dosette.ui.today.TodayUiState
@@ -237,110 +235,102 @@ class ScreenshotTests {
         actedTime = actedTime,
     )
 
+    private val calendarDayFixtures =
+        run {
+            val month = java.time.YearMonth.of(2026, 8)
+            val today = LocalDate.parse("2026-08-29")
+            val gridStart = LocalDate.parse("2026-07-27")
+            val partialDays = setOf(5, 15, 26)
+            (0 until 42).map { offset ->
+                val date = gridStart.plusDays(offset.toLong())
+                val inMonth = java.time.YearMonth.from(date) == month
+                val status =
+                    when {
+                        !inMonth || date >= today -> null
+                        date.dayOfMonth == 11 -> AdherenceCalculator.DayStatus.ALL_MISSED
+                        date.dayOfMonth in partialDays -> AdherenceCalculator.DayStatus.PARTIAL
+                        else -> AdherenceCalculator.DayStatus.COMPLETE
+                    }
+                CalendarDay(date = date, inMonth = inMonth, isToday = date == today, status = status)
+            }
+        }
+
     private val todayState =
         TodayUiState(
             loading = false,
             date = LocalDate.parse("2026-08-29"),
-            days =
+            selectedDate = LocalDate.parse("2026-08-29"),
+            doses =
                 listOf(
-                    // A snooze that crossed midnight: the timeline lands here.
-                    TimelineDay(
-                        date = LocalDate.parse("2026-08-28"),
-                        doses =
-                            listOf(
-                                todayDose(
-                                    "m6",
-                                    "Мелатонин",
-                                    "3 мг",
-                                    LocalTime.of(23, 50),
-                                    MedicationForm.TABLET,
-                                    5,
-                                    DoseUiStatus.PENDING,
-                                    date = LocalDate.parse("2026-08-28"),
-                                ),
-                            ),
+                    todayDose(
+                        "m1",
+                        "Метформин",
+                        "500 мг",
+                        LocalTime.of(8, 0),
+                        MedicationForm.TABLET,
+                        0,
+                        DoseUiStatus.TAKEN,
+                        LocalTime.of(8, 4),
                     ),
-                    TimelineDay(
-                        date = LocalDate.parse("2026-08-29"),
-                        doses =
-                            listOf(
-                                todayDose(
-                                    "m1",
-                                    "Метформин",
-                                    "500 мг",
-                                    LocalTime.of(8, 0),
-                                    MedicationForm.TABLET,
-                                    0,
-                                    DoseUiStatus.TAKEN,
-                                    LocalTime.of(8, 4),
-                                ),
-                                todayDose(
-                                    "m2",
-                                    "Лизиноприл",
-                                    "10 мг",
-                                    LocalTime.of(8, 0),
-                                    MedicationForm.TABLET,
-                                    1,
-                                    DoseUiStatus.TAKEN,
-                                    LocalTime.of(8, 4),
-                                ),
-                                todayDose(
-                                    "m4",
-                                    "Витамин D",
-                                    "2000 МЕ",
-                                    LocalTime.of(8, 0),
-                                    MedicationForm.DROPS,
-                                    3,
-                                    DoseUiStatus.TAKEN,
-                                    LocalTime.of(8, 5),
-                                ),
-                                todayDose(
-                                    "m1",
-                                    "Метформин",
-                                    "500 мг",
-                                    LocalTime.of(20, 0),
-                                    MedicationForm.TABLET,
-                                    0,
-                                    DoseUiStatus.PENDING,
-                                    instructions = "с едой",
-                                ),
-                                todayDose(
-                                    "m3",
-                                    "Аторвастатин",
-                                    "20 мг",
-                                    LocalTime.of(20, 0),
-                                    MedicationForm.CAPSULE,
-                                    2,
-                                    DoseUiStatus.PENDING,
-                                ),
-                            ),
+                    todayDose(
+                        "m2",
+                        "Лизиноприл",
+                        "10 мг",
+                        LocalTime.of(8, 0),
+                        MedicationForm.TABLET,
+                        1,
+                        DoseUiStatus.TAKEN,
+                        LocalTime.of(8, 4),
                     ),
-                    // Tomorrow: read-only preview rows.
-                    TimelineDay(
-                        date = LocalDate.parse("2026-08-30"),
-                        doses =
-                            listOf(
-                                todayDose(
-                                    "m1",
-                                    "Метформин",
-                                    "500 мг",
-                                    LocalTime.of(8, 0),
-                                    MedicationForm.TABLET,
-                                    0,
-                                    DoseUiStatus.PENDING,
-                                    date = LocalDate.parse("2026-08-30"),
-                                ),
-                            ),
+                    todayDose(
+                        "m4",
+                        "Витамин D",
+                        "2000 МЕ",
+                        LocalTime.of(8, 0),
+                        MedicationForm.DROPS,
+                        3,
+                        DoseUiStatus.TAKEN,
+                        LocalTime.of(8, 5),
+                    ),
+                    todayDose(
+                        "m1",
+                        "Метформин",
+                        "500 мг",
+                        LocalTime.of(20, 0),
+                        MedicationForm.TABLET,
+                        0,
+                        DoseUiStatus.PENDING,
+                        instructions = "с едой",
+                    ),
+                    todayDose(
+                        "m3",
+                        "Аторвастатин",
+                        "20 мг",
+                        LocalTime.of(20, 0),
+                        MedicationForm.CAPSULE,
+                        2,
+                        DoseUiStatus.PENDING,
                     ),
                 ),
-            anchorDate = LocalDate.parse("2026-08-28"),
+            // A snooze that crossed midnight: surfaced as the banner.
+            unresolvedYesterday = true,
             prn = listOf(PrnMed("m5", "Ибупрофен", "400 мг", MedicationForm.TABLET, 4)),
             takenCount = 3,
             plannedCount = 5,
             nextDoseTime = LocalTime.of(20, 0),
+            month = java.time.YearMonth.of(2026, 8),
+            calendarDays = calendarDayFixtures,
+            monthAdherencePercent = 92,
+            medications =
+                listOf(
+                    OneOffMedOption("m1", "Метформин", MedicationForm.TABLET, 0, 1.0),
+                ),
         )
 
-    private fun today(state: TodayUiState) {
+    private fun today(
+        state: TodayUiState,
+        calendarExpanded: Boolean = false,
+    ) {
         composeRule.setContent {
             DosetteTheme(dynamicColor = false) {
                 androidx.compose.material3.Surface(
@@ -353,87 +343,29 @@ class ScreenshotTests {
                         onSkip = {},
                         onSnooze = { _, _ -> },
                         onUndo = {},
+                        onDeleteOneOff = {},
                         onTakePrn = {},
                         onSelectProfile = {},
+                        onSelectDate = {},
+                        onGoToday = {},
+                        onPreviousDay = {},
+                        onNextDay = {},
+                        onPreviousMonth = {},
+                        onNextMonth = {},
+                        onShowMonth = {},
+                        onAddOneOff = { _, _, _ -> },
+                        calendarExpandedInitially = calendarExpanded,
                     )
                 }
             }
         }
     }
 
-    private val calendarState: CalendarUiState =
-        run {
-            val month = java.time.YearMonth.of(2026, 8)
-            val today = LocalDate.parse("2026-08-29")
-            val gridStart = LocalDate.parse("2026-07-27")
-            val partialDays = setOf(5, 15, 26)
-            val days =
-                (0 until 42).map { offset ->
-                    val date = gridStart.plusDays(offset.toLong())
-                    val inMonth = java.time.YearMonth.from(date) == month
-                    val status =
-                        when {
-                            !inMonth || date >= today -> null
-                            date.dayOfMonth == 11 -> AdherenceCalculator.DayStatus.ALL_MISSED
-                            date.dayOfMonth in partialDays -> AdherenceCalculator.DayStatus.PARTIAL
-                            else -> AdherenceCalculator.DayStatus.COMPLETE
-                        }
-                    CalendarDay(date = date, inMonth = inMonth, isToday = date == today, status = status)
-                }
-            CalendarUiState(
-                loading = false,
-                month = month,
-                days = days,
-                monthAdherencePercent = 92,
-                selectedDate = today,
-                selectedDoses =
-                    listOf(
-                        todayDose(
-                            "m1",
-                            "Метформин",
-                            "500 мг",
-                            LocalTime.of(8, 0),
-                            MedicationForm.TABLET,
-                            0,
-                            DoseUiStatus.TAKEN,
-                            LocalTime.of(8, 4),
-                        ),
-                        todayDose(
-                            "m3",
-                            "Аторвастатин",
-                            "20 мг",
-                            LocalTime.of(20, 0),
-                            MedicationForm.CAPSULE,
-                            2,
-                            DoseUiStatus.PENDING,
-                        ),
-                    ),
-            )
-        }
-
     @Test
     @Config(sdk = [34], qualifiers = RU_PIXEL7)
     fun calendarLight() {
-        composeRule.setContent {
-            DosetteTheme(dynamicColor = false) {
-                androidx.compose.material3.Surface(
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
-                ) {
-                    CalendarContent(
-                        state = calendarState,
-                        contentPadding = screenPadding,
-                        onPreviousMonth = {},
-                        onNextMonth = {},
-                        onShowMonth = {},
-                        onSelect = {},
-                        onMark = { _, _ -> },
-                        onUndo = {},
-                        onAddOneOff = { _, _, _, _ -> },
-                        onDeleteOneOff = {},
-                    )
-                }
-            }
-        }
+        // The merged screen with the month panel folded out.
+        today(todayState, calendarExpanded = true)
         composeRule.onRoot().captureRoboImage("$SHOTS/calendar_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
