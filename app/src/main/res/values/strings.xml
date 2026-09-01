@@ -63,6 +63,7 @@
     <string name="stock_untracked">stock not tracked</string>
 
     <string name="wizard_new_med">New medication</string>
+    <string name="wizard_edit_med">Editing</string>
     <string name="wizard_step_of">Step %1$d of %2$d · %3$s</string>
     <string name="wizard_step_basics">Basics</string>
     <string name="wizard_step_schedule">Schedule</string>
@@ -122,6 +123,20 @@
     <string name="review_schedule">Schedule</string>
     <string name="review_stock">Stock</string>
     <string name="review_variant_line">%1$s %2$s — %3$s pcs</string>
+
+    <string name="detail_more_actions">More actions</string>
+    <string name="med_archived_badge">Archived</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_unarchive">Restore from archive</string>
+    <string name="stock_refill_action">Refill</string>
+    <string name="refill_title">Refill stock</string>
+    <string name="refill_amount">Amount, pcs</string>
+    <string name="refill_add">Add</string>
+    <string name="refill_set_exact">Set exact</string>
+    <string name="delete_med_title">Delete medication?</string>
+    <string name="delete_med_message">Its whole intake history will be deleted with it. Archiving keeps the history.</string>
+    <string name="detail_last30">Last 30 days</string>
+    <string name="detail_taken_percent">%1$d%% of doses taken</string>
 
     <string name="today_taken_of">Taken %1$d of %2$d</string>
     <string name="today_next_dose">Next dose — %1$s</string>

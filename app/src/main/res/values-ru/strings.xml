@@ -67,6 +67,7 @@
     <string name="stock_untracked">запас не отслеживается</string>
 
     <string name="wizard_new_med">Новое лекарство</string>
+    <string name="wizard_edit_med">Редактирование</string>
     <string name="wizard_step_of">Шаг %1$d из %2$d · %3$s</string>
     <string name="wizard_step_basics">Основное</string>
     <string name="wizard_step_schedule">Расписание</string>
@@ -126,6 +127,20 @@
     <string name="review_schedule">Расписание</string>
     <string name="review_stock">Запас</string>
     <string name="review_variant_line">%1$s %2$s — %3$s шт</string>
+
+    <string name="detail_more_actions">Ещё действия</string>
+    <string name="med_archived_badge">В архиве</string>
+    <string name="action_archive">В архив</string>
+    <string name="action_unarchive">Вернуть из архива</string>
+    <string name="stock_refill_action">Пополнить</string>
+    <string name="refill_title">Пополнение запаса</string>
+    <string name="refill_amount">Количество, шт</string>
+    <string name="refill_add">Добавить</string>
+    <string name="refill_set_exact">Задать точно</string>
+    <string name="delete_med_title">Удалить лекарство?</string>
+    <string name="delete_med_message">Вместе с ним удалится вся история приёма. Архив сохраняет историю.</string>
+    <string name="detail_last30">Последние 30 дней</string>
+    <string name="detail_taken_percent">принято %1$d%% приёмов</string>
 
     <string name="today_taken_of">Принято %1$d из %2$d</string>
     <string name="today_next_dose">Следующий приём — %1$s</string>

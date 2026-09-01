@@ -2,7 +2,11 @@ package icu.nd4y.dosette.ui.mededit
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.Medication
@@ -41,6 +45,8 @@ data class VariantDraft(
 
 data class MedEditUiState(
     val step: WizardStep = WizardStep.BASICS,
+    /** True when the wizard edits an existing medication instead of creating one. */
+    val editing: Boolean = false,
     // Basics.
     val name: String = "",
     val form: MedicationForm = MedicationForm.TABLET,
@@ -114,10 +120,11 @@ data class MedEditUiState(
             }
 }
 
-@HiltViewModel
+@HiltViewModel(assistedFactory = MedEditViewModel.Factory::class)
 class MedEditViewModel
-    @Inject
+    @AssistedInject
     constructor(
+        @Assisted private val medicationId: String?,
         private val medicationRepository: MedicationRepository,
         private val settingsRepository: SettingsRepository,
         private val engine: ReminderEngine,
@@ -125,6 +132,25 @@ class MedEditViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(MedEditUiState(colorSeed = (0 until MedPalette.size).random()))
         val uiState: StateFlow<MedEditUiState> = _uiState.asStateFlow()
+
+        /** The medication as loaded for editing; null in the create flow. */
+        private var original: MedicationDetails? = null
+
+        init {
+            if (medicationId != null) {
+                viewModelScope.launch {
+                    medicationRepository.getDetails(medicationId)?.let { details ->
+                        original = details
+                        _uiState.value = prefillFrom(details)
+                    }
+                }
+            }
+        }
+
+        @AssistedFactory
+        interface Factory {
+            fun create(medicationId: String?): MedEditViewModel
+        }
 
         fun update(transform: (MedEditUiState) -> MedEditUiState) {
             _uiState.value = transform(_uiState.value)
@@ -159,6 +185,15 @@ class MedEditViewModel
             if (saveInFlight) return
             saveInFlight = true
             val state = _uiState.value
+            val editTarget = original
+            if (state.editing && editTarget != null) {
+                viewModelScope.launch {
+                    saveEdit(state, editTarget)
+                    engine.reschedule()
+                    _uiState.value = state.copy(saved = true)
+                }
+                return
+            }
             viewModelScope.launch {
                 val profileId =
                     settingsRepository.settings.first().activeProfileId
@@ -193,6 +228,110 @@ class MedEditViewModel
 
                 engine.reschedule()
                 _uiState.value = state.copy(saved = true)
+            }
+        }
+
+        /**
+         * Edit flow: the medication row is updated in place, variants keep
+         * their ids (stock history survives), and a changed intake plan
+         * becomes a new schedule version so past days recompute identically.
+         */
+        private suspend fun saveEdit(
+            state: MedEditUiState,
+            original: MedicationDetails,
+        ) {
+            val now = clock.instant()
+            val today = now.atZone(clock.zone).toLocalDate()
+            val med = original.medication
+            val strengthValue = state.strengthText.replace(',', '.').toDoubleOrNull()
+            val variants = buildVariantsForEdit(state, original, strengthValue)
+
+            medicationRepository.upsert(
+                med.copy(
+                    name = state.name.trim(),
+                    form = state.form,
+                    strengthValue = strengthValue,
+                    strengthUnit = state.strengthUnit.trim().ifEmpty { null },
+                    instructions = state.instructions.trim().ifEmpty { null },
+                    colorSeed = state.colorSeed,
+                    iconKey = state.form.name.lowercase(),
+                    defaultVariantId = variants.firstOrNull()?.id,
+                ),
+            )
+            val keptIds = variants.map { it.id }.toSet()
+            original.variants.filter { it.id !in keptIds }.forEach {
+                medicationRepository.deleteVariant(it.id)
+            }
+            variants.forEach { medicationRepository.upsertVariant(it) }
+
+            val current = mainScheduleOf(original.schedules)
+            val replacement = buildSchedule(state, med.id, now)
+            when {
+                current == null -> {
+                    medicationRepository.addSchedule(replacement)
+                }
+
+                scheduleMatches(current, replacement) -> {
+                    Unit
+                }
+
+                current.startDate.isBefore(today) -> {
+                    medicationRepository.replaceSchedule(current.id, today.minusDays(1), replacement)
+                }
+
+                else -> {
+                    // The current version starts today: closing it yesterday
+                    // would invert its date range — swap it out instead.
+                    medicationRepository.deleteSchedule(current.id)
+                    medicationRepository.addSchedule(replacement)
+                }
+            }
+        }
+
+        private fun buildVariantsForEdit(
+            state: MedEditUiState,
+            original: MedicationDetails,
+            medicationStrength: Double?,
+        ): List<MedicationVariant> {
+            val med = original.medication
+            val unit = state.strengthUnit.trim().ifEmpty { null }
+            if (!state.trackStock) {
+                // Keep one variant (reusing an existing row so its stock
+                // figures survive a track-off/track-on round trip).
+                val keep = original.defaultVariant
+                return listOf(
+                    MedicationVariant(
+                        id = keep?.id ?: UUID.randomUUID().toString(),
+                        medicationId = med.id,
+                        label = null,
+                        strengthValue = medicationStrength,
+                        strengthUnit = unit,
+                        sortOrder = 0,
+                        trackingEnabled = false,
+                        currentStock = keep?.currentStock ?: 0.0,
+                        lowStockThreshold = keep?.lowStockThreshold,
+                        defaultRefillAmount = keep?.defaultRefillAmount,
+                        lastRefillAt = keep?.lastRefillAt,
+                    ),
+                )
+            }
+            val priorById = original.variants.associateBy { it.id }
+            return state.variants.mapIndexed { index, draft ->
+                val prior = priorById[draft.id]
+                MedicationVariant(
+                    id = draft.id,
+                    medicationId = med.id,
+                    label = null,
+                    strengthValue =
+                        draft.strengthText.replace(',', '.').toDoubleOrNull() ?: medicationStrength,
+                    strengthUnit = unit,
+                    sortOrder = index,
+                    trackingEnabled = true,
+                    currentStock = draft.stockText.replace(',', '.').toDoubleOrNull() ?: prior?.currentStock ?: 0.0,
+                    lowStockThreshold = draft.thresholdText.replace(',', '.').toDoubleOrNull(),
+                    defaultRefillAmount = draft.refillText.replace(',', '.').toDoubleOrNull(),
+                    lastRefillAt = prior?.lastRefillAt,
+                )
             }
         }
 
