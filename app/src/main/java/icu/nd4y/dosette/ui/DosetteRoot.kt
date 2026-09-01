@@ -34,7 +34,6 @@ import icu.nd4y.dosette.ui.appointments.AppointmentEditScreen
 import icu.nd4y.dosette.ui.appointments.AppointmentsScreen
 import icu.nd4y.dosette.ui.backup.BackupScreen
 import icu.nd4y.dosette.ui.cabinet.CabinetScreen
-import icu.nd4y.dosette.ui.calendar.CalendarScreen
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.rememberDirectionalMotion
 import icu.nd4y.dosette.ui.meddetail.MedDetailScreen
@@ -61,7 +60,6 @@ private enum class DosetteTab(
     val icon: ImageVector,
 ) {
     Today(R.string.tab_today, DosetteIcons.Today),
-    Calendar(R.string.tab_calendar, DosetteIcons.Calendar),
     Cabinet(R.string.tab_cabinet, DosetteIcons.Pill),
     More(R.string.tab_more, DosetteIcons.More),
 }
@@ -178,10 +176,6 @@ private fun TabContent(
 
         DosetteTab.Today -> {
             TodayScreen(contentPadding = padding, reselectTick = todayReselects)
-        }
-
-        DosetteTab.Calendar -> {
-            CalendarScreen(contentPadding = padding)
         }
 
         DosetteTab.More -> {

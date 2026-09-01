@@ -3,7 +3,6 @@
     <string name="app_name" translatable="false">Dosette</string>
 
     <string name="tab_today">Today</string>
-    <string name="tab_calendar">Calendar</string>
     <string name="tab_cabinet">Meds</string>
     <string name="tab_more">More</string>
 
@@ -48,6 +47,9 @@
     <string name="day_yesterday">Yesterday</string>
     <string name="day_tomorrow">Tomorrow</string>
     <string name="timeline_day_empty">No doses this day</string>
+    <string name="calendar_toggle">Open calendar</string>
+    <string name="back_to_today">Today</string>
+    <string name="unresolved_yesterday_banner">Yesterday has an unresolved dose</string>
     <string name="schedule_every_other_day">Every other day</string>
     <string name="schedule_cycle_summary">%1$d days on / %2$d off</string>
     <string name="schedule_as_needed">As needed</string>
