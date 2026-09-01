@@ -6,10 +6,14 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.domain.model.Appointment
+import icu.nd4y.dosette.domain.model.Medication
 import icu.nd4y.dosette.domain.model.MedicationForm
+import icu.nd4y.dosette.domain.model.MedicationVariant
 import icu.nd4y.dosette.domain.model.Profile
+import icu.nd4y.dosette.domain.schedule
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator
 import icu.nd4y.dosette.ui.appointments.AppointmentsContent
 import icu.nd4y.dosette.ui.appointments.AppointmentsUiState
@@ -21,6 +25,9 @@ import icu.nd4y.dosette.ui.cabinet.MedCard
 import icu.nd4y.dosette.ui.cabinet.ScheduleBrief
 import icu.nd4y.dosette.ui.calendar.CalendarDay
 import icu.nd4y.dosette.ui.calendar.OneOffMedOption
+import icu.nd4y.dosette.ui.meddetail.AdherenceDay
+import icu.nd4y.dosette.ui.meddetail.MedDetailContent
+import icu.nd4y.dosette.ui.meddetail.MedDetailUiState
 import icu.nd4y.dosette.ui.mededit.MedEditContent
 import icu.nd4y.dosette.ui.mededit.MedEditUiState
 import icu.nd4y.dosette.ui.mededit.VariantDraft
@@ -153,6 +160,42 @@ class ScreenshotTests {
                 }
             }
         }
+    }
+
+    private fun medDetail(state: MedDetailUiState) {
+        composeRule.setContent {
+            DosetteTheme(dynamicColor = false) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                ) {
+                    MedDetailContent(
+                        state = state,
+                        contentPadding = screenPadding,
+                        onBack = {},
+                        onEdit = {},
+                        onArchive = {},
+                        onUnarchive = {},
+                        onDelete = {},
+                        onRefill = { _, _ -> },
+                        onSetStock = { _, _ -> },
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7)
+    fun medDetailLight() {
+        medDetail(medDetailState)
+        composeRule.onRoot().captureRoboImage("$SHOTS/meddetail_light.png", roborazziOptions = SHOT_OPTIONS)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = RU_PIXEL7_NIGHT)
+    fun medDetailDark() {
+        medDetail(medDetailState)
+        composeRule.onRoot().captureRoboImage("$SHOTS/meddetail_dark.png", roborazziOptions = SHOT_OPTIONS)
     }
 
     @Test
@@ -614,3 +657,57 @@ class ScreenshotTests {
         composeRule.onRoot().captureRoboImage("$SHOTS/wizard_stock_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 }
+
+private val medDetailState =
+    MedDetailUiState(
+        loading = false,
+        details =
+            MedicationDetails(
+                medication =
+                    Medication(
+                        id = "m1",
+                        profileId = "p1",
+                        name = "Метформин",
+                        form = MedicationForm.TABLET,
+                        strengthValue = 500.0,
+                        strengthUnit = "мг",
+                        instructions = "После еды, запивая водой",
+                        colorSeed = 0,
+                        iconKey = "tablet",
+                        defaultVariantId = "v1",
+                        archivedAt = null,
+                        createdAt = java.time.Instant.parse("2026-08-01T00:00:00Z"),
+                    ),
+                schedules = listOf(schedule(times = listOf(LocalTime.of(8, 0), LocalTime.of(20, 0)))),
+                variants =
+                    listOf(
+                        MedicationVariant(
+                            id = "v1",
+                            medicationId = "m1",
+                            label = null,
+                            strengthValue = 500.0,
+                            strengthUnit = "мг",
+                            sortOrder = 0,
+                            trackingEnabled = true,
+                            currentStock = 42.0,
+                            lowStockThreshold = 10.0,
+                            defaultRefillAmount = 30.0,
+                            lastRefillAt = null,
+                        ),
+                    ),
+            ),
+        days =
+            (0 until 30).map { index ->
+                AdherenceDay(
+                    date = LocalDate.parse("2026-08-01").plusDays(index.toLong()),
+                    status =
+                        when {
+                            index % 11 == 5 -> AdherenceCalculator.DayStatus.ALL_MISSED
+                            index % 7 == 3 -> AdherenceCalculator.DayStatus.PARTIAL
+                            index % 5 == 2 -> AdherenceCalculator.DayStatus.NONE
+                            else -> AdherenceCalculator.DayStatus.COMPLETE
+                        },
+                )
+            },
+        adherencePercent = 87,
+    )

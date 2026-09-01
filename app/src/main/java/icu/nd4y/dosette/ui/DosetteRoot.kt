@@ -152,12 +152,13 @@ private fun TabContent(
                         entry<CabinetKey> {
                             CabinetScreen(
                                 contentPadding = padding,
-                                onAddMedication = { cabinetBackStack.add(MedEditKey) },
+                                onAddMedication = { cabinetBackStack.add(MedEditKey()) },
                                 onOpenMedication = { id -> cabinetBackStack.add(MedDetailKey(id)) },
                             )
                         }
-                        entry<MedEditKey> {
+                        entry<MedEditKey> { key ->
                             MedEditScreen(
+                                medicationId = key.medicationId,
                                 contentPadding = padding,
                                 onDone = { cabinetBackStack.removeLastOrNull() },
                                 onBackOut = { cabinetBackStack.removeLastOrNull() },
@@ -168,6 +169,7 @@ private fun TabContent(
                                 medicationId = key.medicationId,
                                 contentPadding = padding,
                                 onBack = { cabinetBackStack.removeLastOrNull() },
+                                onEdit = { cabinetBackStack.add(MedEditKey(key.medicationId)) },
                             )
                         }
                     },

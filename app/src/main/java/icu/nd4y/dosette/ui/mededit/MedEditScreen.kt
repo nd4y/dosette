@@ -67,11 +67,15 @@ import java.time.format.TextStyle
 
 @Composable
 fun MedEditScreen(
+    medicationId: String?,
     contentPadding: PaddingValues,
     onDone: () -> Unit,
     onBackOut: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: MedEditViewModel = hiltViewModel(),
+    viewModel: MedEditViewModel =
+        hiltViewModel<MedEditViewModel, MedEditViewModel.Factory>(
+            creationCallback = { factory -> factory.create(medicationId) },
+        ),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -211,7 +215,10 @@ private fun WizardHeader(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.wizard_new_med),
+                    text =
+                        stringResource(
+                            if (state.editing) R.string.wizard_edit_med else R.string.wizard_new_med,
+                        ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
