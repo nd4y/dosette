@@ -75,7 +75,7 @@ internal fun CompactContent(state: WidgetState) {
                         ),
                 )
                 Text(
-                    text = relativeLabel(state),
+                    text = nextDoseLabel(state, next),
                     style =
                         TextStyle(
                             color = GlanceTheme.colors.primary,
@@ -149,8 +149,15 @@ internal fun MediumContent(state: WidgetState) {
         Spacer(GlanceModifier.width(14.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                val first = slotDoses.first()
+                val slotTitle =
+                    if (first.date < state.date) {
+                        context.getString(R.string.day_yesterday)
+                    } else {
+                        slotLabel(first.slot)
+                    }
                 Text(
-                    text = "${slotLabel(slotDoses.first().slot)} · ${slotDoses.first().time.format(TimeFormat)}",
+                    text = "$slotTitle · ${first.time.format(TimeFormat)}",
                     style =
                         TextStyle(
                             color = GlanceTheme.colors.onSurface,
@@ -160,7 +167,7 @@ internal fun MediumContent(state: WidgetState) {
                 )
                 Spacer(GlanceModifier.defaultWeight())
                 Text(
-                    text = relativeLabel(state),
+                    text = nextDoseLabel(state, first),
                     style =
                         TextStyle(
                             color = GlanceTheme.colors.primary,
@@ -214,6 +221,26 @@ internal fun LargeContent(state: WidgetState) {
         }
 
         var remaining = MAX_LARGE_ROWS
+        if (state.carryover.isNotEmpty()) {
+            // A dose snoozed across midnight outranks everything below.
+            Row(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text(
+                    text = context.getString(R.string.day_yesterday),
+                    style =
+                        TextStyle(
+                            color = GlanceTheme.colors.error,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                )
+            }
+            state.carryover.forEach { dose ->
+                if (remaining <= 0) return@forEach
+                remaining--
+                Spacer(GlanceModifier.height(4.dp))
+                PendingRow(dose, compactButton = false)
+            }
+        }
         slotSections(state.doses).forEach { doses ->
             if (remaining <= 0) return@forEach
             SlotHeader(doses.first().slot, doses)
@@ -229,7 +256,7 @@ internal fun LargeContent(state: WidgetState) {
             }
         }
 
-        val hidden = state.doses.size - (MAX_LARGE_ROWS - remaining)
+        val hidden = state.carryover.size + state.doses.size - (MAX_LARGE_ROWS - remaining)
         if (hidden > 0) {
             Spacer(GlanceModifier.height(4.dp))
             Text(
@@ -595,10 +622,15 @@ private fun slotLabel(slot: DaySlot): String {
 }
 
 @Composable
-private fun relativeLabel(state: WidgetState): String {
+private fun nextDoseLabel(
+    state: WidgetState,
+    next: TodayDose,
+): String {
     val context = LocalContext.current
-    val minutes = state.minutesToNext ?: return ""
+    val minutes = state.minutesToNext
     return when {
+        next.date < state.date -> context.getString(R.string.widget_due_now)
+        minutes == null -> ""
         minutes <= 0 -> context.getString(R.string.widget_due_now)
         minutes < MINUTES_PER_HOUR -> context.getString(R.string.widget_in_minutes, minutes)
         else -> context.getString(R.string.widget_in_hours, minutes / MINUTES_PER_HOUR)

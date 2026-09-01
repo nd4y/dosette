@@ -95,7 +95,8 @@ class WidgetStateLoaderTest {
             db.profileDao().upsert(profileEntity())
             db.medicationDao().upsert(medicationEntity())
             db.scheduleDao().insertWithTimes(
-                scheduleEntity(),
+                // Starts today: keeps yesterday clean for the carryover test.
+                scheduleEntity(startDate = LocalDate.parse("2026-08-29")),
                 listOf(
                     scheduleTimeEntity(id = "t-morning", timeMinutes = 8 * 60),
                     scheduleTimeEntity(id = "t-evening", timeMinutes = 20 * 60),
@@ -129,6 +130,28 @@ class WidgetStateLoaderTest {
             assertThat(state.minutesToNext).isEqualTo(10 * 60L)
 
             assertThat(state.prn.single().medicationId).isEqualTo("m1")
+        }
+
+    @Test
+    fun `yesterday's unresolved dose carries over and becomes the next slot`() =
+        runTest {
+            // Yesterday 23:50 exists in the schedule window and has no log:
+            // still pending, so the widget must surface it first.
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s-night", startDate = LocalDate.parse("2026-08-28")),
+                listOf(scheduleTimeEntity(id = "t-night", scheduleId = "s-night", timeMinutes = 23 * 60 + 50)),
+            )
+
+            val state = loader.load()
+
+            assertThat(state.carryover.single().time).isEqualTo(LocalTime.of(23, 50))
+            assertThat(state.carryover.single().date).isEqualTo(LocalDate.parse("2026-08-28"))
+            // The ring stays a picture of today; carryover is not counted.
+            assertThat(state.planned).isEqualTo(3)
+            val next = state.nextSlotDoses.single()
+            assertThat(next.date).isEqualTo(LocalDate.parse("2026-08-28"))
+            // 23:50 yesterday against 10:00 today = 10h 10m overdue.
+            assertThat(state.minutesToNext).isEqualTo(-(10 * 60 + 10).toLong())
         }
 
     @Test

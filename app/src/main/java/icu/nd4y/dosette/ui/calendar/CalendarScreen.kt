@@ -26,7 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -100,7 +99,7 @@ fun CalendarContent(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onShowMonth: (YearMonth) -> Unit,
-    onSelect: (LocalDate?) -> Unit,
+    onSelect: (LocalDate) -> Unit,
     onMark: (TodayDose, Boolean) -> Unit,
     onUndo: (TodayDose) -> Unit,
     onAddOneOff: (String, LocalDate, LocalTime, Double) -> Unit,
@@ -144,6 +143,17 @@ fun CalendarContent(
             MonthGrid(monthState, onSelect)
         }
         Legend()
+        // The tapped day's details live right here instead of a modal
+        // sheet — the lower half of the screen was sitting empty.
+        DayPanel(
+            date = state.selectedDate,
+            doses = state.selectedDoses,
+            medications = state.medications,
+            onMark = onMark,
+            onUndo = onUndo,
+            onAddOneOff = onAddOneOff,
+            onDeleteOneOff = onDeleteOneOff,
+        )
         AdherenceCard(state)
     }
 
@@ -156,20 +166,6 @@ fun CalendarContent(
             },
             onDismiss = { monthPickerOpen = false },
         )
-    }
-
-    if (state.selectedDate != null) {
-        ModalBottomSheet(onDismissRequest = { onSelect(null) }) {
-            DaySheet(
-                date = state.selectedDate,
-                doses = state.selectedDoses,
-                medications = state.medications,
-                onMark = onMark,
-                onUndo = onUndo,
-                onAddOneOff = onAddOneOff,
-                onDeleteOneOff = onDeleteOneOff,
-            )
-        }
     }
 }
 
@@ -322,7 +318,7 @@ private fun WeekdayRow() {
 @Composable
 private fun MonthGrid(
     state: CalendarUiState,
-    onSelect: (LocalDate?) -> Unit,
+    onSelect: (LocalDate) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         state.days.chunked(7).forEach { week ->
@@ -332,7 +328,11 @@ private fun MonthGrid(
             ) {
                 week.forEach { day ->
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        DayCell(day = day, onClick = { onSelect(day.date) })
+                        DayCell(
+                            day = day,
+                            selected = day.date == state.selectedDate,
+                            onClick = { onSelect(day.date) },
+                        )
                     }
                 }
             }
@@ -343,39 +343,61 @@ private fun MonthGrid(
 @Composable
 private fun DayCell(
     day: CalendarDay,
+    selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val ringColor =
-        when (day.status) {
-            DayStatus.COMPLETE -> MaterialTheme.colorScheme.primary
-            DayStatus.PARTIAL -> PartialColor
-            DayStatus.ALL_MISSED -> MaterialTheme.colorScheme.error
-            DayStatus.NONE, null -> Color.Transparent
-        }
+    // The selection fill (the day whose details fill the panel below)
+    // replaces the status ring; today's own fill outranks both.
+    val fill = dayCellFill(day, selected)
+    val ring = if (fill == Color.Transparent) dayStatusColor(day.status) else Color.Transparent
     val base =
         Modifier
             .size(40.dp)
+            .clip(CircleShape)
             .clickable(onClick = onClick)
-    val decorated =
-        when {
-            day.isToday -> base.background(MaterialTheme.colorScheme.primary, CircleShape)
-            ringColor != Color.Transparent -> base.border(3.dp, ringColor, CircleShape)
-            else -> base
-        }
+            .background(fill, CircleShape)
+    val decorated = if (ring != Color.Transparent) base.border(3.dp, ring, CircleShape) else base
     Box(modifier = decorated, contentAlignment = Alignment.Center) {
         Text(
             text = day.date.dayOfMonth.toString(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (day.isToday || day.status != null) FontWeight.SemiBold else FontWeight.Normal,
-            color =
-                when {
-                    day.isToday -> MaterialTheme.colorScheme.onPrimary
-                    !day.inMonth -> MaterialTheme.colorScheme.outlineVariant
-                    else -> MaterialTheme.colorScheme.onSurface
-                },
+            color = dayCellTextColor(day, selected),
         )
     }
 }
+
+@Composable
+private fun dayCellFill(
+    day: CalendarDay,
+    selected: Boolean,
+): Color =
+    when {
+        day.isToday -> MaterialTheme.colorScheme.primary
+        selected -> MaterialTheme.colorScheme.secondaryContainer
+        else -> Color.Transparent
+    }
+
+@Composable
+private fun dayStatusColor(status: DayStatus?): Color =
+    when (status) {
+        DayStatus.COMPLETE -> MaterialTheme.colorScheme.primary
+        DayStatus.PARTIAL -> PartialColor
+        DayStatus.ALL_MISSED -> MaterialTheme.colorScheme.error
+        DayStatus.NONE, null -> Color.Transparent
+    }
+
+@Composable
+private fun dayCellTextColor(
+    day: CalendarDay,
+    selected: Boolean,
+): Color =
+    when {
+        day.isToday -> MaterialTheme.colorScheme.onPrimary
+        selected -> MaterialTheme.colorScheme.onSecondaryContainer
+        !day.inMonth -> MaterialTheme.colorScheme.outlineVariant
+        else -> MaterialTheme.colorScheme.onSurface
+    }
 
 @Composable
 private fun Legend() {
@@ -452,7 +474,7 @@ private fun AdherenceCard(state: CalendarUiState) {
 }
 
 @Composable
-private fun DaySheet(
+private fun DayPanel(
     date: LocalDate,
     doses: List<TodayDose>,
     medications: List<OneOffMedOption>,
@@ -469,33 +491,34 @@ private fun DaySheet(
                 .replaceFirstChar { it.titlecase(locale) }
         }
     var addDialogOpen by remember { mutableStateOf(false) }
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier =
-            Modifier
-                // A long day (many meds) must scroll inside the sheet.
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        if (doses.isEmpty()) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
             Text(
-                text = stringResource(R.string.today_empty_title),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-        }
-        doses.forEach { dose ->
-            DaySheetRow(dose = dose, onMark = onMark, onUndo = onUndo, onDeleteOneOff = onDeleteOneOff)
-        }
-        if (medications.isNotEmpty()) {
-            TextButton(onClick = { addDialogOpen = true }) {
-                Text(stringResource(R.string.oneoff_add))
+            if (doses.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.timeline_day_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            doses.forEach { dose ->
+                DaySheetRow(dose = dose, onMark = onMark, onUndo = onUndo, onDeleteOneOff = onDeleteOneOff)
+            }
+            if (medications.isNotEmpty()) {
+                TextButton(onClick = { addDialogOpen = true }) {
+                    Text(stringResource(R.string.oneoff_add))
+                }
             }
         }
     }

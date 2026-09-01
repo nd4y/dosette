@@ -89,10 +89,26 @@ data class PrnTaken(
     val medicationName: String,
 )
 
+/** One day of the continuous timeline the Today screen scrolls through. */
+data class TimelineDay(
+    val date: LocalDate,
+    val doses: List<TodayDose>,
+)
+
 data class TodayUiState(
     val loading: Boolean = true,
     val date: LocalDate = LocalDate.now(),
-    val doses: List<TodayDose> = emptyList(),
+    /**
+     * The scrollable window around today, past first. Empty days are
+     * dropped except today itself, which is always present.
+     */
+    val days: List<TimelineDay> = emptyList(),
+    /**
+     * Where the timeline should land when the screen opens: today, or
+     * the earliest past day that still has an unresolved dose (a snooze
+     * that crossed midnight must be seen, not scrolled for).
+     */
+    val anchorDate: LocalDate = date,
     val prn: List<PrnMed> = emptyList(),
     val takenCount: Int = 0,
     val plannedCount: Int = 0,
@@ -102,7 +118,9 @@ data class TodayUiState(
     /** Shown as switcher chips only when more than one exists. */
     val profiles: List<ProfileChip> = emptyList(),
     val activeProfileId: String? = null,
-)
+) {
+    val todayDoses: List<TodayDose> get() = days.firstOrNull { it.date == date }?.doses.orEmpty()
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -138,7 +156,11 @@ class TodayViewModel
                     } else {
                         combine(
                             medicationRepository.observeByProfile(profileId),
-                            doseLogRepository.observeRange(profileId, date, date),
+                            doseLogRepository.observeRange(
+                                profileId,
+                                date.minusDays(PAST_DAYS),
+                                date.plusDays(FUTURE_DAYS),
+                            ),
                             profileRepository.observeAll(),
                         ) { meds, logs, profiles ->
                             buildState(date, meds, logs).copy(
@@ -173,7 +195,17 @@ class TodayViewModel
             logs: List<DoseLog>,
         ): TodayUiState {
             val active = meds.filter { !it.medication.isArchived }
-            val doses = buildDayDoses(date, meds, logs, clock.zone)
+            val days =
+                (-PAST_DAYS..FUTURE_DAYS).mapNotNull { offset ->
+                    val day = date.plusDays(offset)
+                    val dayDoses = buildDayDoses(day, meds, logs, clock.zone)
+                    if (dayDoses.isEmpty() && day != date) null else TimelineDay(day, dayDoses)
+                }
+            val doses = days.first { it.date == date }.doses
+            val anchorDate =
+                days
+                    .firstOrNull { day -> day.date < date && day.doses.any { it.status == DoseUiStatus.PENDING } }
+                    ?.date ?: date
 
             val prn =
                 active
@@ -192,7 +224,8 @@ class TodayViewModel
             return TodayUiState(
                 loading = false,
                 date = date,
-                doses = doses,
+                days = days,
+                anchorDate = anchorDate,
                 prn = prn,
                 takenCount = doses.count { it.status == DoseUiStatus.TAKEN },
                 plannedCount = doses.size,
@@ -227,5 +260,11 @@ class TodayViewModel
         /** Snackbar undo: removes the PRN log and returns the consumed stock. */
         fun undoPrn(logId: String) {
             viewModelScope.launch { prnIntakes.undo(logId) }
+        }
+
+        companion object {
+            /** The Google-Calendar-style scroll window around today. */
+            const val PAST_DAYS = 7L
+            const val FUTURE_DAYS = 7L
         }
     }

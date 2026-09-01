@@ -60,7 +60,8 @@ data class CalendarUiState(
     /** Always full weeks, Monday-first. */
     val days: List<CalendarDay> = emptyList(),
     val monthAdherencePercent: Int? = null,
-    val selectedDate: LocalDate? = null,
+    /** The day whose details fill the panel under the grid; today until tapped. */
+    val selectedDate: LocalDate = LocalDate.now(),
     val selectedDoses: List<TodayDose> = emptyList(),
     /** Active medications a one-off dose can be added for. */
     val medications: List<OneOffMedOption> = emptyList(),
@@ -98,7 +99,8 @@ class CalendarViewModel
                                 // Moves the "today" ring at midnight without
                                 // waiting for a data change.
                                 dayTicker(clock),
-                            ) { meds, logs, selected, today ->
+                            ) { meds, logs, selectedOrNull, today ->
+                                val selected = selectedOrNull ?: today
                                 val countsByDate =
                                     logs
                                         .filter { it.kind == DoseKind.SCHEDULED }
@@ -138,8 +140,7 @@ class CalendarViewModel
                                             missed = monthLogs.count { it.status == DoseStatus.MISSED },
                                         ),
                                     selectedDate = selected,
-                                    selectedDoses =
-                                        selected?.let { buildDayDoses(it, meds, logs, clock.zone) }.orEmpty(),
+                                    selectedDoses = buildDayDoses(selected, meds, logs, clock.zone),
                                     medications =
                                         meds
                                             .filter { !it.medication.isArchived }
@@ -161,19 +162,19 @@ class CalendarViewModel
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CalendarUiState())
 
-        fun previousMonth() {
-            month.value = month.value.minusMonths(1)
-        }
+        fun previousMonth() = showMonth(month.value.minusMonths(1))
 
-        fun nextMonth() {
-            month.value = month.value.plusMonths(1)
-        }
+        fun nextMonth() = showMonth(month.value.plusMonths(1))
 
         fun showMonth(target: YearMonth) {
             month.value = target
+            // Keep the day panel inside the visible month: today when it is
+            // this month, its first day otherwise.
+            val today = clock.instant().atZone(clock.zone).toLocalDate()
+            selectedDate.value = if (YearMonth.from(today) == target) null else target.atDay(1)
         }
 
-        fun select(date: LocalDate?) {
+        fun select(date: LocalDate) {
             selectedDate.value = date
         }
 

@@ -28,19 +28,23 @@ import javax.inject.Singleton
 data class WidgetState(
     val date: LocalDate,
     val doses: List<TodayDose> = emptyList(),
+    /** Yesterday's still-unresolved doses (a snooze across midnight). */
+    val carryover: List<TodayDose> = emptyList(),
     val prn: List<PrnMed> = emptyList(),
     /** Minutes until the earliest pending dose; negative when it is already due. */
     val minutesToNext: Long? = null,
 ) {
+    /** The ring stays a picture of TODAY; carryover is listed, not counted. */
     val taken: Int get() = doses.count { it.status == DoseUiStatus.TAKEN }
     val planned: Int get() = doses.size
 
-    /** Earliest pending doses, all sharing the same time slot. */
+    /** Earliest pending doses, all sharing the same day and time slot. */
     val nextSlotDoses: List<TodayDose>
         get() {
-            val pending = doses.filter { it.status == DoseUiStatus.PENDING }
-            val nextTime = pending.minOfOrNull { it.time } ?: return emptyList()
-            return pending.filter { it.time == nextTime }
+            val pending = carryover + doses.filter { it.status == DoseUiStatus.PENDING }
+            val next =
+                pending.minWithOrNull(compareBy({ it.date }, { it.time })) ?: return emptyList()
+            return pending.filter { it.date == next.date && it.time == next.time }
         }
 }
 
@@ -74,7 +78,9 @@ class WidgetStateLoader
                     } else {
                         combine(
                             medicationRepository.observeByProfile(profileId),
-                            doseLogRepository.observeRange(profileId, date, date),
+                            // Yesterday too: a dose snoozed across midnight is
+                            // still the most urgent thing the widget can show.
+                            doseLogRepository.observeRange(profileId, date.minusDays(1), date),
                         ) { meds, logs -> build(date, meds, logs) }
                     }
                 }
@@ -90,6 +96,9 @@ class WidgetStateLoader
         ): WidgetState {
             val now = clock.instant()
             val doses = buildDayDoses(date, meds, logs, clock.zone)
+            val carryover =
+                buildDayDoses(date.minusDays(1), meds, logs, clock.zone)
+                    .filter { it.status == DoseUiStatus.PENDING }
 
             val prn =
                 meds
@@ -106,20 +115,25 @@ class WidgetStateLoader
                         )
                     }
 
-            val nextTime =
-                doses
-                    .filter { it.status == DoseUiStatus.PENDING }
-                    .minOfOrNull { it.time }
+            val next =
+                (carryover + doses.filter { it.status == DoseUiStatus.PENDING })
+                    .minWithOrNull(compareBy({ it.date }, { it.time }))
             val minutesToNext =
-                nextTime?.let {
+                next?.let {
                     Duration
-                        .between(now, date.atTime(it).atZone(clock.zone).toInstant())
-                        .toMinutes()
+                        .between(
+                            now,
+                            it.date
+                                .atTime(it.time)
+                                .atZone(clock.zone)
+                                .toInstant(),
+                        ).toMinutes()
                 }
 
             return WidgetState(
                 date = date,
                 doses = doses,
+                carryover = carryover,
                 prn = prn,
                 minutesToNext = minutesToNext,
             )

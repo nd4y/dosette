@@ -45,6 +45,9 @@
     </plurals>
     <string name="schedule_every_n_days">Every %d days</string>
     <string name="schedule_every_day">Every day</string>
+    <string name="day_yesterday">Yesterday</string>
+    <string name="day_tomorrow">Tomorrow</string>
+    <string name="timeline_day_empty">No doses this day</string>
     <string name="schedule_every_other_day">Every other day</string>
     <string name="schedule_cycle_summary">%1$d days on / %2$d off</string>
     <string name="schedule_as_needed">As needed</string>

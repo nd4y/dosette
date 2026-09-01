@@ -67,7 +67,7 @@ private enum class DosetteTab(
 
 @Composable
 fun DosetteRoot(modifier: Modifier = Modifier) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(DosetteTab.Cabinet.ordinal) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(DosetteTab.Today.ordinal) }
     val tabs = DosetteTab.entries
 
     val cabinetBackStack = rememberNavBackStack(CabinetKey)
