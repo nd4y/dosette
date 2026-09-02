@@ -23,6 +23,8 @@
     <string name="notification_low_stock_title">Running low: %1$s</string>
     <string name="notification_low_stock_text">%1$s left</string>
     <string name="notification_appointment_time">Today at %1$s</string>
+    <string name="notification_locked_title">Time for a medication</string>
+    <string name="notification_locked_text">Unlock the phone to see the reminder</string>
 
     <string name="default_profile_name">Me</string>
 

@@ -2,6 +2,7 @@ package icu.nd4y.dosette.reminders
 
 import android.app.AlarmManager
 import android.app.Application
+import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -10,6 +11,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAlarmManager
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 @RunWith(RobolectricTestRunner::class)
 class AlarmSchedulerTest {
@@ -58,5 +60,22 @@ class AlarmSchedulerTest {
 
         val scheduled = requireNotNull(shadowOf(alarmManager).nextScheduledAlarm)
         assertThat(scheduled.triggerAtTime).isAtLeast(System.currentTimeMillis())
+    }
+
+    @Test
+    fun `mirrors the trigger and flavour into device-protected storage`() {
+        // Millisecond precision: that is what the alarm manager takes and the mirror keeps.
+        val at = Instant.now().plusSeconds(3600).truncatedTo(ChronoUnit.MILLIS)
+        scheduler.scheduleExact(at, alarmClock = false)
+
+        // The file and key names are the contract LockedBootReceiver reads,
+        // hence spelled out instead of shared constants.
+        val prefs =
+            context
+                .createDeviceProtectedStorageContext()
+                .getSharedPreferences("direct_boot", Context.MODE_PRIVATE)
+        assertThat(prefs.getLong("next_alarm_at", 0L)).isEqualTo(at.toEpochMilli())
+        assertThat(prefs.getBoolean("alarm_clock", true)).isFalse()
+        assertThat(scheduler.directBootAlarm()).isEqualTo(DirectBootAlarm(at, alarmClock = false))
     }
 }
