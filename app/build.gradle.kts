@@ -98,6 +98,12 @@ android {
             isIncludeAndroidResources = true
         }
     }
+
+    sourceSets {
+        // Room's exported schemas as debug assets: Robolectric reads the app's merged assets
+        // (not the test source set), and MigrationTestHelper validates real migrations against them.
+        getByName("debug").assets.srcDir("$projectDir/schemas")
+    }
 }
 
 room {

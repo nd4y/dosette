@@ -1,9 +1,11 @@
 package icu.nd4y.dosette.ui.settings
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -43,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,6 +61,7 @@ import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.ThemeMode
 import icu.nd4y.dosette.domain.model.PlaceId
+import icu.nd4y.dosette.domain.nag.NagSettings
 import icu.nd4y.dosette.ui.common.openNotificationSettings
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.ScreenHeader
@@ -78,11 +82,13 @@ fun SettingsScreen(
     var notificationsEnabled by remember {
         mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
     }
+    var backgroundLocationGranted by remember { mutableStateOf(hasBackgroundLocation(context)) }
     // The user answers the exemption dialog OUTSIDE the app; the state is
     // only readable once we are resumed again (same pattern as onboarding).
     LifecycleResumeEffect(Unit) {
         batteryExempt = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
         notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        backgroundLocationGranted = hasBackgroundLocation(context)
         onPauseOrDispose {}
     }
 
@@ -90,11 +96,27 @@ fun SettingsScreen(
     // coordinates or the Wi-Fi name; the pending action survives the dialog.
     var pendingPlaceAction by remember { mutableStateOf<Pair<PlaceId, PlaceAction>?>(null) }
     var permissionDenied by remember { mutableStateOf(false) }
+    val backgroundLocationLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            backgroundLocationGranted = granted
+        }
+
+    // Geofences need "all the time" access on Android 10+. Android 11+ answers
+    // this request with the app's location settings page instead of a dialog.
+    fun requestBackgroundLocation() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+    }
 
     fun executePlaceAction(
         id: PlaceId,
         action: PlaceAction,
     ) {
+        // The caller asks for the permission first; the check here keeps the
+        // location call honest for lint and for any future caller.
+        val fineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+        if (fineLocation != PackageManager.PERMISSION_GRANTED) return
         when (action) {
             PlaceAction.USE_LOCATION -> {
                 LocationServices
@@ -103,6 +125,7 @@ fun SettingsScreen(
                     .addOnSuccessListener { location ->
                         location?.let { viewModel.setPlaceFromLocation(id, it.latitude, it.longitude) }
                     }
+                if (!backgroundLocationGranted) requestBackgroundLocation()
             }
 
             PlaceAction.USE_WIFI -> {
@@ -142,6 +165,7 @@ fun SettingsScreen(
         contentPadding = contentPadding,
         onBack = onBack,
         onNagInterval = viewModel::setNagInterval,
+        onNagMaxCount = viewModel::setNagMaxCount,
         onSnooze = viewModel::setSnooze,
         onGrace = viewModel::setGrace,
         onAlarmClock = viewModel::setAlarmClock,
@@ -165,6 +189,8 @@ fun SettingsScreen(
             }
         },
         onPlaceClear = viewModel::clearPlace,
+        backgroundLocationGranted = backgroundLocationGranted,
+        onRequestBackgroundLocation = ::requestBackgroundLocation,
         notificationsEnabled = notificationsEnabled,
         onOpenNotificationSettings = { openNotificationSettings(context) },
         onRequestExemption = {
@@ -196,6 +222,7 @@ fun SettingsContent(
     contentPadding: PaddingValues,
     onBack: () -> Unit,
     onNagInterval: (Int) -> Unit,
+    onNagMaxCount: (Int) -> Unit,
     onSnooze: (Int) -> Unit,
     onGrace: (Int) -> Unit,
     onAlarmClock: (Boolean) -> Unit,
@@ -204,6 +231,8 @@ fun SettingsContent(
     onLanguage: (AppLanguage) -> Unit,
     onPlaceAction: (PlaceId, PlaceAction) -> Unit,
     onPlaceClear: (PlaceId) -> Unit,
+    backgroundLocationGranted: Boolean,
+    onRequestBackgroundLocation: () -> Unit,
     notificationsEnabled: Boolean,
     onOpenNotificationSettings: () -> Unit,
     onRequestExemption: () -> Unit,
@@ -252,6 +281,13 @@ fun SettingsContent(
             }
             CardDivider()
             ValueRow(
+                title = stringResource(R.string.settings_nag_repeats),
+                value = nagRepeatsLabel(settings.nagMaxCount),
+                options = NAG_REPEAT_CHOICES.map { it to nagRepeatsLabel(it) },
+                onSelect = onNagMaxCount,
+            )
+            CardDivider()
+            ValueRow(
                 title = stringResource(R.string.settings_snooze),
                 value = stringResource(R.string.settings_min_fmt, settings.snoozeMin),
                 options = SNOOZE_CHOICES.map { it to stringResource(R.string.settings_min_fmt, it) },
@@ -290,6 +326,8 @@ fun SettingsContent(
             settings = settings,
             onPlaceAction = onPlaceAction,
             onPlaceClear = onPlaceClear,
+            backgroundLocationGranted = backgroundLocationGranted,
+            onRequestBackgroundLocation = onRequestBackgroundLocation,
         )
 
         NotificationsBanner(enabled = notificationsEnabled, onOpen = onOpenNotificationSettings)
@@ -326,6 +364,8 @@ private fun PlacesSection(
     settings: AppSettings,
     onPlaceAction: (PlaceId, PlaceAction) -> Unit,
     onPlaceClear: (PlaceId) -> Unit,
+    backgroundLocationGranted: Boolean,
+    onRequestBackgroundLocation: () -> Unit,
 ) {
     var dialogFor by remember { mutableStateOf<PlaceId?>(null) }
 
@@ -335,6 +375,9 @@ private fun PlacesSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (!backgroundLocationGranted && settings.places.values.any { it.hasGeo }) {
+            BackgroundLocationBanner(onRequest = onRequestBackgroundLocation)
+        }
         PlaceRow(
             label = stringResource(R.string.place_home),
             config = settings.places[PlaceId.HOME],
@@ -441,6 +484,7 @@ private fun PlaceRow(
 }
 
 private val NAG_CHOICES = listOf(0, 5, 10, 15, 30)
+private val NAG_REPEAT_CHOICES = listOf(NagSettings.NO_NAG_CAP, 3, 6, 12)
 private val SNOOZE_CHOICES = listOf(5, 10, 15, 30)
 private val GRACE_CHOICES = listOf(30, 60, 120)
 
@@ -749,3 +793,42 @@ private fun NotificationsBanner(
         }
     }
 }
+
+@Composable
+private fun nagRepeatsLabel(count: Int): String =
+    if (count == NagSettings.NO_NAG_CAP) {
+        stringResource(R.string.settings_nag_repeats_unlimited)
+    } else {
+        pluralStringResource(R.plurals.nag_repeats_fmt, count, count)
+    }
+
+/** A geofence without "all the time" location never fires; say so where the places are set up. */
+@Composable
+private fun BackgroundLocationBanner(onRequest: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.place_background_missing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onRequest) {
+                Text(stringResource(R.string.place_background_action))
+            }
+        }
+    }
+}
+
+private fun hasBackgroundLocation(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED

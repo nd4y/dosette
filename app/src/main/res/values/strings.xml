@@ -23,6 +23,8 @@
     <string name="notification_low_stock_title">Running low: %1$s</string>
     <string name="notification_low_stock_text">%1$s left</string>
     <string name="notification_appointment_time">Today at %1$s</string>
+    <string name="notification_locked_title">Time for a medication</string>
+    <string name="notification_locked_text">Unlock the phone to see the reminder</string>
 
     <string name="default_profile_name">Me</string>
 
@@ -176,6 +178,9 @@
     <string name="widget_label">Today\'s doses</string>
     <string name="widget_description">Day ring, upcoming doses and one-tap marking right from the home screen</string>
     <string name="widget_all_done">Everything is marked</string>
+    <string name="widget_status_taken">taken</string>
+    <string name="widget_status_skipped">skipped</string>
+    <string name="widget_status_missed">missed</string>
     <string name="widget_in_hours">in %1$d h</string>
     <string name="widget_in_minutes">in %1$d min</string>
     <string name="widget_due_now">due now</string>
@@ -212,6 +217,8 @@
     <string name="place_clear">Clear</string>
     <string name="place_permission_rationale">Location permission is needed to read coordinates and the Wi-Fi name</string>
     <string name="place_background_hint">Allow location \u0022all the time\u0022 in system settings so arriving can wake reminders even in the background</string>
+    <string name="place_background_missing">Location is not allowed 0022all the time0022: arriving will not wake reminders</string>
+    <string name="place_background_action">Allow</string>
     <string name="settings_title">Settings</string>
     <string name="settings_reminders_section">Reminders</string>
     <string name="settings_nag_interval">Repeat interval</string>
@@ -221,6 +228,12 @@
     <string name="settings_snooze">Snooze duration</string>
     <string name="settings_grace">Count as missed</string>
     <string name="settings_grace_fmt">after %1$d min</string>
+    <string name="settings_nag_repeats">Alert repeats</string>
+    <string name="settings_nag_repeats_unlimited">until counted as missed</string>
+    <plurals name="nag_repeats_fmt">
+        <item quantity="one">%1$d time</item>
+        <item quantity="other">%1$d times</item>
+    </plurals>
     <string name="settings_appearance_section">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="theme_system">Same as system</string>

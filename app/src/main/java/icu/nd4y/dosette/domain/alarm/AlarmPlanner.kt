@@ -74,7 +74,7 @@ object AlarmPlanner {
             ReminderPhase.ACTIVE -> {
                 buildList {
                     add(AlarmPlan(graceEnd, AlarmReason.GRACE))
-                    if (settings.nagIntervalMin > 0 && state.nagCount + 1 < settings.nagMaxCount) {
+                    if (settings.nagIntervalMin > 0 && settings.nagAllowed(state.nagCount)) {
                         val tick =
                             state.lastAlertAt.plus(settings.nagIntervalMin.toLong(), ChronoUnit.MINUTES)
                         if (tick.isBefore(graceEnd)) add(AlarmPlan(tick, AlarmReason.NAG))
@@ -85,8 +85,9 @@ object AlarmPlanner {
             ReminderPhase.SNOOZED -> {
                 buildList {
                     if (state.snoozedUntilPlace != null) {
-                        // No time expiry while waiting for a place: the geofence is
-                        // the primary wake-up, this poll is the Wi-Fi fallback.
+                        // The geofence is the primary wake-up, this poll is the
+                        // Wi-Fi fallback, and the ceiling ends the wait for good.
+                        state.snoozedUntil?.let { add(AlarmPlan(it, AlarmReason.SNOOZE)) }
                         add(
                             AlarmPlan(
                                 now.plus(PLACE_POLL_MINUTES, ChronoUnit.MINUTES),

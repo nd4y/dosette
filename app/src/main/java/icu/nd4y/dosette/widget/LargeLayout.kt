@@ -3,6 +3,8 @@ package icu.nd4y.dosette.widget
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.TodayDose
 import icu.nd4y.dosette.ui.today.slotSections
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /** One line of the large widget's list, in display order. */
 sealed interface LargeEntry {
@@ -38,18 +40,6 @@ data class LargePlan(
  * a user sees on a 4x3 widget with a full day.
  */
 object LargeLayout {
-    // dp costs mirroring the composables in WidgetUi.
-    const val OUTER_PADDING = 28
-    const val TITLE_BLOCK = 44
-    const val MORE_LINE = 18
-    const val SECTION_HEADER = 22
-
-    /** Header with status circles instead of rows: 6 + 20dp circles. */
-    const val COLLAPSED_HEADER = 26
-    const val PENDING_ROW = 44
-    const val ACTED_ROW = 36
-    const val PRN_ROW = 40
-
     /**
      * Collapsing is a last resort, not a style: with room to spare every
      * slot lists its rows (names and marks), and only when the day does not
@@ -60,14 +50,16 @@ object LargeLayout {
         heightDp: Int,
         carryover: List<TodayDose>,
         doses: List<TodayDose>,
+        fontScale: Float = 1f,
     ): LargePlan {
+        val costs = Costs(fontScale)
         val slots = slotSections(doses)
         val actedSlots = slots.count { slot -> slot.none { it.status == DoseUiStatus.PENDING } }
-        var plan = layout(heightDp, carryover, slots, collapseFirst = 0)
+        var plan = layout(heightDp, carryover, slots, collapseFirst = 0, costs)
         var collapseFirst = 0
         while (plan.hidden > 0 && collapseFirst < actedSlots) {
             collapseFirst++
-            plan = layout(heightDp, carryover, slots, collapseFirst)
+            plan = layout(heightDp, carryover, slots, collapseFirst, costs)
         }
         return plan
     }
@@ -78,8 +70,9 @@ object LargeLayout {
         carryover: List<TodayDose>,
         slots: List<List<TodayDose>>,
         collapseFirst: Int,
+        costs: Costs,
     ): LargePlan {
-        val cursor = Cursor(heightDp - OUTER_PADDING - TITLE_BLOCK - MORE_LINE)
+        val cursor = Cursor(heightDp - OUTER_PADDING - costs.titleBlock - costs.moreLine, costs)
         if (carryover.isNotEmpty()) cursor.placeSection(LargeEntry.CarryoverHeader, carryover, collapsed = false)
         var foldsLeft = collapseFirst
         slots.forEach { slot ->
@@ -91,15 +84,45 @@ object LargeLayout {
         return LargePlan(
             entries = cursor.entries,
             hidden = cursor.hidden,
-            prnFits = cursor.hidden == 0 && cursor.budget + MORE_LINE >= PRN_ROW,
+            prnFits = cursor.hidden == 0 && cursor.budget + costs.moreLine >= costs.prnRow,
         )
     }
 
-    private fun rowCost(dose: TodayDose): Int = if (dose.status == DoseUiStatus.PENDING) PENDING_ROW else ACTED_ROW
+    /**
+     * dp costs mirroring the composables in WidgetUi. Text grows with the
+     * font size setting; chips, circles and paddings do not, so each cost
+     * is a fixed part plus a scaled text part (the sums equal the measured
+     * values at scale 1).
+     */
+    private class Costs(
+        private val fontScale: Float,
+    ) {
+        /** Title + date lines. */
+        val titleBlock: Int = TITLE_PADDING + text(TITLE_TEXT)
+
+        /** The "+N more" line, reserved up front. */
+        val moreLine: Int = MORE_PADDING + text(MORE_TEXT)
+
+        val sectionHeader: Int = HEADER_PADDING + text(HEADER_TEXT)
+
+        /** Header carrying status circles instead of rows. */
+        val collapsedHeader: Int = HEADER_PADDING + max(STATUS_CIRCLE, text(HEADER_TEXT))
+
+        val pendingRow: Int = PENDING_FIXED + text(PENDING_TEXT)
+
+        val actedRow: Int = ACTED_FIXED + max(ACTED_CHIP, text(ACTED_TEXT))
+
+        val prnRow: Int = PRN_FIXED + max(PRN_BUTTON, text(PRN_TEXT))
+
+        fun row(dose: TodayDose): Int = if (dose.status == DoseUiStatus.PENDING) pendingRow else actedRow
+
+        private fun text(dp: Int): Int = (dp * fontScale).roundToInt()
+    }
 
     /** Walks the sections top-down, spending height until it runs out. */
     private class Cursor(
         var budget: Int,
+        private val costs: Costs,
     ) {
         val entries = mutableListOf<LargeEntry>()
         var hidden = 0
@@ -121,12 +144,12 @@ object LargeLayout {
                 }
 
                 // A header is only worth drawing together with its first row.
-                budget < SECTION_HEADER + rowCost(rows.first()) -> {
+                budget < costs.sectionHeader + costs.row(rows.first()) -> {
                     hidden += rows.size
                 }
 
                 else -> {
-                    take(header, SECTION_HEADER)
+                    take(header, costs.sectionHeader)
                     rows.forEach(::placeRow)
                 }
             }
@@ -136,11 +159,11 @@ object LargeLayout {
             header: LargeEntry,
             rows: List<TodayDose>,
         ) {
-            if (budget >= COLLAPSED_HEADER) take(header, COLLAPSED_HEADER) else hidden += rows.size
+            if (budget >= costs.collapsedHeader) take(header, costs.collapsedHeader) else hidden += rows.size
         }
 
         private fun placeRow(dose: TodayDose) {
-            val cost = rowCost(dose)
+            val cost = costs.row(dose)
             if (hidden == 0 && budget >= cost) take(LargeEntry.DoseRow(dose), cost) else hidden++
         }
 
@@ -152,4 +175,21 @@ object LargeLayout {
             budget -= cost
         }
     }
+
+    private const val OUTER_PADDING = 28
+    private const val TITLE_PADDING = 12
+    private const val TITLE_TEXT = 32
+    private const val MORE_PADDING = 4
+    private const val MORE_TEXT = 14
+    private const val HEADER_PADDING = 6
+    private const val HEADER_TEXT = 16
+    private const val STATUS_CIRCLE = 20
+    private const val PENDING_FIXED = 14
+    private const val PENDING_TEXT = 30
+    private const val ACTED_FIXED = 12
+    private const val ACTED_CHIP = 24
+    private const val ACTED_TEXT = 16
+    private const val PRN_FIXED = 14
+    private const val PRN_BUTTON = 26
+    private const val PRN_TEXT = 16
 }

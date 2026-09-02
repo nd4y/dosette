@@ -27,7 +27,8 @@ data class AppSettings(
     val activeProfileId: String? = null,
     /** 0 = nag repeat off. */
     val nagIntervalMin: Int = 10,
-    val nagMaxCount: Int = 6,
+    /** Cap on audible repeats; 0 = none, the grace window alone ends them. */
+    val nagMaxCount: Int = 0,
     val snoozeMin: Int = 10,
     val missedGraceMin: Int = 60,
     val theme: ThemeMode = ThemeMode.SYSTEM,

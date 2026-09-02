@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
+import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
@@ -42,9 +44,14 @@ class GmsPlaceMonitor
             )
         }
 
-        private fun hasLocationPermission(): Boolean =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED
+        private fun hasLocationPermission(): Boolean = granted(Manifest.permission.ACCESS_FINE_LOCATION)
+
+        /** Geofences on Android 10+ need "all the time" access; without it registration fails silently. */
+        private fun hasBackgroundPermission(): Boolean =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+
+        private fun granted(permission: String): Boolean =
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
         override fun isCurrentlyAt(config: PlaceConfig): Boolean {
             val ssid = config.wifiSsid
@@ -65,11 +72,14 @@ class GmsPlaceMonitor
         @SuppressLint("MissingPermission")
         override fun syncGeofences(places: Map<PlaceId, PlaceConfig>) {
             if (!hasLocationPermission()) return
-            geofencingClient.removeGeofences(geofencePendingIntent)
-
+            geofencingClient.removeGeofences(geofencePendingIntent).addOnFailureListener {
+                Log.w(TAG, "removing geofences failed", it)
+            }
+            // Without "all the time" access registration fails: register nothing
+            // and leave the Wi-Fi poll and the snooze ceiling as the fallbacks.
             val fences =
                 places
-                    .filterValues { it.hasGeo }
+                    .filterValues { hasBackgroundPermission() && it.hasGeo }
                     .map { (id, config) ->
                         Geofence
                             .Builder()
@@ -92,6 +102,12 @@ class GmsPlaceMonitor
                     .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
                     .addGeofences(fences)
                     .build()
-            geofencingClient.addGeofences(request, geofencePendingIntent)
+            geofencingClient.addGeofences(request, geofencePendingIntent).addOnFailureListener {
+                // GEOFENCE_NOT_AVAILABLE, insufficient permission and the like:
+                // the Wi-Fi poll and the snooze ceiling remain as fallbacks.
+                Log.w(TAG, "registering geofences failed", it)
+            }
         }
     }
+
+private const val TAG = "GmsPlaceMonitor"

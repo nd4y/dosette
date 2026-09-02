@@ -185,7 +185,7 @@ object BackupMapper {
         }
         val s = data.settings
         check(s.nagIntervalMin >= 0) { "settings: nag_interval_min must not be negative" }
-        check(s.nagMaxCount >= 1) { "settings: nag_max_count must be at least 1" }
+        check(s.nagMaxCount >= 0) { "settings: nag_max_count must not be negative (0 = no cap)" }
         check(s.snoozeMin >= 1 && s.missedGraceMin >= 1) {
             "settings: snooze_min and missed_grace_min must be at least 1"
         }
@@ -198,3 +198,13 @@ object BackupMapper {
         if (!condition) throw BackupFormatException(message())
     }
 }
+
+/**
+ * The GCM tag did not verify: a wrong password or a corrupted file. Kept
+ * apart from [BackupFormatException] so the password dialog can react to
+ * it instead of reporting a broken backup.
+ */
+class BackupPasswordException(
+    message: String,
+    cause: Throwable? = null,
+) : Exception(message, cause)

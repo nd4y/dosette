@@ -5,7 +5,7 @@ Offline medication tracker for Android. Material 3 Expressive, no accounts, no n
 ## Features
 
 - **Medications with flexible schedules**: fixed times, weekdays, every-N-days, cycles (X on / Y off), as-needed.
-- **Persistent reminders**: the notification cannot be dismissed for good — swiping it away silently re-posts it in place, and the alert repeats on a configurable interval until the dose is marked taken or skipped. Snooze for a chosen duration or **until you get home / to work** (geofence + Wi-Fi recognition, configured in Settings → Places), with a configurable missed-dose grace window.
+- **Persistent reminders**: the notification cannot be dismissed for good — swiping it away silently re-posts it in place, and the alert repeats on a configurable interval until the dose is marked taken or skipped (or, if you prefer, a fixed number of times). Snooze for a chosen duration or **until you get home / to work** (geofence + Wi-Fi recognition, configured in Settings → Places; the geofence needs location "all the time", which Settings asks for and flags while missing, and a place snooze wakes on its own after 12 hours at most), with a configurable missed-dose grace window.
 - **Package variants with per-variant stock**: a 150 mg dose can be taken as one 150 mg capsule or two 75 mg ones — each package form keeps its own stock pool and is decremented correctly.
 - **History and adherence**: a calendar with per-day status dots (statuses editable retroactively, an accidental mark can be undone — as-needed intakes via an undo snackbar), 30-day adherence stats with per-medication breakdown and a no-miss streak.
 - **One-time doses**: a dose for a specific day and time can be added right from the calendar — it gets reminders, stock decrement and statistics like any scheduled intake, and can be deleted as a whole.
@@ -59,6 +59,11 @@ is teal `#00696B`; with dynamic color enabled the palette follows the device wal
   to an inexact alarm instead of dying. There is deliberately **no WorkManager of our own and no
   foreground service** (Glance brings its own worker for widget updates) — do not add them: a missed
   daily job in Doze means a missed reminder.
+- Direct boot: the database is credential-encrypted and unreadable until the first unlock, and
+  `BOOT_COMPLETED` only arrives after it. The scheduler therefore mirrors the next alarm instant into
+  device-protected storage and `LockedBootReceiver` re-arms it on `LOCKED_BOOT_COMPLETED`; an alarm that
+  fires while still locked shows a generic "time for a medication" notice, which the reconcile on
+  `BOOT_COMPLETED` replaces with the real reminders.
 - Occurrences are computed on the fly from immutable schedule versions; only facts (taken / skipped /
   missed) are stored, so schedule edits never rewrite history. Every-N-days and cycle rhythms count from
   the version start date; an edit that keeps the cadence carries that anchor over (`anchor_date` in the

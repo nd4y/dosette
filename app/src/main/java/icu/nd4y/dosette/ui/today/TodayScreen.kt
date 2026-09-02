@@ -59,6 +59,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -800,6 +802,7 @@ private fun ProfileChips(
             Surface(
                 onClick = { onSelectProfile(profile.id) },
                 shape = RoundedCornerShape(if (selected) 14.dp else 20.dp),
+                modifier = Modifier.semantics { this.selected = profile.id == state.activeProfileId },
                 color =
                     if (selected) {
                         MaterialTheme.colorScheme.secondaryContainer
@@ -921,7 +924,7 @@ private fun TakeSplitButton(
                 Box(modifier = Modifier.width(34.dp).height(44.dp), contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = ChevronDown,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.detail_more_actions),
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(14.dp),
                     )

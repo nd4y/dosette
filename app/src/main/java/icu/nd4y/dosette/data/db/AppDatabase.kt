@@ -33,7 +33,7 @@ import icu.nd4y.dosette.data.db.entity.ScheduleTimeEntity
         AppointmentEntity::class,
         ReminderStateEntity::class,
     ],
-    version = 3,
+    version = AppDatabase.VERSION,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -55,6 +55,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun backupDao(): BackupDao
 
     companion object {
+        const val VERSION = 3
         const val NAME = "dosette.db"
 
         /** v2: place-snooze columns on reminder_states; graceAnchor backfills from scheduledAt. */

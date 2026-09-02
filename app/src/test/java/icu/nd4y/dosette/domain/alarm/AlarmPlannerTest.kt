@@ -215,4 +215,21 @@ class AlarmPlannerTest {
 
         assertThat(plan.at).isLessThan(now)
     }
+
+    @Test
+    fun `a place snooze also wakes at its ceiling`() {
+        val ceiling = now.plusSeconds(5 * 60)
+        val waiting = state(phase = ReminderPhase.SNOOZED, snoozedUntil = ceiling, snoozedUntilPlace = PlaceId.HOME)
+
+        val plan =
+            AlarmPlanner.nextAlarm(
+                now,
+                zone,
+                AlarmObligations(emptyList(), listOf(waiting), emptyList()),
+                settings,
+            )
+
+        assertThat(plan.reason).isEqualTo(AlarmReason.SNOOZE)
+        assertThat(plan.at).isEqualTo(ceiling)
+    }
 }

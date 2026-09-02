@@ -61,6 +61,11 @@ interface ReminderNotifier {
         appointmentId: String,
         offsetsMin: List<Int>,
     )
+
+    /** Generic "time for a medication" for an alarm that rang before the first unlock. */
+    fun postLockedNotice()
+
+    fun cancelLockedNotice()
 }
 
 @Singleton
@@ -205,6 +210,27 @@ class AndroidReminderNotifier
             offsetsMin: List<Int>,
         ) {
             offsetsMin.forEach { manager.cancel(NotificationIds.appointment(appointmentId, it)) }
+        }
+
+        override fun postLockedNotice() {
+            // No dose details on purpose: the database cannot be read while
+            // the user is locked, so this is all the app knows.
+            val notification =
+                NotificationCompat
+                    .Builder(context, Channels.DOSE_ALERTS)
+                    .setSmallIcon(R.drawable.ic_stat_pill)
+                    .setContentTitle(localized.getString(R.string.notification_locked_title))
+                    .setContentText(localized.getString(R.string.notification_locked_text))
+                    .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                    .setColor(context.getColor(R.color.notification_accent))
+                    .setAutoCancel(true)
+                    .setContentIntent(contentIntent(NotificationIds.LOCKED_NOTICE))
+                    .build()
+            notifyIfAllowed(NotificationIds.LOCKED_NOTICE, notification)
+        }
+
+        override fun cancelLockedNotice() {
+            manager.cancel(NotificationIds.LOCKED_NOTICE)
         }
 
         private fun contentIntent(requestCode: Int): PendingIntent =

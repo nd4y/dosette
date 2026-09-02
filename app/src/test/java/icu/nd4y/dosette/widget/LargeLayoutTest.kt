@@ -128,4 +128,14 @@ class LargeLayoutTest {
 
         assertThat(plan.prnFits).isTrue()
     }
+
+    @Test
+    fun `text costs grow with the font scale`() {
+        // 330dp fits the whole day at scale 1 (night folded); at 1.4 the
+        // taller rows push the last afternoon dose out.
+        assertThat(LargeLayout.plan(heightDp = 330, carryover = emptyList(), doses = day).hidden).isEqualTo(0)
+        val large = LargeLayout.plan(heightDp = 330, carryover = emptyList(), doses = day, fontScale = 1.4f)
+
+        assertThat(large.hidden).isEqualTo(1)
+    }
 }

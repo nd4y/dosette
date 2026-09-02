@@ -45,6 +45,13 @@ class SettingsViewModel
             }
         }
 
+        fun setNagMaxCount(value: Int) {
+            viewModelScope.launch {
+                settingsRepository.setNagMaxCount(value)
+                engine.reschedule()
+            }
+        }
+
         fun setSnooze(value: Int) {
             viewModelScope.launch { settingsRepository.setSnoozeMin(value) }
         }

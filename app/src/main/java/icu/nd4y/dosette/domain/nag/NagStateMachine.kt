@@ -5,15 +5,24 @@ import icu.nd4y.dosette.domain.model.OccurrenceKey
 import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.ReminderPhase
 import icu.nd4y.dosette.domain.model.ReminderState
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 data class NagSettings(
     val nagIntervalMin: Int,
+    /** Cap on audible repeats; [NO_NAG_CAP] = the grace window alone ends them. */
     val nagMaxCount: Int,
     val snoozeMin: Int,
     val missedGraceMin: Int,
-)
+) {
+    /** May another nag follow [nagCount] alerts? */
+    fun nagAllowed(nagCount: Int): Boolean = nagMaxCount == NO_NAG_CAP || nagCount + 1 < nagMaxCount
+
+    companion object {
+        const val NO_NAG_CAP = 0
+    }
+}
 
 sealed interface NagEvent {
     /** A scheduled occurrence just became due. */
@@ -98,6 +107,9 @@ data class Transition(
  * fires only on a user swipe, never on the app's own cancel.
  */
 object NagStateMachine {
+    /** Longest wait for a place before the reminder comes back on its own. */
+    private val PLACE_SNOOZE_CEILING: Duration = Duration.ofHours(PLACE_SNOOZE_CEILING_HOURS)
+
     fun reduce(
         state: ReminderState?,
         event: NagEvent,
@@ -150,7 +162,7 @@ object NagStateMachine {
         }
         val graceOver =
             now.isAfter(state.graceAnchor.plus(settings.missedGraceMin.toLong(), ChronoUnit.MINUTES))
-        val exhausted = state.nagCount + 1 >= settings.nagMaxCount
+        val exhausted = !settings.nagAllowed(state.nagCount)
         return when {
             graceOver -> {
                 expire(state)
@@ -198,9 +210,12 @@ object NagStateMachine {
                 }
 
                 is SnoozeTarget.UntilPlace -> {
+                    // The ceiling keeps a geofence that never fires (no
+                    // background location, a cleared place) from letting the
+                    // dose wait forever.
                     state.copy(
                         phase = ReminderPhase.SNOOZED,
-                        snoozedUntil = null,
+                        snoozedUntil = now.plus(PLACE_SNOOZE_CEILING),
                         snoozedUntilPlace = target.place,
                     )
                 }
@@ -243,8 +258,8 @@ object NagStateMachine {
         state: ReminderState?,
         now: Instant,
     ): Transition {
-        // Place-snoozes have no expiry time; only PlaceReached wakes them.
-        if (state == null || state.phase != ReminderPhase.SNOOZED || state.snoozedUntilPlace != null) {
+        // A place snooze wakes at its ceiling the same way, place or not.
+        if (state == null || state.phase != ReminderPhase.SNOOZED) {
             return Transition(state, emptyList())
         }
         // Same rule as arriving at a place: the postponement was deliberate,
@@ -255,6 +270,7 @@ object NagStateMachine {
             state.copy(
                 phase = ReminderPhase.ACTIVE,
                 snoozedUntil = null,
+                snoozedUntilPlace = null,
                 graceAnchor = now,
                 nagCount = 0,
                 lastAlertAt = now,
@@ -275,3 +291,5 @@ object NagStateMachine {
         )
     }
 }
+
+private const val PLACE_SNOOZE_CEILING_HOURS = 12L
