@@ -11,6 +11,7 @@ import icu.nd4y.dosette.domain.model.Medication
 import icu.nd4y.dosette.domain.model.MedicationVariant
 import icu.nd4y.dosette.domain.model.Profile
 import icu.nd4y.dosette.domain.model.Schedule
+import icu.nd4y.dosette.domain.model.ScheduleType
 import java.time.Instant
 
 /** The import file is unusable: wrong schema, broken values or dangling references. */
@@ -108,16 +109,20 @@ object BackupMapper {
     }
 
     private fun validate(data: BackupData) {
+        validateReferences(data)
+        validateValues(data)
+    }
+
+    private fun validateReferences(data: BackupData) {
         val profileIds = data.profiles.mapTo(mutableSetOf()) { it.id }
         val medIds = data.medications.mapTo(mutableSetOf()) { it.id }
-        val scheduleIds = data.schedules.mapTo(mutableSetOf()) { it.id }
         val variantsByMed = data.variants.groupBy({ it.medicationId }, { it.id })
 
         // Duplicate ids must fail here with a readable message, not surface
         // as a raw SQLite constraint error from the import transaction.
         check(profileIds.size == data.profiles.size) { "duplicate profile ids" }
         check(medIds.size == data.medications.size) { "duplicate medication ids" }
-        check(scheduleIds.size == data.schedules.size) { "duplicate schedule ids" }
+        check(data.schedules.distinctBy { it.id }.size == data.schedules.size) { "duplicate schedule ids" }
         check(data.variants.distinctBy { it.id }.size == data.variants.size) { "duplicate variant ids" }
         check(data.doseLogs.distinctBy { it.id }.size == data.doseLogs.size) { "duplicate dose log ids" }
         check(data.appointments.distinctBy { it.id }.size == data.appointments.size) { "duplicate appointment ids" }
@@ -126,6 +131,10 @@ object BackupMapper {
             check(it in profileIds) { "active_profile_id $it points to a missing profile" }
         }
         for (med in data.medications) {
+            // The id opens every reminder-state key ("id|date|time").
+            check(med.id.isNotBlank() && '|' !in med.id) {
+                "medication id '${med.id}' must be non-empty and must not contain '|'"
+            }
             med.defaultVariantId?.let { variantId ->
                 check(variantId in variantsByMed[med.id].orEmpty()) {
                     "medication ${med.id}: default_variant_id $variantId is not among its variants"
@@ -139,14 +148,46 @@ object BackupMapper {
             if (log.kind == DoseKind.SCHEDULED) {
                 check(log.time != null) { "scheduled dose log ${log.id} has no time" }
             }
-            log.scheduleId?.let {
-                check(it in scheduleIds) { "dose log ${log.id} references missing schedule $it" }
-            }
-            log.variantId?.let {
-                check(it in variantsByMed[log.medicationId].orEmpty()) {
-                    "dose log ${log.id} references missing variant $it"
+            // schedule_id and variant_id are history, not references: the app
+            // deletes replaced same-day versions and dropped package variants
+            // while their logs stay, and an own export must always import.
+        }
+    }
+
+    /** Values the reminder engine would choke on — a negative grace throws on every pass. */
+    private fun validateValues(data: BackupData) {
+        for (schedule in data.schedules) {
+            schedule.endDate?.let {
+                check(!it.isBefore(schedule.startDate)) {
+                    "schedule ${schedule.id}: end_date $it is before start_date ${schedule.startDate}"
                 }
             }
+            when (schedule.type) {
+                ScheduleType.EVERY_N_DAYS -> {
+                    check(
+                        (schedule.intervalDays ?: 0) >= 1,
+                    ) { "schedule ${schedule.id}: interval_days must be at least 1" }
+                }
+
+                ScheduleType.CYCLE -> {
+                    check((schedule.cycleDaysOn ?: 0) >= 1 && (schedule.cycleDaysOff ?: -1) >= 0) {
+                        "schedule ${schedule.id}: cycle_days_on must be at least 1 and cycle_days_off at least 0"
+                    }
+                }
+
+                else -> {
+                    Unit
+                }
+            }
+            for (slot in schedule.times) {
+                check(slot.doseAmount > 0) { "schedule ${schedule.id}: dose_amount must be positive" }
+            }
+        }
+        val s = data.settings
+        check(s.nagIntervalMin >= 0) { "settings: nag_interval_min must not be negative" }
+        check(s.nagMaxCount >= 1) { "settings: nag_max_count must be at least 1" }
+        check(s.snoozeMin >= 1 && s.missedGraceMin >= 1) {
+            "settings: snooze_min and missed_grace_min must be at least 1"
         }
     }
 

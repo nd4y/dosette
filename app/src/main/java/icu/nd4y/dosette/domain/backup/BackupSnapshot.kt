@@ -17,7 +17,8 @@ data class BackupSnapshot(
     val profiles: List<ProfileBackup> = emptyList(),
 ) {
     companion object {
-        const val CURRENT_SCHEMA_VERSION = 1
+        /** 2: anchor_date and one_off on schedules — both optional, so version 1 files still import. */
+        const val CURRENT_SCHEMA_VERSION = 2
     }
 }
 
@@ -86,6 +87,10 @@ data class ScheduleBackup(
     val type: String,
     @SerialName("start_date") val startDate: String,
     @SerialName("end_date") val endDate: String? = null,
+    /** Rhythm anchor carried over by an edit (every-N / cycle); absent = start_date. */
+    @SerialName("anchor_date") val anchorDate: String? = null,
+    /** Single-day dose added from the calendar. */
+    @SerialName("one_off") val oneOff: Boolean = false,
     /** Day names (MONDAY..SUNDAY) for WEEKDAYS schedules. */
     val weekdays: List<String> = emptyList(),
     @SerialName("interval_days") val intervalDays: Int? = null,

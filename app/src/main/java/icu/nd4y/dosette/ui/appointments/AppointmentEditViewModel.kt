@@ -10,6 +10,7 @@ import icu.nd4y.dosette.data.repository.AppointmentRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.Appointment
 import icu.nd4y.dosette.reminders.ReminderEngine
+import icu.nd4y.dosette.reminders.notifications.ReminderNotifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -48,6 +49,7 @@ class AppointmentEditViewModel
         private val appointmentRepository: AppointmentRepository,
         private val settingsRepository: SettingsRepository,
         private val engine: ReminderEngine,
+        private val notifier: ReminderNotifier,
         private val clock: Clock,
     ) : ViewModel() {
         private val _draft = MutableStateFlow(AppointmentDraft(date = LocalDate.now(clock).plusDays(1)))
@@ -97,6 +99,14 @@ class AppointmentEditViewModel
                             saveInFlight = false
                             return@launch
                         }
+                // A moved visit must not keep the notice of its old time.
+                existing?.let { before ->
+                    val moved =
+                        before.date != draft.date ||
+                            before.time != draft.time ||
+                            before.reminderOffsetsMin.toSet() != draft.offsets
+                    if (moved) notifier.cancelAppointment(before.id, before.reminderOffsetsMin)
+                }
                 appointmentRepository.upsert(
                     Appointment(
                         id = existing?.id ?: UUID.randomUUID().toString(),
@@ -117,9 +127,10 @@ class AppointmentEditViewModel
         }
 
         fun delete(onDone: () -> Unit) {
-            val id = existing?.id ?: return
+            val current = existing ?: return
             viewModelScope.launch {
-                appointmentRepository.delete(id)
+                notifier.cancelAppointment(current.id, current.reminderOffsetsMin)
+                appointmentRepository.delete(current.id)
                 engine.reschedule()
                 onDone()
             }

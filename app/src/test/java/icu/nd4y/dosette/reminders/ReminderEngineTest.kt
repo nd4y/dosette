@@ -34,6 +34,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowAlarmManager
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -97,6 +98,11 @@ private class FakeNotifier : ReminderNotifier {
     }
 
     override fun cancelAll() = Unit
+
+    override fun cancelAppointment(
+        appointmentId: String,
+        offsetsMin: List<Int>,
+    ) = Unit
 }
 
 private class FakePlaceMonitor : icu.nd4y.dosette.reminders.places.PlaceMonitor {
@@ -500,6 +506,7 @@ class ReminderEngineTest {
             db.scheduleDao().insertWithTimes(
                 scheduleEntity(
                     id = "s-oneoff",
+                    oneOff = true,
                     startDate = key.date,
                     endDate = key.date,
                 ),
@@ -541,5 +548,148 @@ class ReminderEngineTest {
             engine.reconcile()
 
             assertThat(notifier.reminders.first().second).isFalse()
+        }
+
+    @Test
+    fun `state whose slot vanished in a schedule edit is cancelled`() =
+        runTest {
+            engine.processDueEvents()
+            assertThat(stateRepository.get(key)).isNotNull()
+
+            // The 08:00 slot moves to 09:00 — a same-day edit swaps the version.
+            db.scheduleDao().delete("s1")
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s2", startDate = LocalDate.parse("2026-08-29")),
+                listOf(scheduleTimeEntity(id = "t2", scheduleId = "s2", timeMinutes = 9 * 60)),
+            )
+            engine.reschedule()
+
+            assertThat(stateRepository.get(key)).isNull()
+            assertThat(notifier.cancelled).contains(key)
+            // Nothing is finalized for a slot that no longer exists.
+            clock.advance(Duration.ofHours(3))
+            engine.processDueEvents()
+            assertThat(doseLogRepository.getScheduled(key)).isNull()
+        }
+
+    private fun appointmentAtNine(
+        id: String,
+        offsetMin: Int,
+    ) = Appointment(
+        id = id,
+        profileId = "p1",
+        title = "Visit",
+        doctorName = null,
+        location = null,
+        date = key.date,
+        time = LocalTime.of(9, 0),
+        notes = null,
+        reminderOffsetsMin = listOf(offsetMin),
+        createdAt = clock.instant(),
+    )
+
+    @Test
+    fun `appointment reminder is still posted when the pass runs late`() =
+        runTest {
+            val appointments = AppointmentRepositoryImpl(db.appointmentDao())
+            appointments.upsert(appointmentAtNine(id = "a1", offsetMin = 55))
+            // Due at 08:05; the phone was off until 08:25.
+            clock.advance(Duration.ofMinutes(25))
+            engine.processDueEvents()
+            assertThat(notifier.appointments).hasSize(1)
+
+            // Once the visit has started there is nothing left to remind about.
+            appointments.upsert(appointmentAtNine(id = "a2", offsetMin = 30))
+            clock.advance(Duration.ofMinutes(60))
+            engine.processDueEvents()
+            assertThat(notifier.appointments).hasSize(1)
+        }
+
+    @Test
+    fun `a slot older than its version is neither alerted nor finalized`() =
+        runTest {
+            // Medication set up at 08:00:05 with a 07:00 slot: that dose was
+            // never planned, so no reminder and no missed log for it.
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s-late", startDate = key.date, createdAt = clock.instant()),
+                listOf(scheduleTimeEntity(id = "t-late", scheduleId = "s-late", timeMinutes = 7 * 60)),
+            )
+            val earlyKey = OccurrenceKey("m1", key.date, LocalTime.of(7, 0))
+
+            engine.processDueEvents()
+            assertThat(stateRepository.get(key)).isNotNull()
+            assertThat(stateRepository.get(earlyKey)).isNull()
+
+            clock.advance(Duration.ofHours(3))
+            engine.processDueEvents()
+            assertThat(doseLogRepository.getScheduled(earlyKey)).isNull()
+        }
+
+    @Test
+    fun `housekeeping alone does not raise the alarm-clock icon`() =
+        runTest {
+            ShadowAlarmManager.setCanScheduleExactAlarms(true)
+            db.medicationDao().delete("m1")
+            engine.reschedule()
+
+            val alarmManager =
+                ApplicationProvider.getApplicationContext<Context>().getSystemService(AlarmManager::class.java)
+            val next = requireNotNull(shadowOf(alarmManager).nextScheduledAlarm)
+            assertThat(next.alarmClockInfo).isNull()
+            assertThat(next.isAllowWhileIdle).isTrue()
+        }
+
+    @Test
+    fun `an archived medication's earlier doses are finalized, never alerted`() =
+        runTest {
+            // Yesterday's 08:00 was never marked; the medication is archived today.
+            db.scheduleDao().delete("s1")
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s-old", startDate = key.date.minusDays(1)),
+                listOf(scheduleTimeEntity(id = "t-old", scheduleId = "s-old", timeMinutes = 8 * 60)),
+            )
+            db.medicationDao().archive("m1", clock.instant())
+            val yesterdayKey = OccurrenceKey("m1", key.date.minusDays(1), LocalTime.of(8, 0))
+
+            engine.processDueEvents()
+
+            assertThat(doseLogRepository.getScheduled(yesterdayKey)?.status).isEqualTo(DoseStatus.MISSED)
+            // From the archive day on there is no plan at all.
+            assertThat(doseLogRepository.getScheduled(key)).isNull()
+            assertThat(notifier.reminders).isEmpty()
+        }
+
+    @Test
+    fun `a version without reminders is swept for missed doses but never alerts`() =
+        runTest {
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s-quiet", startDate = key.date).copy(remindersEnabled = false),
+                listOf(scheduleTimeEntity(id = "t-quiet", scheduleId = "s-quiet", timeMinutes = 7 * 60)),
+            )
+            val quietKey = OccurrenceKey("m1", key.date, LocalTime.of(7, 0))
+            clock.advance(Duration.ofHours(3))
+
+            engine.processDueEvents()
+
+            assertThat(doseLogRepository.getScheduled(quietKey)?.status).isEqualTo(DoseStatus.MISSED)
+            assertThat(notifier.reminders.map { it.first.key }).doesNotContain(quietKey)
+        }
+
+    @Test
+    fun `undo of a mark older than the sweep window finalizes it as missed`() =
+        runTest {
+            val oldDate = key.date.minusDays(10)
+            db.scheduleDao().delete("s1")
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s-old", startDate = oldDate),
+                listOf(scheduleTimeEntity(id = "t-old", scheduleId = "s-old", timeMinutes = 8 * 60)),
+            )
+            val oldKey = OccurrenceKey("m1", oldDate, LocalTime.of(8, 0))
+            engine.onUserAction(oldKey, UserDoseAction.TAKE)
+            assertThat(doseLogRepository.getScheduled(oldKey)?.status).isEqualTo(DoseStatus.TAKEN)
+
+            engine.undoDose(oldKey)
+
+            assertThat(doseLogRepository.getScheduled(oldKey)?.status).isEqualTo(DoseStatus.MISSED)
         }
 }

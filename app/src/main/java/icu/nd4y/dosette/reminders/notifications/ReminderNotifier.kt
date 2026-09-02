@@ -12,6 +12,7 @@ import icu.nd4y.dosette.R
 import icu.nd4y.dosette.domain.model.Appointment
 import icu.nd4y.dosette.domain.model.OccurrenceKey
 import icu.nd4y.dosette.reminders.NotificationActionReceiver
+import icu.nd4y.dosette.ui.common.withAppLocale
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -54,6 +55,12 @@ interface ReminderNotifier {
     )
 
     fun cancelAll()
+
+    /** Drops the notices of a visit that was deleted or moved. */
+    fun cancelAppointment(
+        appointmentId: String,
+        offsetsMin: List<Int>,
+    )
 }
 
 @Singleton
@@ -63,6 +70,11 @@ class AndroidReminderNotifier
         @ApplicationContext private val context: Context,
     ) : ReminderNotifier {
         private val manager = NotificationManagerCompat.from(context)
+
+        // Texts follow the in-app language, which below API 33 the application
+        // context knows nothing about.
+        private val localized: Context
+            get() = context.withAppLocale()
 
         // POST_NOTIFICATIONS is requested in onboarding; if the user declined,
         // notifyIfAllowed silently skips and the app shows an in-app banner instead.
@@ -83,10 +95,10 @@ class AndroidReminderNotifier
             val id = NotificationIds.reminder(payload.key)
             val text =
                 buildList {
-                    add(context.getString(R.string.notification_dose_text, payload.key.time.format(TIME_FORMAT)))
-                    payload.amountText?.let { add(context.getString(R.string.unit_pieces, it)) }
+                    add(localized.getString(R.string.notification_dose_text, payload.key.time.format(TIME_FORMAT)))
+                    payload.amountText?.let { add(localized.getString(R.string.unit_pieces, it)) }
                     payload.instructions?.let(::add)
-                    payload.profileName?.let { add(context.getString(R.string.notification_profile, it)) }
+                    payload.profileName?.let { add(localized.getString(R.string.notification_profile, it)) }
                 }.joinToString(" · ")
             // Always the alerting channel: the silent swipe-repost is muted with
             // setSilent instead of a LOW channel, so it reappears in the SAME
@@ -107,15 +119,15 @@ class AndroidReminderNotifier
                     .setDeleteIntent(actionIntent(payload.key, NotificationActionReceiver.ACTION_DISMISSED, id, 0))
                     .addAction(
                         0,
-                        context.getString(R.string.action_skip),
+                        localized.getString(R.string.action_skip),
                         actionIntent(payload.key, NotificationActionReceiver.ACTION_SKIP, id, 2),
                     ).addAction(
                         0,
-                        context.getString(R.string.action_snooze),
+                        localized.getString(R.string.action_snooze),
                         actionIntent(payload.key, NotificationActionReceiver.ACTION_SNOOZE, id, 3),
                     ).addAction(
                         0,
-                        context.getString(R.string.action_take),
+                        localized.getString(R.string.action_take),
                         actionIntent(payload.key, NotificationActionReceiver.ACTION_TAKE, id, 1),
                     ).build()
             notifyIfAllowed(id, notification)
@@ -133,8 +145,8 @@ class AndroidReminderNotifier
                 NotificationCompat
                     .Builder(context, Channels.MISC)
                     .setSmallIcon(R.drawable.ic_stat_pill)
-                    .setContentTitle(context.getString(R.string.notification_missed_title, medicationTitle))
-                    .setContentText(context.getString(R.string.notification_missed_text))
+                    .setContentTitle(localized.getString(R.string.notification_missed_title, medicationTitle))
+                    .setContentText(localized.getString(R.string.notification_missed_text))
                     .setCategory(NotificationCompat.CATEGORY_STATUS)
                     .setAutoCancel(true)
                     .setContentIntent(contentIntent(NotificationIds.missedNotice(key)))
@@ -151,8 +163,8 @@ class AndroidReminderNotifier
                 NotificationCompat
                     .Builder(context, Channels.INVENTORY)
                     .setSmallIcon(R.drawable.ic_stat_pill)
-                    .setContentTitle(context.getString(R.string.notification_low_stock_title, medicationTitle))
-                    .setContentText(context.getString(R.string.notification_low_stock_text, unitsLeft))
+                    .setContentTitle(localized.getString(R.string.notification_low_stock_title, medicationTitle))
+                    .setContentText(localized.getString(R.string.notification_low_stock_text, unitsLeft))
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
                     .setAutoCancel(true)
                     .setContentIntent(contentIntent(NotificationIds.lowStock(medicationId)))
@@ -168,7 +180,7 @@ class AndroidReminderNotifier
             val time = appointment.time.format(TIME_FORMAT)
             val text =
                 listOfNotNull(
-                    context.getString(R.string.notification_appointment_time, time),
+                    localized.getString(R.string.notification_appointment_time, time),
                     appointment.location,
                 ).joinToString(" · ")
             val notification =
@@ -186,6 +198,13 @@ class AndroidReminderNotifier
 
         override fun cancelAll() {
             manager.cancelAll()
+        }
+
+        override fun cancelAppointment(
+            appointmentId: String,
+            offsetsMin: List<Int>,
+        ) {
+            offsetsMin.forEach { manager.cancel(NotificationIds.appointment(appointmentId, it)) }
         }
 
         private fun contentIntent(requestCode: Int): PendingIntent =

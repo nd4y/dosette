@@ -81,11 +81,7 @@ class MedDetailViewModel
             variantId: String,
             units: Double,
         ) {
-            viewModelScope.launch {
-                medicationRepository.getVariant(variantId)?.let { variant ->
-                    medicationRepository.upsertVariant(variant.copy(currentStock = units))
-                }
-            }
+            viewModelScope.launch { medicationRepository.setStock(variantId, units) }
         }
 
         fun archive() {

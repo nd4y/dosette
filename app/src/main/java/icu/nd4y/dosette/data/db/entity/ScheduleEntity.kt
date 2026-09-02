@@ -25,6 +25,10 @@ data class ScheduleEntity(
     val type: String,
     val startDate: LocalDate,
     val endDate: LocalDate?,
+    /** Rhythm anchor for every-N / cycle versions, see the domain Schedule; null = startDate. Added in v3. */
+    val anchorDate: LocalDate?,
+    /** Single-day dose added from the calendar (v3; backfilled from startDate == endDate). */
+    val oneOff: Boolean,
     /** Bitmask, bit 0 = Monday. */
     val weekdaysMask: Int,
     val intervalDays: Int?,

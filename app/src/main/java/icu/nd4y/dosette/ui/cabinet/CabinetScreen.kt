@@ -201,9 +201,15 @@ private fun CabinetBody(
                             onToggle = { archivedExpanded = !archivedExpanded },
                         )
                     }
-                    items(state.archived, key = { it.id }) { card ->
-                        AnimatedVisibility(visible = archivedExpanded) {
-                            MedCardRow(card = card, onClick = { onOpenMedication(card.id) })
+                    // Collapsed items must leave the list, not stay as zero-height
+                    // rows that still collect the spacing between them.
+                    if (archivedExpanded) {
+                        items(state.archived, key = { it.id }) { card ->
+                            MedCardRow(
+                                card = card,
+                                onClick = { onOpenMedication(card.id) },
+                                modifier = Modifier.animateItem(),
+                            )
                         }
                     }
                 }

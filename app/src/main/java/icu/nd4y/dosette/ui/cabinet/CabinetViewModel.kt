@@ -98,7 +98,9 @@ class CabinetViewModel
 
         private fun MedicationDetails.toCard(): MedCard {
             val today = clock.instant().atZone(clock.zone).toLocalDate()
-            val activeSchedules = schedulesActiveOn(today)
+            // One-off doses are not the regimen: they would distort the brief
+            // and the days-of-supply estimate.
+            val activeSchedules = schedulesActiveOn(today).filter { !it.oneOff }
             val variant = defaultVariant
             val trackedStock = variant?.takeIf { it.trackingEnabled }
 

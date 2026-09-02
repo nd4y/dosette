@@ -33,7 +33,7 @@ import icu.nd4y.dosette.data.db.entity.ScheduleTimeEntity
         AppointmentEntity::class,
         ReminderStateEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -66,6 +66,29 @@ abstract class AppDatabase : RoomDatabase() {
                         "ALTER TABLE reminder_states ADD COLUMN graceAnchor INTEGER NOT NULL DEFAULT 0",
                     )
                     db.execSQL("UPDATE reminder_states SET graceAnchor = scheduledAt")
+                }
+            }
+
+        /** v3: schedules carry an optional rhythm anchor (every-N / cycle) and an explicit one-off flag. */
+        val MIGRATION_2_3 =
+            object : Migration(2, 3) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE schedules ADD COLUMN anchorDate TEXT")
+                    db.execSQL("ALTER TABLE schedules ADD COLUMN oneOff INTEGER NOT NULL DEFAULT 0")
+                    // Until v3 a one-off was recognised by its single-day window.
+                    // ...unless the version was merely replaced the day after it
+                    // started: its successor begins right where it ends.
+                    db.execSQL(
+                        """
+                        UPDATE schedules SET oneOff = 1
+                        WHERE endDate = startDate AND NOT EXISTS (
+                            SELECT 1 FROM schedules AS next
+                            WHERE next.medicationId = schedules.medicationId
+                                AND next.id != schedules.id
+                                AND next.startDate = date(schedules.endDate, '+1 day')
+                        )
+                        """.trimIndent(),
+                    )
                 }
             }
     }

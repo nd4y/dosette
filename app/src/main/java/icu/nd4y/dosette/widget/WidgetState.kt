@@ -3,6 +3,7 @@ package icu.nd4y.dosette.widget
 import icu.nd4y.dosette.data.repository.DoseLogRepository
 import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
+import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.ScheduleType
@@ -33,6 +34,8 @@ data class WidgetState(
     val prn: List<PrnMed> = emptyList(),
     /** Minutes until the earliest pending dose; negative when it is already due. */
     val minutesToNext: Long? = null,
+    /** In-app language: the widget renders outside any activity and must apply it itself. */
+    val language: AppLanguage = AppLanguage.SYSTEM,
 ) {
     /** The ring stays a picture of TODAY; carryover is listed, not counted. */
     val taken: Int get() = doses.count { it.status == DoseUiStatus.TAKEN }
@@ -66,22 +69,22 @@ class WidgetStateLoader
     ) {
         fun observe(): Flow<WidgetState> =
             settingsRepository.settings
-                .map { it.activeProfileId }
+                .map { it.activeProfileId to it.language }
                 .distinctUntilChanged()
-                .flatMapLatest { profileId ->
+                .flatMapLatest { (profileId, language) ->
                     // The same date for the log query and the render: mixing a
                     // captured date with a re-read one around midnight would
                     // pair the new day's doses with the old day's logs.
                     val date = today()
                     if (profileId == null) {
-                        flowOf(WidgetState(date))
+                        flowOf(WidgetState(date, language = language))
                     } else {
                         combine(
                             medicationRepository.observeByProfile(profileId),
                             // Yesterday too: a dose snoozed across midnight is
                             // still the most urgent thing the widget can show.
                             doseLogRepository.observeRange(profileId, date.minusDays(1), date),
-                        ) { meds, logs -> build(date, meds, logs) }
+                        ) { meds, logs -> build(date, meds, logs, language) }
                     }
                 }
 
@@ -93,6 +96,7 @@ class WidgetStateLoader
             date: LocalDate,
             meds: List<MedicationDetails>,
             logs: List<DoseLog>,
+            language: AppLanguage,
         ): WidgetState {
             val now = clock.instant()
             val doses = buildDayDoses(date, meds, logs, clock.zone)
@@ -136,6 +140,7 @@ class WidgetStateLoader
                 carryover = carryover,
                 prn = prn,
                 minutesToNext = minutesToNext,
+                language = language,
             )
         }
     }

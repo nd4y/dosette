@@ -489,6 +489,8 @@ class ScreenshotTests {
                     SettingsContent(
                         settings = AppSettings(),
                         batteryExempt = false,
+                        notificationsEnabled = true,
+                        onOpenNotificationSettings = {},
                         contentPadding = screenPadding,
                         onBack = {},
                         onNagInterval = {},

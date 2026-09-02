@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -41,10 +42,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import icu.nd4y.dosette.R
+import icu.nd4y.dosette.ui.common.openNotificationSettings
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 
@@ -61,9 +64,19 @@ fun OnboardingScreen(
     var batteryExempt by remember {
         mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
     }
+    val activity = LocalActivity.current
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             notificationsGranted = granted
+            // A second refusal is silent and final for the dialog: the only
+            // way left is the app's notification settings page.
+            val rationale =
+                activity != null &&
+                    ActivityCompat.shouldShowRequestPermissionRationale(
+                        activity,
+                        Manifest.permission.POST_NOTIFICATIONS,
+                    )
+            if (!granted && !rationale) openNotificationSettings(context)
         }
 
     // The battery dialog is a separate activity: re-read both states when
@@ -81,7 +94,10 @@ fun OnboardingScreen(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                notificationsGranted = true
+                // No runtime permission before 13: notifications are on unless
+                // the user turned them off in the system, which only the
+                // settings page can undo.
+                openNotificationSettings(context)
             }
         },
         onRequestBattery = {

@@ -106,6 +106,7 @@ class MedEditMappingTest {
         val oneOff =
             schedule(
                 id = "one-off",
+                oneOff = true,
                 startDate = LocalDate.parse("2026-08-20"),
                 endDate = LocalDate.parse("2026-08-20"),
             )
@@ -143,5 +144,43 @@ class MedEditMappingTest {
         assertThat(scheduleMatches(everyTwo, cycle)).isFalse()
         // PRN has no configurable slots — always the same plan.
         assertThat(scheduleMatches(prnA, prnB)).isTrue()
+    }
+
+    @Test
+    fun `carry anchor keeps the rhythm when the cadence is unchanged`() {
+        val current =
+            schedule(
+                id = "old",
+                type = ScheduleType.EVERY_N_DAYS,
+                intervalDays = 2,
+                startDate = LocalDate.parse("2026-08-01"),
+            )
+        val built =
+            schedule(
+                id = "new",
+                type = ScheduleType.EVERY_N_DAYS,
+                intervalDays = 2,
+                startDate = LocalDate.parse("2026-09-02"),
+                times = listOf(LocalTime.of(9, 0)),
+            )
+
+        assertThat(carryAnchor(current, built).anchorDate).isEqualTo(LocalDate.parse("2026-08-01"))
+        // A chain of edits keeps pointing at the original start.
+        val chained =
+            current.copy(startDate = LocalDate.parse("2026-08-20"), anchorDate = LocalDate.parse("2026-08-01"))
+        assertThat(carryAnchor(chained, built).anchorDate).isEqualTo(LocalDate.parse("2026-08-01"))
+    }
+
+    @Test
+    fun `carry anchor restarts today when the cadence or the type changes`() {
+        val everyTwo = schedule(id = "old", type = ScheduleType.EVERY_N_DAYS, intervalDays = 2)
+        val everyThree = schedule(id = "new", type = ScheduleType.EVERY_N_DAYS, intervalDays = 3)
+        val cycle = schedule(id = "cycle", type = ScheduleType.CYCLE, cycleDaysOn = 21, cycleDaysOff = 7)
+        val daily = schedule(id = "daily")
+
+        assertThat(carryAnchor(everyTwo, everyThree).anchorDate).isNull()
+        assertThat(carryAnchor(everyTwo, cycle).anchorDate).isNull()
+        assertThat(carryAnchor(cycle, cycle.copy(id = "x", cycleDaysOff = 3)).anchorDate).isNull()
+        assertThat(carryAnchor(daily, daily.copy(id = "y")).anchorDate).isNull()
     }
 }

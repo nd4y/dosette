@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -57,6 +58,7 @@ import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.ThemeMode
 import icu.nd4y.dosette.domain.model.PlaceId
+import icu.nd4y.dosette.ui.common.openNotificationSettings
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.ScreenHeader
 
@@ -73,10 +75,14 @@ fun SettingsScreen(
     var batteryExempt by remember {
         mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
     }
+    var notificationsEnabled by remember {
+        mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
+    }
     // The user answers the exemption dialog OUTSIDE the app; the state is
     // only readable once we are resumed again (same pattern as onboarding).
     LifecycleResumeEffect(Unit) {
         batteryExempt = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+        notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
         onPauseOrDispose {}
     }
 
@@ -159,6 +165,8 @@ fun SettingsScreen(
             }
         },
         onPlaceClear = viewModel::clearPlace,
+        notificationsEnabled = notificationsEnabled,
+        onOpenNotificationSettings = { openNotificationSettings(context) },
         onRequestExemption = {
             // ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS is legitimate
             // off-Play; falls back to the general settings list.
@@ -196,6 +204,8 @@ fun SettingsContent(
     onLanguage: (AppLanguage) -> Unit,
     onPlaceAction: (PlaceId, PlaceAction) -> Unit,
     onPlaceClear: (PlaceId) -> Unit,
+    notificationsEnabled: Boolean,
+    onOpenNotificationSettings: () -> Unit,
     onRequestExemption: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -282,6 +292,7 @@ fun SettingsContent(
             onPlaceClear = onPlaceClear,
         )
 
+        NotificationsBanner(enabled = notificationsEnabled, onOpen = onOpenNotificationSettings)
         BatteryBanner(exempt = batteryExempt, onRequest = onRequestExemption)
     }
 }
@@ -704,6 +715,36 @@ private fun BatteryBanner(
                 TextButton(onClick = onRequest) {
                     Text(stringResource(R.string.settings_battery_action))
                 }
+            }
+        }
+    }
+}
+
+/** Reminders are notifications: with them off in the system the app is mute. */
+@Composable
+private fun NotificationsBanner(
+    enabled: Boolean,
+    onOpen: () -> Unit,
+) {
+    if (enabled) return
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_notifications_warn),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onOpen) {
+                Text(stringResource(R.string.settings_notifications_action))
             }
         }
     }

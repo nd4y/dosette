@@ -235,6 +235,8 @@
     <string name="settings_battery_ok">Battery optimization exemption is on — reminders arrive on time</string>
     <string name="settings_battery_warn">Allow running without battery optimization so reminders arrive on time</string>
     <string name="settings_battery_action">Allow</string>
+    <string name="settings_notifications_warn">Notifications are off — reminders cannot be shown</string>
+    <string name="settings_notifications_action">Turn on</string>
 
     <string name="onboarding_tagline">Remembers every dose for you</string>
     <string name="onboarding_feature_reminders_title">Reminders that don\'t get lost</string>

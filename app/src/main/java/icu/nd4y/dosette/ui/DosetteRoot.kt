@@ -152,8 +152,8 @@ private fun TabContent(
                         entry<CabinetKey> {
                             CabinetScreen(
                                 contentPadding = padding,
-                                onAddMedication = { cabinetBackStack.add(MedEditKey()) },
-                                onOpenMedication = { id -> cabinetBackStack.add(MedDetailKey(id)) },
+                                onAddMedication = { cabinetBackStack.push(MedEditKey()) },
+                                onOpenMedication = { id -> cabinetBackStack.push(MedDetailKey(id)) },
                             )
                         }
                         entry<MedEditKey> { key ->
@@ -169,7 +169,7 @@ private fun TabContent(
                                 medicationId = key.medicationId,
                                 contentPadding = padding,
                                 onBack = { cabinetBackStack.removeLastOrNull() },
-                                onEdit = { cabinetBackStack.add(MedEditKey(key.medicationId)) },
+                                onEdit = { cabinetBackStack.push(MedEditKey(key.medicationId)) },
                             )
                         }
                     },
@@ -197,11 +197,11 @@ private fun TabContent(
                         entry<MoreKey> {
                             MoreScreen(
                                 contentPadding = padding,
-                                onOpenProfiles = { moreBackStack.add(ProfilesKey) },
-                                onOpenSettings = { moreBackStack.add(SettingsKey) },
-                                onOpenAppointments = { moreBackStack.add(AppointmentsKey) },
-                                onOpenStats = { moreBackStack.add(StatsKey) },
-                                onOpenBackup = { moreBackStack.add(BackupKey) },
+                                onOpenProfiles = { moreBackStack.push(ProfilesKey) },
+                                onOpenSettings = { moreBackStack.push(SettingsKey) },
+                                onOpenAppointments = { moreBackStack.push(AppointmentsKey) },
+                                onOpenStats = { moreBackStack.push(StatsKey) },
+                                onOpenBackup = { moreBackStack.push(BackupKey) },
                             )
                         }
                         entry<BackupKey> {
@@ -214,8 +214,8 @@ private fun TabContent(
                             AppointmentsScreen(
                                 contentPadding = padding,
                                 onBack = { moreBackStack.removeLastOrNull() },
-                                onAdd = { moreBackStack.add(AppointmentEditKey()) },
-                                onOpen = { id -> moreBackStack.add(AppointmentEditKey(id)) },
+                                onAdd = { moreBackStack.push(AppointmentEditKey()) },
+                                onOpen = { id -> moreBackStack.push(AppointmentEditKey(id)) },
                             )
                         }
                         entry<AppointmentEditKey> { key ->
@@ -255,4 +255,9 @@ private fun DosetteRootPreview() {
     DosetteTheme(dynamicColor = false) {
         DosetteRoot()
     }
+}
+
+/** A double tap during the transition must not stack the same screen twice. */
+private fun NavBackStack<NavKey>.push(key: NavKey) {
+    if (lastOrNull() != key) add(key)
 }

@@ -18,9 +18,19 @@ data class Schedule(
     val startDate: LocalDate,
     /** Last day of the schedule, inclusive. Null = open-ended. */
     val endDate: LocalDate?,
+    /**
+     * Day the every-N / cycle count runs from; null = [startDate]. Set when
+     * an edit keeps the rhythm of the version it replaces.
+     */
+    val anchorDate: LocalDate? = null,
+    /**
+     * Single-day dose added from the calendar: deletable as a whole, and
+     * planned explicitly even for a time already in the past.
+     */
+    val oneOff: Boolean = false,
     /** Days of week for [ScheduleType.WEEKDAYS]. */
     val weekdays: Set<DayOfWeek>,
-    /** Interval for [ScheduleType.EVERY_N_DAYS], anchored to [startDate]. */
+    /** Interval for [ScheduleType.EVERY_N_DAYS], anchored to [anchorDate], falling back to [startDate]. */
     val intervalDays: Int?,
     /** Days on for [ScheduleType.CYCLE]. */
     val cycleDaysOn: Int?,

@@ -56,34 +56,8 @@ fun buildDayDoses(
 
     return active
         .flatMap { med ->
-            val schedulesById = med.schedules.associateBy { it.id }
-            OccurrenceGenerator
-                .occurrencesOn(med.schedulesActiveOn(date), date)
-                .map { occurrence ->
-                    val log = logByKey[occurrence.key]
-                    val schedule = schedulesById[occurrence.scheduleId]
-                    TodayDose(
-                        medicationId = med.medication.id,
-                        date = date,
-                        time = occurrence.time,
-                        name = med.medication.name,
-                        strengthText = strengthLabel(med.medication.strengthValue, med.medication.strengthUnit),
-                        amountText = formatAmount(occurrence.amount),
-                        instructions = med.medication.instructions,
-                        form = med.medication.form,
-                        colorSeed = med.medication.colorSeed,
-                        status =
-                            when (log?.status) {
-                                DoseStatus.TAKEN -> DoseUiStatus.TAKEN
-                                DoseStatus.SKIPPED -> DoseUiStatus.SKIPPED
-                                DoseStatus.MISSED -> DoseUiStatus.MISSED
-                                null -> DoseUiStatus.PENDING
-                            },
-                        actedTime = log?.actedAt?.atZone(zone)?.toLocalTime(),
-                        scheduleId = occurrence.scheduleId,
-                        oneOff = schedule != null && schedule.startDate == schedule.endDate,
-                    )
-                }
+            val planned = plannedDoses(med, date, logByKey, zone)
+            planned + historyDoses(med, date, logByKey, planned, zone)
         }
         // Occurrence identity is (medication, date, time): two schedules
         // producing the same slot are one dose for the logs and must be one
@@ -92,3 +66,84 @@ fun buildDayDoses(
         .sortedWith(compareBy({ it.time }, { it.oneOff }))
         .distinctBy { it.key }
 }
+
+/** The day's plan for [med], with the marks of its logs. */
+private fun plannedDoses(
+    med: MedicationDetails,
+    date: LocalDate,
+    logByKey: Map<OccurrenceKey, DoseLog>,
+    zone: ZoneId,
+): List<TodayDose> {
+    val schedulesById = med.schedules.associateBy { it.id }
+    // A slot the plan did not have when its time came (a version inserted
+    // after it) is not a dose of the day — unless it was logged under an
+    // earlier version, which is history to keep.
+    val planned =
+        OccurrenceGenerator
+            .plannedOccurrencesOn(med.schedules, date, zone)
+            .mapTo(HashSet()) { it.key }
+    return OccurrenceGenerator
+        .occurrencesOn(med.schedules, date)
+        .filter { it.key in planned || it.key in logByKey }
+        .map { occurrence ->
+            val log = logByKey[occurrence.key]
+            TodayDose(
+                medicationId = med.medication.id,
+                date = date,
+                time = occurrence.time,
+                name = med.medication.name,
+                strengthText = strengthLabel(med.medication.strengthValue, med.medication.strengthUnit),
+                amountText = formatAmount(occurrence.amount),
+                instructions = med.medication.instructions,
+                form = med.medication.form,
+                colorSeed = med.medication.colorSeed,
+                status = uiStatus(log?.status),
+                actedTime = log?.actedAt?.atZone(zone)?.toLocalTime(),
+                scheduleId = occurrence.scheduleId,
+                oneOff = schedulesById[occurrence.scheduleId]?.oneOff == true,
+            )
+        }
+}
+
+/**
+ * Marks whose slot no version produces any more (the time moved in a
+ * same-day edit, the version was swapped out) are listed as history, so
+ * the day and the ring agree with the statistics, which count every log.
+ */
+private fun historyDoses(
+    med: MedicationDetails,
+    date: LocalDate,
+    logByKey: Map<OccurrenceKey, DoseLog>,
+    planned: List<TodayDose>,
+    zone: ZoneId,
+): List<TodayDose> {
+    val plannedKeys = planned.mapTo(HashSet()) { it.key }
+    return logByKey.keys
+        .filter { it.medicationId == med.medication.id && it !in plannedKeys }
+        .map { key ->
+            val log = logByKey.getValue(key)
+            TodayDose(
+                medicationId = med.medication.id,
+                date = date,
+                time = key.time,
+                name = med.medication.name,
+                strengthText = strengthLabel(med.medication.strengthValue, med.medication.strengthUnit),
+                amountText = formatAmount(log.amount),
+                instructions = med.medication.instructions,
+                form = med.medication.form,
+                colorSeed = med.medication.colorSeed,
+                status = uiStatus(log.status),
+                actedTime = log.actedAt?.atZone(zone)?.toLocalTime(),
+                scheduleId = log.scheduleId,
+                oneOff = false,
+            )
+        }
+}
+
+private fun uiStatus(status: DoseStatus?): DoseUiStatus =
+    when (status) {
+        DoseStatus.TAKEN -> DoseUiStatus.TAKEN
+        DoseStatus.SKIPPED -> DoseUiStatus.SKIPPED
+        DoseStatus.MISSED -> DoseUiStatus.MISSED
+        null -> DoseUiStatus.PENDING
+    }

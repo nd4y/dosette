@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -109,6 +111,9 @@ fun MedEditContent(
             modifier
                 .fillMaxSize()
                 .padding(contentPadding)
+                // Edge-to-edge ignores adjustResize: pad the keyboard in ourselves.
+                .consumeWindowInsets(contentPadding)
+                .imePadding()
                 .padding(horizontal = 20.dp),
     ) {
         WizardHeader(state = state, onBack = onBack)
