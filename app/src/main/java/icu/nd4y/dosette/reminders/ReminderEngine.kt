@@ -314,7 +314,7 @@ class ReminderEngine
                         // the tick that would finalize the dose early.
                         val tickDue =
                             world.settings.nagIntervalMin > 0 &&
-                                state.nagCount + 1 < world.settings.nagMaxCount &&
+                                world.settings.nagAllowed(state.nagCount) &&
                                 !state.lastAlertAt
                                     .plus(Duration.ofMinutes(world.settings.nagIntervalMin.toLong()))
                                     .isAfter(slackEnd)
@@ -344,8 +344,12 @@ class ReminderEngine
                 // in settings after the snooze can never signal — reactivate
                 // then instead of polling forever.
                 val config = world.places[place]?.takeIf { it.isConfigured }
+                val ceilingHit = state.snoozedUntil?.isAfter(slackEnd) == false
                 if (config == null || placeMonitor.isCurrentlyAt(config)) {
                     applyEvent(world, state.occurrenceKey, NagEvent.PlaceReached(place))
+                } else if (ceilingHit) {
+                    // Waited long enough: back to an audible reminder.
+                    applyEvent(world, state.occurrenceKey, NagEvent.SnoozeExpired)
                 }
             } else {
                 // Grace deliberately does not end a snooze early: waking from

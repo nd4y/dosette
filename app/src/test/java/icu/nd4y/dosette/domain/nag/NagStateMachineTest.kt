@@ -145,7 +145,7 @@ class NagStateMachineTest {
     }
 
     @Test
-    fun `snooze until a place has no expiry time and remembers the place`() {
+    fun `snooze until a place remembers the place and sets a ceiling`() {
         val t =
             NagStateMachine.reduce(
                 activeState(),
@@ -155,7 +155,8 @@ class NagStateMachineTest {
             )
 
         assertThat(t.state?.phase).isEqualTo(ReminderPhase.SNOOZED)
-        assertThat(t.state?.snoozedUntil).isNull()
+        // The wait ends on its own after 12 hours even if the geofence never fires.
+        assertThat(t.state?.snoozedUntil).isEqualTo(scheduledAt.plusSeconds(120 + 12 * 3600L))
         assertThat(t.state?.snoozedUntilPlace).isEqualTo(PlaceId.HOME)
         assertThat(t.effects).containsExactly(NagEffect.CancelReminder, NagEffect.Reschedule).inOrder()
     }
@@ -206,17 +207,30 @@ class NagStateMachineTest {
     }
 
     @Test
-    fun `time expiry does not wake a place snooze`() {
+    fun `the ceiling wakes a place snooze like a timed one`() {
+        val ceiling = scheduledAt.plusSeconds(12 * 3600L)
         val snoozed =
             activeState().copy(
                 phase = ReminderPhase.SNOOZED,
-                snoozedUntil = null,
+                snoozedUntil = ceiling,
                 snoozedUntilPlace = PlaceId.HOME,
             )
-        val t = NagStateMachine.reduce(snoozed, NagEvent.SnoozeExpired, scheduledAt.plusSeconds(600), settings)
+        val t = NagStateMachine.reduce(snoozed, NagEvent.SnoozeExpired, ceiling, settings)
 
-        assertThat(t.state).isEqualTo(snoozed)
-        assertThat(t.effects).isEmpty()
+        assertThat(t.state?.phase).isEqualTo(ReminderPhase.ACTIVE)
+        assertThat(t.state?.snoozedUntilPlace).isNull()
+        assertThat(t.state?.graceAnchor).isEqualTo(ceiling)
+        assertThat(t.effects).contains(NagEffect.PostReminder(alert = true))
+    }
+
+    fun `without a cap the alert keeps repeating until grace ends`() {
+        val uncapped = settings.copy(nagMaxCount = NagSettings.NO_NAG_CAP)
+        val state = activeState(nagCount = 40)
+
+        val t = NagStateMachine.reduce(state, NagEvent.NagTick, scheduledAt.plusSeconds(1200), uncapped)
+
+        assertThat(t.state?.nagCount).isEqualTo(41)
+        assertThat(t.effects).contains(NagEffect.PostReminder(alert = true))
     }
 
     @Test

@@ -44,7 +44,6 @@ import icu.nd4y.dosette.ui.today.PrnMed
 import icu.nd4y.dosette.ui.today.TodayDose
 import java.time.format.DateTimeFormatter
 
-private const val MAX_MEDIUM_ROWS = 2
 private const val MINUTES_PER_HOUR = 60
 
 internal fun GlanceModifier.clickableOpenApp(): GlanceModifier = clickable(actionStartActivity<MainActivity>())
@@ -57,6 +56,14 @@ internal fun CompactContent(state: WidgetState) {
         return
     }
     val context = LocalContext.current
+    // The bucket height, not the cell: a dense launcher gives the nominal
+    // 110dp, and the name lines only fit in taller cells.
+    val plan =
+        SmallLayout.compact(
+            LocalSize.current.height.value
+                .toInt(),
+            fontScale(),
+        )
     Column(
         modifier = GlanceModifier.fillMaxSize().padding(12.dp),
     ) {
@@ -85,21 +92,25 @@ internal fun CompactContent(state: WidgetState) {
             }
         }
         Spacer(GlanceModifier.defaultWeight())
-        Text(
-            text = next.name,
-            maxLines = 1,
-            style =
-                TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-        )
-        Text(
-            text = doseSubtitle(next),
-            maxLines = 1,
-            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
-        )
+        if (plan.showName) {
+            Text(
+                text = next.name,
+                maxLines = 1,
+                style =
+                    TextStyle(
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
+            )
+        }
+        if (plan.showSubtitle) {
+            Text(
+                text = doseSubtitle(next),
+                maxLines = 1,
+                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
+            )
+        }
         Spacer(GlanceModifier.height(8.dp))
         Row(
             modifier =
@@ -140,6 +151,13 @@ internal fun MediumContent(state: WidgetState) {
         return
     }
     val context = LocalContext.current
+    val plan =
+        SmallLayout.medium(
+            LocalSize.current.height.value
+                .toInt(),
+            slotDoses.size,
+            fontScale(),
+        )
     Row(
         modifier = GlanceModifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -175,15 +193,14 @@ internal fun MediumContent(state: WidgetState) {
                         ),
                 )
             }
-            slotDoses.take(MAX_MEDIUM_ROWS).forEach { dose ->
+            slotDoses.take(plan.rows).forEach { dose ->
                 Spacer(GlanceModifier.height(5.dp))
                 PendingRow(dose, compactButton = true)
             }
-            val hidden = slotDoses.size - MAX_MEDIUM_ROWS
-            if (hidden > 0) {
+            if (plan.hidden > 0) {
                 Spacer(GlanceModifier.height(3.dp))
                 Text(
-                    text = context.getString(R.string.widget_more_doses, hidden),
+                    text = context.getString(R.string.widget_more_doses, plan.hidden),
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
                 )
             }
@@ -227,6 +244,7 @@ internal fun LargeContent(state: WidgetState) {
                     .toInt(),
                 state.carryover,
                 state.doses,
+                fontScale(),
             )
         plan.entries.forEach { entry ->
             when (entry) {
@@ -474,13 +492,19 @@ private fun StatusCircle(status: DoseUiStatus) {
                 )
             }
         }
+    val description =
+        when (status) {
+            DoseUiStatus.MISSED -> R.string.widget_status_missed
+            DoseUiStatus.SKIPPED -> R.string.widget_status_skipped
+            else -> R.string.widget_status_taken
+        }
     Box(
         modifier = GlanceModifier.size(20.dp).background(background).cornerRadius(10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Image(
             provider = ImageProvider(icon),
-            contentDescription = null,
+            contentDescription = LocalContext.current.getString(description),
             modifier = GlanceModifier.size(11.dp),
             colorFilter = ColorFilter.tint(tint),
         )
@@ -643,3 +667,7 @@ private fun nextDoseLabel(
 
 private const val MIN_RING_PX = 48
 private const val CHIP_ICON_FRACTION = 0.55
+
+/** The user's font size setting; text-based heights in the layout budgets scale with it. */
+@Composable
+private fun fontScale(): Float = LocalContext.current.resources.configuration.fontScale

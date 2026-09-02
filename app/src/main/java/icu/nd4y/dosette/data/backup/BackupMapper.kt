@@ -185,7 +185,7 @@ object BackupMapper {
         }
         val s = data.settings
         check(s.nagIntervalMin >= 0) { "settings: nag_interval_min must not be negative" }
-        check(s.nagMaxCount >= 1) { "settings: nag_max_count must be at least 1" }
+        check(s.nagMaxCount >= 0) { "settings: nag_max_count must not be negative (0 = no cap)" }
         check(s.snoozeMin >= 1 && s.missedGraceMin >= 1) {
             "settings: snooze_min and missed_grace_min must be at least 1"
         }

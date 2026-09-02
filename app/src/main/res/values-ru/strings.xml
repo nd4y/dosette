@@ -182,6 +182,9 @@
     <string name="widget_label">Приёмы на сегодня</string>
     <string name="widget_description">Кольцо дня, ближайшие приёмы и отметка в одно касание прямо с рабочего стола</string>
     <string name="widget_all_done">Всё отмечено</string>
+    <string name="widget_status_taken">принято</string>
+    <string name="widget_status_skipped">пропущено намеренно</string>
+    <string name="widget_status_missed">не принято</string>
     <string name="widget_in_hours">через %1$d ч</string>
     <string name="widget_in_minutes">через %1$d мин</string>
     <string name="widget_due_now">пора принять</string>
@@ -218,6 +221,8 @@
     <string name="place_clear">Очистить</string>
     <string name="place_permission_rationale">Для координат и имени Wi-Fi нужно разрешение на геолокацию</string>
     <string name="place_background_hint">Разрешите геолокацию \u0022всегда\u0022 в настройках системы, чтобы приход на место будил напоминания в фоне</string>
+    <string name="place_background_missing">Геолокация не разрешена 0022всегда0022: приход на место не разбудит напоминания</string>
+    <string name="place_background_action">Разрешить</string>
     <string name="settings_title">Настройки</string>
     <string name="settings_reminders_section">Напоминания</string>
     <string name="settings_nag_interval">Интервал повтора</string>
@@ -227,6 +232,14 @@
     <string name="settings_snooze">Отсрочка</string>
     <string name="settings_grace">Считать пропущенным</string>
     <string name="settings_grace_fmt">через %1$d мин</string>
+    <string name="settings_nag_repeats">Повторов сигнала</string>
+    <string name="settings_nag_repeats_unlimited">до конца окна</string>
+    <plurals name="nag_repeats_fmt">
+        <item quantity="one">%1$d раз</item>
+        <item quantity="few">%1$d раза</item>
+        <item quantity="many">%1$d раз</item>
+        <item quantity="other">%1$d раза</item>
+    </plurals>
     <string name="settings_appearance_section">Внешний вид</string>
     <string name="settings_theme">Тема</string>
     <string name="theme_system">Как в системе</string>

@@ -41,7 +41,7 @@ class DoseWidget : GlanceAppWidget() {
     // launcher renders the largest bucket that fits, and LargeContent
     // budgets its rows by that bucket's height.
     override val sizeMode: SizeMode =
-        SizeMode.Responsive(setOf(COMPACT, MEDIUM, LARGE, TALL, EXTRA_TALL))
+        SizeMode.Responsive(setOf(COMPACT, COMPACT_TALL, MEDIUM, MEDIUM_TALL, LARGE, TALL, EXTRA_TALL))
 
     override suspend fun provideGlance(
         context: Context,
@@ -68,7 +68,12 @@ class DoseWidget : GlanceAppWidget() {
 
     companion object {
         val COMPACT = DpSize(110.dp, 110.dp)
+
+        // Taller 2x2 / 4x2 cells (most launchers) unlock the name lines and
+        // the second dose row; the nominal 110dp keeps only what fits.
+        val COMPACT_TALL = DpSize(110.dp, 150.dp)
         val MEDIUM = DpSize(250.dp, 110.dp)
+        val MEDIUM_TALL = DpSize(250.dp, 150.dp)
         val LARGE = DpSize(250.dp, 240.dp)
         val TALL = DpSize(250.dp, 330.dp)
         val EXTRA_TALL = DpSize(250.dp, 420.dp)

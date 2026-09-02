@@ -34,6 +34,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -243,6 +246,8 @@ private fun DayCell(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val isSelected = selected
+    val description = dayCellDescription(day)
     // The selection fill (the day filling the screen below) replaces the
     // status ring; today's own fill outranks both.
     val fill = dayCellFill(day, selected)
@@ -252,7 +257,10 @@ private fun DayCell(
             .size(40.dp)
             .clip(CircleShape)
             .clickable(onClick = onClick)
-            .background(fill, CircleShape)
+            .semantics {
+                this.selected = isSelected
+                contentDescription = description
+            }.background(fill, CircleShape)
     val decorated = if (ring != Color.Transparent) base.border(3.dp, ring, CircleShape) else base
     Box(modifier = decorated, contentAlignment = Alignment.Center) {
         Text(
@@ -425,4 +433,19 @@ private val ChevronLeft: ImageVector by lazy {
         lineToRelative(-6f, 6f)
         lineToRelative(6f, 6f)
     }
+}
+
+/** What TalkBack reads for a day cell: the date, its status and whether it is today. */
+@Composable
+private fun dayCellDescription(day: CalendarDay): String {
+    val date = day.date.format(DateTimeFormatter.ofPattern("d MMMM", currentLocale()))
+    val status =
+        when (day.status) {
+            DayStatus.COMPLETE -> stringResource(R.string.legend_full)
+            DayStatus.PARTIAL -> stringResource(R.string.legend_partial)
+            DayStatus.ALL_MISSED -> stringResource(R.string.legend_missed)
+            DayStatus.NONE, null -> null
+        }
+    val today = if (day.isToday) stringResource(R.string.legend_today) else null
+    return listOfNotNull(date, status, today).joinToString(", ")
 }
