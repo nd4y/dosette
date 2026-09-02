@@ -61,6 +61,10 @@ class FakeReminderNotifier : ReminderNotifier {
         cancelAllCalls++
     }
 
+    override fun postLockedNotice() = Unit
+
+    override fun cancelLockedNotice() = Unit
+
     override fun cancelAppointment(
         appointmentId: String,
         offsetsMin: List<Int>,

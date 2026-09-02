@@ -58,7 +58,7 @@ object BackupCrypto {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, deriveKey(password, salt), GCMParameterSpec(GCM_TAG_BITS, nonce))
         return runCatching { cipher.doFinal(data.copyOfRange(payloadStart, data.size)) }
-            .getOrElse { throw BackupFormatException("Wrong password or corrupted file", it) }
+            .getOrElse { throw BackupPasswordException("Wrong password or corrupted file", it) }
     }
 
     private fun deriveKey(

@@ -29,7 +29,6 @@ import icu.nd4y.dosette.testing.runAndAwait
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -135,12 +134,6 @@ class BackupViewModelTest {
             assertThat(state.busy).isFalse()
         }
 
-    // BackupCrypto.decrypt wraps a failed GCM tag check into BackupFormatException,
-    // the very type submitImportPassword reads as "decrypted fine, but invalid" —
-    // so today a wrong password ends in BackupResult.ERROR and passwordError can
-    // never be set. Enable once decrypt reports a wrong password as its own
-    // exception type (and BackupCryptoTest expects that type).
-    @Ignore("BackupCrypto reports a wrong password as BackupFormatException; see the comment above")
     @Test
     fun `wrong password on an encrypted file flags the dialog`() =
         runTest {

@@ -31,7 +31,7 @@ class BackupCryptoTest {
     @Test
     fun `wrong password is rejected`() {
         val sealed = BackupCrypto.encrypt(plain, "right".toCharArray())
-        assertThrows(BackupFormatException::class.java) {
+        assertThrows(BackupPasswordException::class.java) {
             BackupCrypto.decrypt(sealed, "wrong".toCharArray())
         }
     }
@@ -40,7 +40,7 @@ class BackupCryptoTest {
     fun `tampered ciphertext is rejected`() {
         val sealed = BackupCrypto.encrypt(plain, "pw".toCharArray())
         sealed[sealed.size - 1] = (sealed[sealed.size - 1].toInt() xor 0x01).toByte()
-        assertThrows(BackupFormatException::class.java) {
+        assertThrows(BackupPasswordException::class.java) {
             BackupCrypto.decrypt(sealed, "pw".toCharArray())
         }
     }

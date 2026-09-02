@@ -198,3 +198,13 @@ object BackupMapper {
         if (!condition) throw BackupFormatException(message())
     }
 }
+
+/**
+ * The GCM tag did not verify: a wrong password or a corrupted file. Kept
+ * apart from [BackupFormatException] so the password dialog can react to
+ * it instead of reporting a broken backup.
+ */
+class BackupPasswordException(
+    message: String,
+    cause: Throwable? = null,
+) : Exception(message, cause)

@@ -75,11 +75,11 @@ class GmsPlaceMonitor
             geofencingClient.removeGeofences(geofencePendingIntent).addOnFailureListener {
                 Log.w(TAG, "removing geofences failed", it)
             }
-            if (!hasBackgroundPermission()) return
-
+            // Without "all the time" access registration fails: register nothing
+            // and leave the Wi-Fi poll and the snooze ceiling as the fallbacks.
             val fences =
                 places
-                    .filterValues { it.hasGeo }
+                    .filterValues { hasBackgroundPermission() && it.hasGeo }
                     .map { (id, config) ->
                         Geofence
                             .Builder()

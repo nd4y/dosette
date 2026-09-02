@@ -113,6 +113,10 @@ fun SettingsScreen(
         id: PlaceId,
         action: PlaceAction,
     ) {
+        // The caller asks for the permission first; the check here keeps the
+        // location call honest for lint and for any future caller.
+        val fineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+        if (fineLocation != PackageManager.PERMISSION_GRANTED) return
         when (action) {
             PlaceAction.USE_LOCATION -> {
                 LocationServices

@@ -17,7 +17,10 @@ suspend fun <VM : ViewModel> VM.runAndAwait(action: VM.() -> Unit) {
     val scopeJob = viewModelScope.coroutineContext.job
     val before = scopeJob.children.toSet()
     action()
-    scopeJob.children.filter { it !in before }.toList().joinAll()
+    scopeJob.children
+        .filter { it !in before }
+        .toList()
+        .joinAll()
 }
 
 /** Cancels `viewModelScope` the way the framework does when the owner goes away. */
