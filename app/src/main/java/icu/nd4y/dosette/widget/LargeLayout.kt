@@ -47,15 +47,42 @@ object LargeLayout {
     const val ACTED_ROW = 36
     const val PRN_ROW = 38
 
+    /**
+     * Collapsing is a last resort, not a style: with room to spare every
+     * slot lists its rows (names and marks), and only when the day does not
+     * fit are acted-on slots folded into their header — top-down, one at a
+     * time, so the most recent slots stay readable the longest.
+     */
     fun plan(
         heightDp: Int,
         carryover: List<TodayDose>,
         doses: List<TodayDose>,
     ): LargePlan {
+        val slots = slotSections(doses)
+        val actedSlots = slots.count { slot -> slot.none { it.status == DoseUiStatus.PENDING } }
+        var plan = layout(heightDp, carryover, slots, collapseFirst = 0)
+        var collapseFirst = 0
+        while (plan.hidden > 0 && collapseFirst < actedSlots) {
+            collapseFirst++
+            plan = layout(heightDp, carryover, slots, collapseFirst)
+        }
+        return plan
+    }
+
+    /** One layout pass with the first [collapseFirst] acted-on slots folded. */
+    private fun layout(
+        heightDp: Int,
+        carryover: List<TodayDose>,
+        slots: List<List<TodayDose>>,
+        collapseFirst: Int,
+    ): LargePlan {
         val cursor = Cursor(heightDp - OUTER_PADDING - TITLE_BLOCK - MORE_LINE)
         if (carryover.isNotEmpty()) cursor.placeSection(LargeEntry.CarryoverHeader, carryover, collapsed = false)
-        slotSections(doses).forEach { slot ->
-            val collapsed = slot.none { it.status == DoseUiStatus.PENDING }
+        var foldsLeft = collapseFirst
+        slots.forEach { slot ->
+            val acted = slot.none { it.status == DoseUiStatus.PENDING }
+            val collapsed = acted && foldsLeft > 0
+            if (collapsed) foldsLeft--
             cursor.placeSection(LargeEntry.SlotHeader(slot, collapsed), slot, collapsed)
         }
         return LargePlan(

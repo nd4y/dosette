@@ -44,13 +44,36 @@ class LargeLayoutTest {
     private fun LargePlan.rowNames() = entries.filterIsInstance<LargeEntry.DoseRow>().map { it.dose.name }
 
     @Test
-    fun `acted slots collapse into their header`() {
+    fun `with room to spare every slot lists its rows`() {
         val plan = LargeLayout.plan(heightDp = 420, carryover = emptyList(), doses = day)
+
+        val headers = plan.entries.filterIsInstance<LargeEntry.SlotHeader>()
+        assertThat(headers.map { it.collapsed }).containsExactly(false, false, false).inOrder()
+        assertThat(plan.rowNames()).containsExactly("n1", "n2", "m1", "a1", "a2").inOrder()
+        assertThat(plan.hidden).isEqualTo(0)
+    }
+
+    @Test
+    fun `an acted slot folds into its header only when the day does not fit`() {
+        // 330dp: fully expanded the day overflows by a row; folding the
+        // taken midnight slot (the oldest) is enough, the rest stays listed.
+        val plan = LargeLayout.plan(heightDp = 330, carryover = emptyList(), doses = day)
 
         val headers = plan.entries.filterIsInstance<LargeEntry.SlotHeader>()
         assertThat(headers.map { it.collapsed }).containsExactly(true, false, false).inOrder()
         assertThat(plan.rowNames()).containsExactly("m1", "a1", "a2").inOrder()
         assertThat(plan.hidden).isEqualTo(0)
+    }
+
+    @Test
+    fun `a fully acted day fills the widget instead of three bare headers`() {
+        // The end-of-day picture: everything taken or missed. With room,
+        // the rows (names + marks) are listed rather than collapsed away.
+        val done = day.map { if (it.status == DoseUiStatus.PENDING) it.copy(status = DoseUiStatus.MISSED) else it }
+        val plan = LargeLayout.plan(heightDp = 420, carryover = emptyList(), doses = done)
+
+        assertThat(plan.entries.filterIsInstance<LargeEntry.SlotHeader>().none { it.collapsed }).isTrue()
+        assertThat(plan.rowNames()).hasSize(5)
     }
 
     @Test
