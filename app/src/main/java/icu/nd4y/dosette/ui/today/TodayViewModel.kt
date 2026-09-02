@@ -7,6 +7,7 @@ import icu.nd4y.dosette.data.repository.DoseLogRepository
 import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
 import icu.nd4y.dosette.data.repository.ProfileRepository
+import icu.nd4y.dosette.data.repository.ReminderStateRepository
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.DoseKind
@@ -14,7 +15,10 @@ import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.domain.model.PlaceConfig
 import icu.nd4y.dosette.domain.model.PlaceId
+import icu.nd4y.dosette.domain.model.ReminderPhase
+import icu.nd4y.dosette.domain.model.ReminderState
 import icu.nd4y.dosette.domain.model.Schedule
 import icu.nd4y.dosette.domain.model.ScheduleTime
 import icu.nd4y.dosette.domain.model.ScheduleType
@@ -67,6 +71,8 @@ data class TodayDose(
     val scheduleId: String? = null,
     /** Single-day schedule created from the calendar — deletable as a whole. */
     val oneOff: Boolean = false,
+    /** A reminder is currently ringing for it — the only time a snooze means anything. */
+    val reminderActive: Boolean = false,
 ) {
     val key: OccurrenceKey get() = OccurrenceKey(medicationId, date, time)
     val slot: DaySlot
@@ -144,6 +150,7 @@ class TodayViewModel
         private val doseLogRepository: DoseLogRepository,
         private val settingsRepository: SettingsRepository,
         private val profileRepository: ProfileRepository,
+        private val reminderStateRepository: ReminderStateRepository,
         private val engine: ReminderEngine,
         private val prnIntakes: PrnIntakes,
         private val widgetRefresher: WidgetRefresher,
@@ -170,7 +177,8 @@ class TodayViewModel
                 monthOverride,
             ) { settings, today, sel, monthOv ->
                 Inputs(
-                    settings = settings,
+                    activeProfileId = settings.activeProfileId,
+                    places = settings.places,
                     today = today,
                     selected = sel ?: today,
                     month = monthOv ?: YearMonth.from(sel ?: today),
@@ -181,7 +189,7 @@ class TodayViewModel
 
         private fun observeWorld(inputs: Inputs): kotlinx.coroutines.flow.Flow<TodayUiState> {
             val profileId =
-                inputs.settings.activeProfileId
+                inputs.activeProfileId
                     ?: return flowOf(
                         TodayUiState(loading = false, date = inputs.today, selectedDate = inputs.selected),
                     )
@@ -193,10 +201,11 @@ class TodayViewModel
                 medicationRepository.observeByProfile(profileId),
                 doseLogRepository.observeRange(profileId, from, to),
                 profileRepository.observeAll(),
-            ) { meds, logs, profiles ->
-                buildState(inputs, meds, logs).copy(
+                reminderStateRepository.observeAll(),
+            ) { meds, logs, profiles, states ->
+                buildState(inputs, meds, logs, activeReminderKeys(states)).copy(
                     snoozePlaces =
-                        inputs.settings.places
+                        inputs.places
                             .filterValues { it.isConfigured }
                             .keys,
                     profiles = profiles.map { ProfileChip(it.id, it.name, it.colorSeed) },
@@ -209,10 +218,11 @@ class TodayViewModel
             inputs: Inputs,
             meds: List<MedicationDetails>,
             logs: List<DoseLog>,
+            activeReminders: Set<OccurrenceKey>,
         ): TodayUiState {
             val today = inputs.today
             val active = meds.filter { !it.medication.isArchived }
-            val doses = buildDayDoses(inputs.selected, meds, logs, clock.zone)
+            val doses = buildDayDoses(inputs.selected, meds, logs, clock.zone, activeReminders)
             val todayDoses =
                 if (inputs.selected == today) doses else buildDayDoses(today, meds, logs, clock.zone)
 
@@ -441,8 +451,10 @@ class TodayViewModel
             viewModelScope.launch { engine.deleteOneOffSchedule(dose.medicationId, scheduleId) }
         }
 
+        /** Only what the world depends on: any other settings write must not restart the Room flows. */
         private data class Inputs(
-            val settings: AppSettings,
+            val activeProfileId: String?,
+            val places: Map<PlaceId, PlaceConfig>,
             val today: LocalDate,
             val selected: LocalDate,
             val month: YearMonth,
@@ -450,6 +462,10 @@ class TodayViewModel
 
         private companion object {
             const val GRID_DAYS = 42
+
+            /** Keys with a ringing reminder; the flow also refreshes the hero the moment a dose comes due. */
+            fun activeReminderKeys(states: List<ReminderState>): Set<OccurrenceKey> =
+                states.filter { it.phase == ReminderPhase.ACTIVE }.mapTo(HashSet()) { it.occurrenceKey }
 
             fun gridStart(month: YearMonth): LocalDate {
                 val first = month.atDay(1)

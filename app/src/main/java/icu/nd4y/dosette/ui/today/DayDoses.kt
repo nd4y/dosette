@@ -38,6 +38,7 @@ fun buildDayDoses(
     meds: List<MedicationDetails>,
     logs: List<DoseLog>,
     zone: ZoneId,
+    activeReminders: Set<OccurrenceKey> = emptySet(),
 ): List<TodayDose> {
     // An archived medication disappears from the archive date on, but its
     // history stays: past days keep showing what was planned and logged.
@@ -56,7 +57,7 @@ fun buildDayDoses(
 
     return active
         .flatMap { med ->
-            val planned = plannedDoses(med, date, logByKey, zone)
+            val planned = plannedDoses(med, date, logByKey, zone, activeReminders)
             planned + historyDoses(med, date, logByKey, planned, zone)
         }
         // Occurrence identity is (medication, date, time): two schedules
@@ -73,6 +74,7 @@ private fun plannedDoses(
     date: LocalDate,
     logByKey: Map<OccurrenceKey, DoseLog>,
     zone: ZoneId,
+    activeReminders: Set<OccurrenceKey>,
 ): List<TodayDose> {
     val schedulesById = med.schedules.associateBy { it.id }
     // A slot the plan did not have when its time came (a version inserted
@@ -101,6 +103,7 @@ private fun plannedDoses(
                 actedTime = log?.actedAt?.atZone(zone)?.toLocalTime(),
                 scheduleId = occurrence.scheduleId,
                 oneOff = schedulesById[occurrence.scheduleId]?.oneOff == true,
+                reminderActive = occurrence.key in activeReminders,
             )
         }
 }

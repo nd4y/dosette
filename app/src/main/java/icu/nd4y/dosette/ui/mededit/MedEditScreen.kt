@@ -56,6 +56,7 @@ import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.ScheduleType
 import icu.nd4y.dosette.ui.common.TimeFormat
 import icu.nd4y.dosette.ui.common.currentLocale
+import icu.nd4y.dosette.ui.common.cycleSummary
 import icu.nd4y.dosette.ui.common.everyNDaysText
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
@@ -815,11 +816,7 @@ private fun ReviewStep(state: MedEditUiState) {
                 }
 
                 ScheduleType.CYCLE -> {
-                    stringResource(
-                        R.string.schedule_cycle_summary,
-                        state.cycleOnText.toIntOrNull() ?: 0,
-                        state.cycleOffText.toIntOrNull() ?: 0,
-                    )
+                    cycleSummary(state.cycleOnText.toIntOrNull() ?: 0, state.cycleOffText.toIntOrNull() ?: 0)
                 }
 
                 ScheduleType.AS_NEEDED -> {

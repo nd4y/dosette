@@ -5,11 +5,15 @@ import icu.nd4y.dosette.data.db.toDomain
 import icu.nd4y.dosette.data.db.toEntity
 import icu.nd4y.dosette.domain.model.OccurrenceKey
 import icu.nd4y.dosette.domain.model.ReminderState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 interface ReminderStateRepository {
     suspend fun getAll(): List<ReminderState>
+
+    fun observeAll(): Flow<List<ReminderState>>
 
     suspend fun get(key: OccurrenceKey): ReminderState?
 
@@ -25,6 +29,9 @@ class ReminderStateRepositoryImpl
         private val reminderStateDao: ReminderStateDao,
     ) : ReminderStateRepository {
         override suspend fun getAll(): List<ReminderState> = reminderStateDao.getAll().map { it.toDomain() }
+
+        override fun observeAll(): Flow<List<ReminderState>> =
+            reminderStateDao.observeAll().map { list -> list.map { it.toDomain() } }
 
         override suspend fun get(key: OccurrenceKey): ReminderState? =
             reminderStateDao.getByKey(key.encode())?.toDomain()

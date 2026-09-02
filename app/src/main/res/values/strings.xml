@@ -53,7 +53,14 @@
     <string name="back_to_today">Today</string>
     <string name="unresolved_yesterday_banner">Yesterday has an unresolved dose</string>
     <string name="schedule_every_other_day">Every other day</string>
-    <string name="schedule_cycle_summary">%1$d days on / %2$d off</string>
+    <plurals name="cycle_days_on">
+        <item quantity="one">%1$d day on</item>
+        <item quantity="other">%1$d days on</item>
+    </plurals>
+    <plurals name="cycle_days_off">
+        <item quantity="one">%1$d day off</item>
+        <item quantity="other">%1$d days off</item>
+    </plurals>
     <string name="schedule_as_needed">As needed</string>
 
     <string name="stock_left">%s left</string>
@@ -248,6 +255,8 @@
     <string name="settings_battery_ok">Battery optimization exemption is on — reminders arrive on time</string>
     <string name="settings_battery_warn">Allow running without battery optimization so reminders arrive on time</string>
     <string name="settings_battery_action">Allow</string>
+    <string name="settings_exact_alarm_warn">Exact alarms are not allowed: reminders may arrive late</string>
+    <string name="settings_exact_alarm_action">Allow</string>
     <string name="settings_notifications_warn">Notifications are off — reminders cannot be shown</string>
     <string name="settings_notifications_action">Turn on</string>
 

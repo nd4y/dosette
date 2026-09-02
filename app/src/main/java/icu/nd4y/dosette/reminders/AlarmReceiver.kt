@@ -12,6 +12,8 @@ import icu.nd4y.dosette.reminders.notifications.ReminderNotifier
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
 import javax.inject.Inject
 
 /**
@@ -27,6 +29,9 @@ class AlarmReceiver : BroadcastReceiver() {
     lateinit var notifier: ReminderNotifier
 
     @Inject
+    lateinit var alarmScheduler: AlarmScheduler
+
+    @Inject
     @IoDispatcher
     lateinit var ioDispatcher: CoroutineDispatcher
 
@@ -40,6 +45,11 @@ class AlarmReceiver : BroadcastReceiver() {
             // unlock delivers BOOT_COMPLETED and the reconcile replaces it.
             Channels.ensureCreated(context)
             notifier.postLockedNotice()
+            // The engine cannot plan, but the remembered dose times can: one
+            // generic notice per dose until the unlock rebuilds the chain.
+            alarmScheduler.nextUpcomingAfter(Instant.now().plus(REARM_LEAD))?.let { next ->
+                alarmScheduler.scheduleExact(next, alarmScheduler.directBootAlarm()?.alarmClock ?: true)
+            }
             return
         }
         val result = goAsync()
@@ -54,5 +64,9 @@ class AlarmReceiver : BroadcastReceiver() {
                 result.finish()
             }
         }
+    }
+
+    private companion object {
+        val REARM_LEAD: Duration = Duration.ofMinutes(1)
     }
 }

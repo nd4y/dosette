@@ -1,6 +1,7 @@
 package icu.nd4y.dosette.ui.settings
 
 import android.Manifest
+import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -83,12 +84,14 @@ fun SettingsScreen(
         mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
     }
     var backgroundLocationGranted by remember { mutableStateOf(hasBackgroundLocation(context)) }
+    var exactAlarmsAllowed by remember { mutableStateOf(canScheduleExactAlarms(context)) }
     // The user answers the exemption dialog OUTSIDE the app; the state is
     // only readable once we are resumed again (same pattern as onboarding).
     LifecycleResumeEffect(Unit) {
         batteryExempt = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
         notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
         backgroundLocationGranted = hasBackgroundLocation(context)
+        exactAlarmsAllowed = canScheduleExactAlarms(context)
         onPauseOrDispose {}
     }
 
@@ -169,6 +172,8 @@ fun SettingsScreen(
         onSnooze = viewModel::setSnooze,
         onGrace = viewModel::setGrace,
         onAlarmClock = viewModel::setAlarmClock,
+        exactAlarmsAllowed = exactAlarmsAllowed,
+        onRequestExactAlarms = { openExactAlarmSettings(context) },
         onTheme = viewModel::setTheme,
         onDynamicColor = viewModel::setDynamicColor,
         onLanguage = viewModel::setLanguage,
@@ -226,6 +231,8 @@ fun SettingsContent(
     onSnooze: (Int) -> Unit,
     onGrace: (Int) -> Unit,
     onAlarmClock: (Boolean) -> Unit,
+    exactAlarmsAllowed: Boolean,
+    onRequestExactAlarms: () -> Unit,
     onTheme: (ThemeMode) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onLanguage: (AppLanguage) -> Unit,
@@ -307,19 +314,39 @@ fun SettingsContent(
                 checked = settings.alarmClock,
                 onCheckedChange = onAlarmClock,
             )
+            if (!exactAlarmsAllowed) {
+                WarningBanner(
+                    text = stringResource(R.string.settings_exact_alarm_warn),
+                    action = stringResource(R.string.settings_exact_alarm_action),
+                    onAction = onRequestExactAlarms,
+                )
+            }
         }
 
         SettingsCard(title = stringResource(R.string.settings_appearance_section)) {
-            ThemeRow(current = settings.theme, onSelect = onTheme)
-            CardDivider()
-            SwitchRow(
-                title = stringResource(R.string.settings_dynamic_color),
-                hint = stringResource(R.string.settings_dynamic_color_hint),
-                checked = settings.dynamicColor,
-                onCheckedChange = onDynamicColor,
+            ValueRow(
+                title = stringResource(R.string.settings_theme),
+                value = settings.theme.label(),
+                options = ThemeMode.entries.map { it to it.label() },
+                onSelect = onTheme,
             )
+            // Material You needs Android 12; below it the switch would do nothing.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                CardDivider()
+                SwitchRow(
+                    title = stringResource(R.string.settings_dynamic_color),
+                    hint = stringResource(R.string.settings_dynamic_color_hint),
+                    checked = settings.dynamicColor,
+                    onCheckedChange = onDynamicColor,
+                )
+            }
             CardDivider()
-            LanguageRow(current = settings.language, onSelect = onLanguage)
+            ValueRow(
+                title = stringResource(R.string.settings_language),
+                value = settings.language.label(),
+                options = AppLanguage.entries.map { it to it.label() },
+                onSelect = onLanguage,
+            )
         }
 
         PlacesSection(
@@ -330,7 +357,14 @@ fun SettingsContent(
             onRequestBackgroundLocation = onRequestBackgroundLocation,
         )
 
-        NotificationsBanner(enabled = notificationsEnabled, onOpen = onOpenNotificationSettings)
+        if (!notificationsEnabled) {
+            WarningBanner(
+                text = stringResource(R.string.settings_notifications_warn),
+                action = stringResource(R.string.settings_notifications_action),
+                onAction = onOpenNotificationSettings,
+                error = true,
+            )
+        }
         BatteryBanner(exempt = batteryExempt, onRequest = onRequestExemption)
     }
 }
@@ -376,7 +410,11 @@ private fun PlacesSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (!backgroundLocationGranted && settings.places.values.any { it.hasGeo }) {
-            BackgroundLocationBanner(onRequest = onRequestBackgroundLocation)
+            WarningBanner(
+                text = stringResource(R.string.place_background_missing),
+                action = stringResource(R.string.place_background_action),
+                onAction = onRequestBackgroundLocation,
+            )
         }
         PlaceRow(
             label = stringResource(R.string.place_home),
@@ -563,11 +601,11 @@ private fun ChoiceChip(
 }
 
 @Composable
-private fun ValueRow(
+private fun <T> ValueRow(
     title: String,
     value: String,
-    options: List<Pair<Int, String>>,
-    onSelect: (Int) -> Unit,
+    options: List<Pair<T, String>>,
+    onSelect: (T) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(
@@ -620,106 +658,12 @@ private fun ThemeMode.label(): String =
     }
 
 @Composable
-private fun ThemeRow(
-    current: ThemeMode,
-    onSelect: (ThemeMode) -> Unit,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable { menuOpen = true },
-    ) {
-        Text(
-            text = stringResource(R.string.settings_theme),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-        Box {
-            Text(
-                text = current.label(),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                ThemeMode.entries.forEach { mode ->
-                    DropdownMenuItem(
-                        text = { Text(mode.label()) },
-                        onClick = {
-                            menuOpen = false
-                            onSelect(mode)
-                        },
-                    )
-                }
-            }
-        }
-        Icon(
-            imageVector = DosetteIcons.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
-        )
-    }
-}
-
-@Composable
 private fun AppLanguage.label(): String =
     when (this) {
         AppLanguage.SYSTEM -> stringResource(R.string.language_system)
         AppLanguage.EN -> "English"
         AppLanguage.RU -> "Русский"
     }
-
-@Composable
-private fun LanguageRow(
-    current: AppLanguage,
-    onSelect: (AppLanguage) -> Unit,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable { menuOpen = true },
-    ) {
-        Text(
-            text = stringResource(R.string.settings_language),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-        Box {
-            Text(
-                text = current.label(),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                AppLanguage.entries.forEach { language ->
-                    DropdownMenuItem(
-                        text = { Text(language.label()) },
-                        onClick = {
-                            menuOpen = false
-                            onSelect(language)
-                        },
-                    )
-                }
-            }
-        }
-        Icon(
-            imageVector = DosetteIcons.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
-        )
-    }
-}
 
 @Composable
 private fun BatteryBanner(
@@ -764,36 +708,6 @@ private fun BatteryBanner(
     }
 }
 
-/** Reminders are notifications: with them off in the system the app is mute. */
-@Composable
-private fun NotificationsBanner(
-    enabled: Boolean,
-    onOpen: () -> Unit,
-) {
-    if (enabled) return
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.errorContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.settings_notifications_warn),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onOpen) {
-                Text(stringResource(R.string.settings_notifications_action))
-            }
-        }
-    }
-}
-
 @Composable
 private fun nagRepeatsLabel(count: Int): String =
     if (count == NagSettings.NO_NAG_CAP) {
@@ -802,12 +716,29 @@ private fun nagRepeatsLabel(count: Int): String =
         pluralStringResource(R.plurals.nag_repeats_fmt, count, count)
     }
 
-/** A geofence without "all the time" location never fires; say so where the places are set up. */
+private fun hasBackgroundLocation(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+
+/**
+ * One problem the app cannot fix itself and the single action that does;
+ * [error] marks the ones that mute reminders entirely.
+ */
 @Composable
-private fun BackgroundLocationBanner(onRequest: () -> Unit) {
+private fun WarningBanner(
+    text: String,
+    action: String,
+    onAction: () -> Unit,
+    error: Boolean = false,
+) {
+    val container =
+        if (error) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer
+    val content =
+        if (error) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
+        color = container,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -816,19 +747,26 @@ private fun BackgroundLocationBanner(onRequest: () -> Unit) {
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
-                text = stringResource(R.string.place_background_missing),
+                text = text,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = content,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onRequest) {
-                Text(stringResource(R.string.place_background_action))
+            TextButton(onClick = onAction) {
+                Text(action)
             }
         }
     }
 }
 
-private fun hasBackgroundLocation(context: Context): Boolean =
-    Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
-        PackageManager.PERMISSION_GRANTED
+/** Android 12 and 12L can revoke the exact-alarm access; everything else grants it for good. */
+private fun canScheduleExactAlarms(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+        context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+
+/** The special-access page where exact alarms are switched back on. */
+private fun openExactAlarmSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
+    runCatching { context.startActivity(intent) }
+}

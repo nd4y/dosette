@@ -55,7 +55,18 @@
     <string name="back_to_today">Сегодня</string>
     <string name="unresolved_yesterday_banner">За вчера остался неотмеченный приём</string>
     <string name="schedule_every_other_day">Через день</string>
-    <string name="schedule_cycle_summary">%1$d дн. приёма / %2$d перерыва</string>
+    <plurals name="cycle_days_on">
+        <item quantity="one">%1$d день приёма</item>
+        <item quantity="few">%1$d дня приёма</item>
+        <item quantity="many">%1$d дней приёма</item>
+        <item quantity="other">%1$d дня приёма</item>
+    </plurals>
+    <plurals name="cycle_days_off">
+        <item quantity="one">%1$d день перерыва</item>
+        <item quantity="few">%1$d дня перерыва</item>
+        <item quantity="many">%1$d дней перерыва</item>
+        <item quantity="other">%1$d дня перерыва</item>
+    </plurals>
     <string name="schedule_as_needed">По необходимости</string>
 
     <string name="stock_left">осталось %s</string>
@@ -256,6 +267,8 @@
     <string name="settings_battery_ok">Исключение из оптимизации батареи включено — напоминания приходят вовремя</string>
     <string name="settings_battery_warn">Разрешите работу без оптимизации батареи, чтобы напоминания приходили вовремя</string>
     <string name="settings_battery_action">Разрешить</string>
+    <string name="settings_exact_alarm_warn">Точные будильники запрещены: напоминания могут опаздывать</string>
+    <string name="settings_exact_alarm_action">Разрешить</string>
     <string name="settings_notifications_warn">Уведомления выключены — напоминания не будут показаны</string>
     <string name="settings_notifications_action">Включить</string>
 

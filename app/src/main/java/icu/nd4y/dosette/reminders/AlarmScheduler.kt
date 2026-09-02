@@ -76,6 +76,22 @@ class AlarmScheduler
             }
         }
 
+        /** Dose times of the coming day, for [AlarmReceiver] to walk while the database is still locked. */
+        fun rememberUpcoming(instants: List<Instant>) {
+            directBootPrefs().edit(commit = true) {
+                putString(KEY_UPCOMING, instants.joinToString(",") { it.toEpochMilli().toString() })
+            }
+        }
+
+        /** The first remembered dose time after [after]; null once the list is used up. */
+        fun nextUpcomingAfter(after: Instant): Instant? =
+            directBootPrefs()
+                .getString(KEY_UPCOMING, null)
+                ?.split(',')
+                ?.mapNotNull { it.toLongOrNull() }
+                ?.map(Instant::ofEpochMilli)
+                ?.firstOrNull { it.isAfter(after) }
+
         // Synchronous on purpose: the engine pass runs on the IO dispatcher
         // and the process may be killed right after the receiver finishes.
         private fun rememberForDirectBoot(
@@ -116,5 +132,6 @@ class AlarmScheduler
             const val DIRECT_BOOT_PREFS = "direct_boot"
             const val KEY_NEXT_ALARM_AT = "next_alarm_at"
             const val KEY_ALARM_CLOCK = "alarm_clock"
+            const val KEY_UPCOMING = "upcoming"
         }
     }

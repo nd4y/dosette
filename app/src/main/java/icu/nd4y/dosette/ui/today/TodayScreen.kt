@@ -600,6 +600,7 @@ private fun DoseItem(
                 ActedDoseRow(
                     dose = animatedDose,
                     onTake = { onTake(animatedDose) },
+                    onSkip = { onSkip(animatedDose) },
                     onUndo = { onUndo(animatedDose) },
                 )
             }
@@ -662,6 +663,7 @@ private fun PlannedDoseRow(dose: TodayDose) {
 private fun ActedDoseRow(
     dose: TodayDose,
     onTake: () -> Unit,
+    onSkip: () -> Unit,
     onUndo: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -701,6 +703,15 @@ private fun ActedDoseRow(
                     onClick = {
                         menuOpen = false
                         onTake()
+                    },
+                )
+            }
+            if (dose.status != DoseUiStatus.SKIPPED) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.mark_skipped)) },
+                    onClick = {
+                        menuOpen = false
+                        onSkip()
                     },
                 )
             }
@@ -884,6 +895,7 @@ private fun PendingDoseCard(
             }
             TakeSplitButton(
                 snoozePlaces = snoozePlaces,
+                snoozable = dose.reminderActive,
                 onTake = onTake,
                 onSkip = onSkip,
                 onSnooze = onSnooze,
@@ -896,6 +908,7 @@ private fun PendingDoseCard(
 @Composable
 private fun TakeSplitButton(
     snoozePlaces: Set<PlaceId>,
+    snoozable: Boolean,
     onTake: () -> Unit,
     onSkip: () -> Unit,
     onSnooze: (SnoozeTarget) -> Unit,
@@ -938,32 +951,36 @@ private fun TakeSplitButton(
                         onSkip()
                     },
                 )
-                SNOOZE_MINUTE_CHOICES.forEach { minutes ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.snooze_for_min, minutes)) },
-                        onClick = {
-                            menuOpen = false
-                            onSnooze(SnoozeTarget.ForMinutes(minutes))
-                        },
-                    )
-                }
-                if (PlaceId.HOME in snoozePlaces) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.snooze_until_home)) },
-                        onClick = {
-                            menuOpen = false
-                            onSnooze(SnoozeTarget.UntilPlace(PlaceId.HOME))
-                        },
-                    )
-                }
-                if (PlaceId.WORK in snoozePlaces) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.snooze_until_work)) },
-                        onClick = {
-                            menuOpen = false
-                            onSnooze(SnoozeTarget.UntilPlace(PlaceId.WORK))
-                        },
-                    )
+                // A snooze parks a ringing reminder; for a past or future dose
+                // there is nothing to park, so the entries stay away.
+                if (snoozable) {
+                    SNOOZE_MINUTE_CHOICES.forEach { minutes ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.snooze_for_min, minutes)) },
+                            onClick = {
+                                menuOpen = false
+                                onSnooze(SnoozeTarget.ForMinutes(minutes))
+                            },
+                        )
+                    }
+                    if (PlaceId.HOME in snoozePlaces) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.snooze_until_home)) },
+                            onClick = {
+                                menuOpen = false
+                                onSnooze(SnoozeTarget.UntilPlace(PlaceId.HOME))
+                            },
+                        )
+                    }
+                    if (PlaceId.WORK in snoozePlaces) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.snooze_until_work)) },
+                            onClick = {
+                                menuOpen = false
+                                onSnooze(SnoozeTarget.UntilPlace(PlaceId.WORK))
+                            },
+                        )
+                    }
                 }
                 if (onDeleteOneOff != null) {
                     DropdownMenuItem(

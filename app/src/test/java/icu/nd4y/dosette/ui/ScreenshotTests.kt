@@ -500,6 +500,8 @@ class ScreenshotTests {
                         onSnooze = {},
                         onGrace = {},
                         onAlarmClock = {},
+                        exactAlarmsAllowed = true,
+                        onRequestExactAlarms = {},
                         onTheme = {},
                         onDynamicColor = {},
                         onLanguage = {},
