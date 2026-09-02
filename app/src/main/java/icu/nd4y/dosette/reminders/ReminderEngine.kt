@@ -9,6 +9,7 @@ import icu.nd4y.dosette.data.repository.ReminderStateRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.alarm.AlarmObligations
 import icu.nd4y.dosette.domain.alarm.AlarmPlanner
+import icu.nd4y.dosette.domain.alarm.AlarmReason
 import icu.nd4y.dosette.domain.inventory.InventoryPolicy
 import icu.nd4y.dosette.domain.missed.MissedDosePolicy
 import icu.nd4y.dosette.domain.model.DoseKind
@@ -65,6 +66,7 @@ class ReminderEngine
         private val clock: Clock,
     ) {
         private val mutex = Mutex()
+        private val appointmentReminders = AppointmentReminders(notifier, settingsRepository)
 
         /** Alarm fired (or app came to foreground): handle everything due, then re-arm. */
         suspend fun processDueEvents(): Unit =
@@ -122,6 +124,19 @@ class ReminderEngine
                 val log = doseLogRepository.getScheduled(key) ?: return
                 medicationRepository.restoreStockOf(log)
                 doseLogRepository.delete(log.id)
+                // Beyond the sweep window no pass would ever finalize the
+                // dose again, so it is quietly missed right here.
+                val today = clock.instant().atZone(clock.zone).toLocalDate()
+                if (key.date.isBefore(today.minusDays(MISSED_SWEEP_DAYS))) {
+                    val med = medicationRepository.getDetails(key.medicationId)
+                    val occurrence = med?.let { occurrenceFor(it, key) }
+                    if (med != null && occurrence != null) {
+                        val at = occurrence.instantAt(clock.zone)
+                        doseLogRepository.recordScheduledIfAbsent(
+                            buildLog(med, occurrence, at, DoseStatus.MISSED, actedAt = null),
+                        )
+                    }
+                }
                 processDueLocked()
             }
 
@@ -137,7 +152,7 @@ class ReminderEngine
             mutex.withLock {
                 val med = medicationRepository.getDetails(medicationId)
                 val schedule = med?.schedules?.firstOrNull { it.id == scheduleId }
-                if (schedule != null) {
+                if (schedule != null && schedule.oneOff) {
                     val end = schedule.endDate ?: schedule.startDate
                     OccurrenceGenerator
                         .occurrencesInRange(listOf(schedule), schedule.startDate, end)
@@ -200,6 +215,9 @@ class ReminderEngine
                 processDueLocked()
             }
 
+        /** Runs [block] with the engine held still — a data swap must not race a reminder pass. */
+        suspend fun <T> exclusive(block: suspend () -> T): T = mutex.withLock { block() }
+
         private suspend fun processDueLocked(preloaded: World? = null) {
             val world = preloaded ?: loadWorld()
             val now = clock.instant()
@@ -207,7 +225,7 @@ class ReminderEngine
 
             handleDueOccurrences(world, now, slackEnd)
             handleStates(world, now, slackEnd)
-            handleAppointments(world, now, slackEnd)
+            appointmentReminders.postDue(world.appointments, world.appointmentSweepMark, now, slackEnd, clock.zone)
             rescheduleLocked(world)
         }
 
@@ -225,23 +243,35 @@ class ReminderEngine
                     .map { OccurrenceKey(it.medicationId, it.date, requireNotNull(it.time)) }
                     .toSet()
 
-            for (med in world.medications) {
-                val schedules = med.schedules.filter { it.remindersEnabled }
-                val occurrences = OccurrenceGenerator.occurrencesInRange(schedules, from, today)
+            // Archived medications are swept too: their history up to the
+            // archive date is still shown and must not stay pending forever.
+            for (med in world.allMedications) {
+                val archivedOn =
+                    med.medication.archivedAt
+                        ?.atZone(zone)
+                        ?.toLocalDate()
+                val alerting = med.schedules.filter { it.remindersEnabled }.mapTo(HashSet()) { it.id }
+                // A slot the plan did not have when its time came (a version
+                // inserted after it) is neither alerted nor finalized as missed.
+                val occurrences = OccurrenceGenerator.plannedOccurrencesInRange(med.schedules, from, today, zone)
                 for (occurrence in occurrences) {
+                    // From the archive date on there is no plan at all.
+                    val overArchive = archivedOn != null && !occurrence.date.isBefore(archivedOn)
                     val instant = occurrence.instantAt(zone)
                     val actionable =
-                        !instant.isAfter(slackEnd) &&
+                        !overArchive &&
+                            !instant.isAfter(slackEnd) &&
                             occurrence.key !in logged &&
                             !world.stateByKey.containsKey(occurrence.key)
                     if (!actionable) continue
 
                     if (MissedDosePolicy.isMissed(instant, now, world.settings.missedGraceMin)) {
-                        // Quiet finalization: the reminder window is long gone.
+                        // Quiet finalization whether or not this version alerts:
+                        // an unmarked dose must not stay pending forever.
                         doseLogRepository.recordScheduledIfAbsent(
                             buildLog(med, occurrence, instant, DoseStatus.MISSED, actedAt = null),
                         )
-                    } else {
+                    } else if (archivedOn == null && occurrence.scheduleId in alerting) {
                         applyEvent(
                             world,
                             occurrence.key,
@@ -264,9 +294,11 @@ class ReminderEngine
         ) {
             for (state in world.states) {
                 // Orphaned state: its medication is gone (profile removal,
-                // med deletion, import) or archived — cancel it instead of
-                // nagging forever with a raw UUID as the title.
-                if (world.medicationById[state.occurrenceKey.medicationId] == null) {
+                // med deletion, import) or archived, or a schedule edit dropped
+                // its slot — cancel it instead of nagging forever (with a raw
+                // UUID as the title in the first case).
+                val med = world.medicationById[state.occurrenceKey.medicationId]
+                if (med == null || occurrenceFor(med, state.occurrenceKey) == null) {
                     reminderStateRepository.delete(state.occurrenceKey)
                     world.stateByKey.remove(state.occurrenceKey)
                     notifier.cancelReminder(state.occurrenceKey)
@@ -336,35 +368,6 @@ class ReminderEngine
             placeMonitor.syncGeofences(waiting)
         }
 
-        private suspend fun handleAppointments(
-            world: World,
-            now: Instant,
-            slackEnd: Instant,
-        ) {
-            val zone = clock.zone
-            val windowStart = now.minus(APPOINTMENT_WINDOW)
-            var posted = false
-            for (appointment in world.appointments) {
-                val startsAt =
-                    appointment.date
-                        .atTime(appointment.time)
-                        .atZone(zone)
-                        .toInstant()
-                for (offset in appointment.reminderOffsetsMin) {
-                    val remindAt = startsAt.minus(Duration.ofMinutes(offset.toLong()))
-                    val fresh = world.appointmentSweepMark?.isBefore(remindAt) != false
-                    if (fresh && remindAt.isAfter(windowStart) && !remindAt.isAfter(slackEnd)) {
-                        notifier.postAppointment(appointment, offset)
-                        posted = true
-                    }
-                }
-            }
-            // The watermark keeps later passes inside the window from
-            // re-posting (and re-sounding) the same reminder — a dismissed
-            // appointment notice stays dismissed.
-            if (posted) settingsRepository.setLastAppointmentSweepAt(slackEnd)
-        }
-
         private suspend fun applyEvent(
             world: World,
             key: OccurrenceKey,
@@ -425,7 +428,10 @@ class ReminderEngine
                 }
 
                 NagEffect.PostMissedNotice -> {
-                    notifier.postMissedNotice(key, med?.let(::medicationTitle) ?: key.medicationId)
+                    // No notice for a slot that is no longer planned (or a deleted medication).
+                    if (med != null && occurrenceFor(med, key) != null) {
+                        notifier.postMissedNotice(key, medicationTitle(med))
+                    }
                 }
 
                 NagEffect.Reschedule -> {
@@ -465,19 +471,21 @@ class ReminderEngine
             med: MedicationDetails?,
             key: OccurrenceKey,
         ) {
-            val variant = med?.defaultVariant?.takeIf { it.trackingEnabled } ?: return
+            val variant = med?.defaultVariant?.takeIf { it.trackingEnabled }
             // The amount of THIS slot, not today's first one: slots can carry
-            // different doses, and the decrement must match the log.
-            val amount = occurrenceFor(med, key)?.amount ?: med.schedules.firstOrNull()?.defaultDoseAmount ?: 1.0
+            // different doses, and the decrement must match the log. No slot
+            // (a stale notification after an edit) — no log, no decrement.
+            val amount = med?.let { occurrenceFor(it, key)?.amount }
+            if (variant == null || amount == null) return
             val units =
                 InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, variant.strengthValue)
-            val before = medicationRepository.getVariant(variant.id)?.currentStock ?: return
-            medicationRepository.decrementStock(variant.id, units)
-            val after = (before - units).coerceAtLeast(0.0)
+            // Before and after come from one transaction: an as-needed take
+            // or a recount landing in between must not fake or hide the crossing.
+            val change = medicationRepository.consumeStock(variant.id, units) ?: return
             if (world.lowStockNotifyEnabled &&
-                InventoryPolicy.crossedLowThreshold(before, after, variant.lowStockThreshold)
+                InventoryPolicy.crossedLowThreshold(change.before, change.after, variant.lowStockThreshold)
             ) {
-                notifier.postLowStock(med.medication.id, medicationTitle(med), formatUnits(after))
+                notifier.postLowStock(med.medication.id, medicationTitle(med), formatUnits(change.after))
             }
         }
 
@@ -540,7 +548,9 @@ class ReminderEngine
                     AlarmObligations(schedules, states, appointments),
                     settings,
                 )
-            alarmScheduler.scheduleExact(plan.at, alarmClock = world.alarmClock)
+            // Housekeeping and place polls wake nobody: an exact while-idle
+            // alarm serves them and keeps the status-bar icon for real reminders.
+            alarmScheduler.scheduleExact(plan.at, alarmClock = world.alarmClock && plan.reason.wakesUser)
             // Every mutating entry point ends here, so the widget stays in step.
             widgetRefresher.refresh()
         }
@@ -566,7 +576,8 @@ class ReminderEngine
 
         private suspend fun loadWorld(): World {
             val settings = settingsRepository.settings.first()
-            val medications = medicationRepository.getAllActive()
+            val allMedications = medicationRepository.getAll()
+            val medications = allMedications.filter { !it.medication.isArchived }
             val profiles = profileRepository.getAll()
             val states = reminderStateRepository.getAll()
             val today = clock.instant().atZone(clock.zone).toLocalDate()
@@ -583,6 +594,7 @@ class ReminderEngine
                 places = settings.places,
                 appointmentSweepMark = settings.lastAppointmentSweepAt,
                 medications = medications,
+                allMedications = allMedications,
                 medicationById = medications.associateBy { it.medication.id },
                 states = states,
                 stateByKey = states.associateBy { it.occurrenceKey }.toMutableMap(),
@@ -607,6 +619,8 @@ class ReminderEngine
             /** Appointment reminders up to this instant were already posted. */
             val appointmentSweepMark: Instant?,
             val medications: List<MedicationDetails>,
+            /** Archived ones too — swept for missed doses, never alerted. */
+            val allMedications: List<MedicationDetails>,
             val medicationById: Map<String, MedicationDetails>,
             val states: List<ReminderState>,
             val stateByKey: MutableMap<OccurrenceKey, ReminderState>,
@@ -617,7 +631,6 @@ class ReminderEngine
 
         private companion object {
             val SLACK: Duration = Duration.ofSeconds(30)
-            val APPOINTMENT_WINDOW: Duration = Duration.ofMinutes(5)
             const val MISSED_SWEEP_DAYS = 7L
         }
     }
@@ -639,3 +652,7 @@ internal fun medicationTitle(med: MedicationDetails): String {
 
 internal fun formatUnits(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+
+/** Only alarms that end in a notification deserve the alarm-clock treatment (and its icon). */
+private val AlarmReason.wakesUser: Boolean
+    get() = this != AlarmReason.HOUSEKEEPING && this != AlarmReason.PLACE_POLL

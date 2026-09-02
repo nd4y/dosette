@@ -8,11 +8,11 @@ import java.time.LocalTime
 
 /**
  * The schedule the wizard edits: the open-ended version. One-off doses
- * are single-day schedules (startDate == endDate) and closed versions
+ * are flagged as such ([Schedule.oneOff]) and closed versions
  * are history — neither is the medication's "current" schedule.
  */
 fun mainScheduleOf(schedules: List<Schedule>): Schedule? =
-    schedules.filter { it.endDate == null }.maxByOrNull { it.createdAt }
+    schedules.filter { it.endDate == null && !it.oneOff }.maxByOrNull { it.createdAt }
 
 /** Wizard state pre-filled from an existing medication for the edit flow. */
 fun prefillFrom(details: MedicationDetails): MedEditUiState {
@@ -100,3 +100,31 @@ private const val DEFAULT_INTERVAL_DAYS = 2
 private const val DEFAULT_CYCLE_ON = 21
 private const val DEFAULT_CYCLE_OFF = 7
 private const val DEFAULT_HOUR = 8
+
+/**
+ * Every-N and cycle rhythms count from the version start, so a replacement
+ * version starting today would shift the days. When the type and the cadence
+ * are unchanged the new version inherits the anchor of the one it replaces;
+ * a changed cadence is a new regimen and starts counting today.
+ */
+fun carryAnchor(
+    current: Schedule,
+    built: Schedule,
+): Schedule {
+    if (current.type != built.type) return built
+    val sameCadence =
+        when (built.type) {
+            ScheduleType.EVERY_N_DAYS -> {
+                current.intervalDays == built.intervalDays
+            }
+
+            ScheduleType.CYCLE -> {
+                current.cycleDaysOn == built.cycleDaysOn && current.cycleDaysOff == built.cycleDaysOff
+            }
+
+            else -> {
+                false
+            }
+        }
+    return if (sameCadence) built.copy(anchorDate = current.anchorDate ?: current.startDate) else built
+}

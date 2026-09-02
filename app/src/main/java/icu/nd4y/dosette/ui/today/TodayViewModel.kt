@@ -308,7 +308,8 @@ class TodayViewModel
 
         /** Show a specific day; the grid follows to its month. */
         fun select(date: LocalDate) {
-            selected.value = date
+            // Today stays "no selection" so the screen keeps following midnight.
+            selected.value = date.takeIf { it != LocalDate.now(clock) }
             monthOverride.value = null
         }
 
@@ -410,6 +411,7 @@ class TodayViewModel
                         type = ScheduleType.FIXED_TIMES,
                         startDate = date,
                         endDate = date,
+                        oneOff = true,
                         weekdays = emptySet(),
                         intervalDays = null,
                         cycleDaysOn = null,

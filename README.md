@@ -31,11 +31,14 @@ battery-optimization exemption when the app asks during onboarding.
 
 ## Backup format
 
-The backup is a single YAML file, schema version 1: `settings`, then `profiles[]`, each with nested
+The backup is a single YAML file, schema version 2 (version 1 files import unchanged): `settings`, then `profiles[]`, each with nested
 `medications[]` (variants, schedules with times), `dose_logs[]` and `appointments[]`. Dates are ISO
 (`2026-08-29`), times are `HH:mm`, timestamps are ISO-8601 instants. Import is strict: unknown keys,
-unknown enum values and dangling references are rejected before anything is written, and the previous
-data is kept as an automatic backup inside the app (last 5).
+unknown enum values, dangling references and out-of-range values (a zero interval, a negative grace)
+are rejected before anything is written. The schedule and variant ids inside dose logs are history,
+not references — the app deletes replaced same-day versions and dropped package variants while their
+logs stay — so an own export always imports. The previous data is kept as an automatic backup inside
+the app (last 5).
 
 With a password the same YAML is sealed as `MAGIC | salt(16) | nonce(12) | AES-256-GCM(payload)`
 with a key derived via PBKDF2-HMAC-SHA256 (600k iterations); the file gets the `.yaml.enc`
@@ -49,11 +52,17 @@ is teal `#00696B`; with dynamic color enabled the palette follows the device wal
 ## Architecture notes
 
 - Fully offline by design: no network permission is ever requested.
-- Reminders are driven by a single chained `AlarmManager.setAlarmClock()` plus reconciliation on app
-  start and reboot. There is deliberately **no WorkManager and no foreground service** — do not add
-  them: a missed daily job in Doze means a missed reminder.
+- Reminders are driven by a single chained exact alarm plus reconciliation on app start and reboot:
+  `AlarmManager.setAlarmClock()` by default, `setExactAndAllowWhileIdle()` when the status-bar alarm
+  icon is turned off in Settings and for the nightly housekeeping tick (so the icon only ever means a
+  real reminder is pending); on Android 12/12L with the exact-alarm access revoked the chain degrades
+  to an inexact alarm instead of dying. There is deliberately **no WorkManager of our own and no
+  foreground service** (Glance brings its own worker for widget updates) — do not add them: a missed
+  daily job in Doze means a missed reminder.
 - Occurrences are computed on the fly from immutable schedule versions; only facts (taken / skipped /
-  missed) are stored, so schedule edits never rewrite history.
+  missed) are stored, so schedule edits never rewrite history. Every-N-days and cycle rhythms count from
+  the version start date; an edit that keeps the cadence carries that anchor over (`anchor_date` in the
+  backup), so changing a time or a dose never shifts the days.
 - Backup import/export goes through the Storage Access Framework, so Google Drive works with zero
   Google API code.
 

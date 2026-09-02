@@ -1,6 +1,8 @@
 package icu.nd4y.dosette
 
+import android.graphics.Color
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -9,6 +11,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +38,19 @@ class MainActivity : AppCompatActivity() {
                     ThemeMode.LIGHT -> false
                     ThemeMode.DARK -> true
                 }
+            // enableEdgeToEdge() above picked icon colours from the system theme
+            // once; a forced light/dark theme needs them re-picked or the
+            // status-bar icons vanish against the app background.
+            DisposableEffect(darkTheme) {
+                val bars =
+                    if (darkTheme) {
+                        SystemBarStyle.dark(Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                    }
+                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+                onDispose {}
+            }
             DosetteTheme(darkTheme = darkTheme, dynamicColor = loaded?.dynamicColor ?: true) {
                 when {
                     loaded == null -> {

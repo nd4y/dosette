@@ -3,13 +3,16 @@ package icu.nd4y.dosette.widget
 import android.content.Context
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
@@ -20,6 +23,7 @@ import androidx.glance.background
 import androidx.glance.layout.Box
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.material3.ColorProviders
+import icu.nd4y.dosette.ui.common.withAppLanguage
 import icu.nd4y.dosette.ui.theme.DarkColors
 import icu.nd4y.dosette.ui.theme.LightColors
 
@@ -47,10 +51,17 @@ class DoseWidget : GlanceAppWidget() {
         // The session outlives a single update, so collect live data:
         // a take from the widget itself must repaint it immediately.
         val initial = loader.load()
+        // One flow per session: created inside provideContent it would be
+        // re-subscribed on every recomposition.
+        val states = loader.observe()
         provideContent {
-            val state by loader.observe().collectAsState(initial = initial)
-            GlanceTheme(colors = widgetColors()) {
-                WidgetRoot(state)
+            val state by states.collectAsState(initial = initial)
+            // Below API 33 the per-app language reaches only AppCompat activities.
+            val localized = remember(state.language) { context.withAppLanguage(state.language) }
+            CompositionLocalProvider(LocalContext provides localized) {
+                GlanceTheme(colors = widgetColors()) {
+                    WidgetRoot(state)
+                }
             }
         }
     }

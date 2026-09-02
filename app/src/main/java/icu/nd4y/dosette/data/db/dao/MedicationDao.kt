@@ -21,6 +21,10 @@ interface MedicationDao {
     suspend fun getAllActiveWithDetails(): List<MedicationWithDetails>
 
     @Transaction
+    @Query("SELECT * FROM medications")
+    suspend fun getAllWithDetails(): List<MedicationWithDetails>
+
+    @Transaction
     @Query("SELECT * FROM medications WHERE id = :id")
     fun observeWithDetails(id: String): Flow<MedicationWithDetails?>
 

@@ -9,6 +9,7 @@ import icu.nd4y.dosette.data.db.entity.ScheduleWithTimes
 import icu.nd4y.dosette.data.db.timeEntities
 import icu.nd4y.dosette.data.db.toDomain
 import icu.nd4y.dosette.data.db.toEntity
+import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.backup.BackupSnapshot
 import icu.nd4y.dosette.reminders.ReminderEngine
@@ -76,28 +77,32 @@ class BackupManager
         suspend fun importFrom(
             uri: Uri,
             password: String?,
-        ) {
+        ): AppSettings {
             // Parse and validate BEFORE anything is written anywhere.
             val data = BackupMapper.fromSnapshot(BackupCodec.decode(readText(uri, password)))
 
             writeAutoBackup()
 
-            backupDao.replaceAll(
-                BackupEntities(
-                    profiles = data.profiles.map { it.toEntity() },
-                    medications = data.medications.map { it.toEntity() },
-                    variants = data.variants.map { it.toEntity() },
-                    schedules = data.schedules.map { it.toEntity() },
-                    scheduleTimes = data.schedules.flatMap { it.timeEntities() },
-                    doseLogs = data.doseLogs.map { it.toEntity() },
-                    appointments = data.appointments.map { it.toEntity() },
-                ),
-            )
-            settingsRepository.replaceAll(data.settings)
+            // No reminder pass may run against a half-swapped world.
+            engine.exclusive {
+                backupDao.replaceAll(
+                    BackupEntities(
+                        profiles = data.profiles.map { it.toEntity() },
+                        medications = data.medications.map { it.toEntity() },
+                        variants = data.variants.map { it.toEntity() },
+                        schedules = data.schedules.map { it.toEntity() },
+                        scheduleTimes = data.schedules.flatMap { it.timeEntities() },
+                        doseLogs = data.doseLogs.map { it.toEntity() },
+                        appointments = data.appointments.map { it.toEntity() },
+                    ),
+                )
+                settingsRepository.replaceAll(data.settings)
 
-            // Ghost reminders must not survive the data swap.
-            notifier.cancelAll()
+                // Ghost reminders must not survive the data swap.
+                notifier.cancelAll()
+            }
             engine.reschedule()
+            return data.settings
         }
 
         private suspend fun collect(): BackupData {

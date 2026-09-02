@@ -4,9 +4,11 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import icu.nd4y.dosette.data.backup.BackupFormatException
 import icu.nd4y.dosette.data.backup.BackupManager
 import icu.nd4y.dosette.data.backup.BackupPreview
 import icu.nd4y.dosette.di.IoDispatcher
+import icu.nd4y.dosette.ui.common.applyAppLanguage
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,8 +89,19 @@ class BackupViewModel
                         _uiState.update {
                             it.copy(passwordNeeded = false, passwordError = false, pendingImport = preview)
                         }
-                    }.onFailure {
-                        _uiState.update { it.copy(passwordError = true) }
+                    }.onFailure { error ->
+                        if (error is BackupFormatException) {
+                            // Decrypted fine, but not importable: say so instead of blaming the password.
+                            _uiState.update {
+                                it.copy(
+                                    passwordNeeded = false,
+                                    result = BackupResult.ERROR,
+                                    errorDetail = error.message,
+                                )
+                            }
+                        } else {
+                            _uiState.update { it.copy(passwordError = true) }
+                        }
                     }
                 _uiState.update { it.copy(busy = false) }
             }
@@ -98,9 +111,11 @@ class BackupViewModel
             val uri = pendingUri ?: return
             val password = importPassword
             _uiState.update { it.copy(pendingImport = null) }
-            launchOp({ backupManager.importFrom(uri, password) }) {
+            launchOp({ backupManager.importFrom(uri, password) }) { imported ->
                 pendingUri = null
                 importPassword = null
+                // The restored language only takes effect once applied to the process.
+                applyAppLanguage(imported.language)
                 _uiState.update { it.copy(result = BackupResult.IMPORTED) }
             }
         }

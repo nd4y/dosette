@@ -15,6 +15,7 @@ import icu.nd4y.dosette.data.settings.ThemeMode
 import icu.nd4y.dosette.domain.model.PlaceConfig
 import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.reminders.ReminderEngine
+import icu.nd4y.dosette.ui.common.applyAppLanguage
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -73,13 +74,7 @@ class SettingsViewModel
 
         fun setLanguage(value: AppLanguage) {
             viewModelScope.launch { settingsRepository.setLanguage(value) }
-            AppCompatDelegate.setApplicationLocales(
-                when (value) {
-                    AppLanguage.SYSTEM -> LocaleListCompat.getEmptyLocaleList()
-                    AppLanguage.EN -> LocaleListCompat.forLanguageTags("en")
-                    AppLanguage.RU -> LocaleListCompat.forLanguageTags("ru")
-                },
-            )
+            applyAppLanguage(value)
         }
 
         /** Geo of [id] from the current device position; keeps any bound Wi-Fi. */

@@ -34,7 +34,10 @@ class ProfileBootstrap
                     createdAt = clock.instant(),
                 ).also { profileRepository.upsert(it) }
 
-            if (settingsRepository.settings.first().activeProfileId == null) {
+            // Null on the first start; dangling when an import died between
+            // the database swap and the settings write.
+            val active = settingsRepository.settings.first().activeProfileId
+            if (active == null || profiles.none { it.id == active }) {
                 settingsRepository.setActiveProfileId(profile.id)
             }
         }

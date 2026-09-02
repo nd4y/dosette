@@ -2,7 +2,9 @@ package icu.nd4y.dosette.di
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.Module
 import dagger.Provides
@@ -21,7 +23,12 @@ import javax.inject.Singleton
 @Retention(AnnotationRetention.BINARY)
 annotation class IoDispatcher
 
-private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+// A corrupt preferences file is replaced by defaults instead of crashing every start.
+private val Context.settingsDataStore: DataStore<Preferences> by
+    preferencesDataStore(
+        name = "settings",
+        corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+    )
 
 @Module
 @InstallIn(SingletonComponent::class)

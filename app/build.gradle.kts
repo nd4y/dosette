@@ -44,7 +44,11 @@ android {
             releaseVersion
                 ?.split('.')
                 ?.map(String::toInt)
-                ?.let { (major, minor, patch) -> major * 10_000 + minor * 100 + patch }
+                ?.let { (major, minor, patch) ->
+                    // Two digits each, or v1.0.100 would collide with v1.1.0.
+                    require(minor in 0..99 && patch in 0..99) { "minor and patch must be 0..99, got $releaseVersion" }
+                    major * 10_000 + minor * 100 + patch
+                }
                 ?: 1
         versionName = releaseVersion ?: "0.0.0-dev"
     }

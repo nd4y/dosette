@@ -50,19 +50,24 @@ fun scheduleEntity(
     medicationId: String = "m1",
     startDate: LocalDate = LocalDate.parse("2026-05-01"),
     endDate: LocalDate? = null,
+    oneOff: Boolean = false,
+    // Versions exist before their slots: the plan-as-of-creation rule drops earlier ones.
+    createdAt: Instant = Instant.parse("2026-05-01T00:00:00Z"),
 ) = ScheduleEntity(
     id = id,
     medicationId = medicationId,
     type = "FIXED_TIMES",
     startDate = startDate,
     endDate = endDate,
+    anchorDate = null,
+    oneOff = oneOff,
     weekdaysMask = 0,
     intervalDays = null,
     cycleDaysOn = null,
     cycleDaysOff = null,
     defaultDoseAmount = 1.0,
     remindersEnabled = true,
-    createdAt = testInstant,
+    createdAt = createdAt,
 )
 
 fun scheduleTimeEntity(

@@ -265,7 +265,8 @@ class MedEditViewModel
             variants.forEach { medicationRepository.upsertVariant(it) }
 
             val current = mainScheduleOf(original.schedules)
-            val replacement = buildSchedule(state, med.id, now)
+            val built = buildSchedule(state, med.id, now)
+            val replacement = current?.let { carryAnchor(it, built) } ?: built
             when {
                 current == null -> {
                     medicationRepository.addSchedule(replacement)

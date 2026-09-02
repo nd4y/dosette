@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.ThemeMode
+import icu.nd4y.dosette.domain.backup.BackupSnapshot
 import icu.nd4y.dosette.domain.model.Appointment
 import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseLog
@@ -218,7 +219,7 @@ class BackupCodecTest {
         val yaml =
             BackupCodec
                 .encode(BackupMapper.toSnapshot(fullData, instant))
-                .replaceFirst("schema_version: 1", "schema_version: 99")
+                .replaceFirst("schema_version: ${BackupSnapshot.CURRENT_SCHEMA_VERSION}", "schema_version: 99")
         assertThrows(BackupFormatException::class.java) {
             BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
         }
@@ -251,12 +252,70 @@ class BackupCodecTest {
     }
 
     @Test
-    fun `dose log referencing missing schedule is rejected`() {
-        val broken =
+    fun `dangling schedule and variant references in logs are tolerated`() {
+        // The app deletes replaced same-day versions and dropped package
+        // variants while their logs stay: an own export must still import.
+        val edited =
             fullData.copy(
                 doseLogs =
                     fullData.doseLogs.map {
-                        if (it.id == "d1") it.copy(scheduleId = "ghost") else it
+                        if (it.id == "d1") it.copy(scheduleId = "ghost", variantId = "gone") else it
+                    },
+            )
+        val yaml = BackupCodec.encode(BackupMapper.toSnapshot(edited, instant))
+
+        val restored = BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
+
+        assertThat(restored.doseLogs.first { it.id == "d1" }.scheduleId).isEqualTo("ghost")
+    }
+
+    @Test
+    fun `broken schedule values are rejected`() {
+        val everyZero = fullData.schedules.first().copy(type = ScheduleType.EVERY_N_DAYS, intervalDays = 0)
+        val inverted = fullData.schedules.first().copy(endDate = LocalDate.parse("2026-04-30"))
+        listOf(everyZero, inverted).forEach { bad ->
+            val yaml = BackupCodec.encode(BackupMapper.toSnapshot(fullData.copy(schedules = listOf(bad)), instant))
+            assertThrows(BackupFormatException::class.java) {
+                BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
+            }
+        }
+    }
+
+    @Test
+    fun `settings the engine would choke on are rejected`() {
+        val broken = fullData.copy(settings = fullData.settings.copy(missedGraceMin = 0))
+        val yaml = BackupCodec.encode(BackupMapper.toSnapshot(broken, instant))
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
+        }
+    }
+
+    @Test
+    fun `medication id with a pipe is rejected`() {
+        // The id opens every reminder-state key; a pipe would make it unparseable.
+        val pipe = "a|b"
+        val broken =
+            fullData.copy(
+                medications = fullData.medications.map { if (it.id == "m2") it.copy(id = pipe) else it },
+                schedules =
+                    fullData.schedules.map {
+                        if (it.medicationId ==
+                            "m2"
+                        ) {
+                            it.copy(medicationId = pipe)
+                        } else {
+                            it
+                        }
+                    },
+                doseLogs =
+                    fullData.doseLogs.map {
+                        if (it.medicationId == "m2") {
+                            it.copy(
+                                medicationId = pipe,
+                            )
+                        } else {
+                            it
+                        }
                     },
             )
         val yaml = BackupCodec.encode(BackupMapper.toSnapshot(broken, instant))

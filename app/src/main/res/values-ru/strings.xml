@@ -241,6 +241,8 @@
     <string name="settings_battery_ok">Исключение из оптимизации батареи включено — напоминания приходят вовремя</string>
     <string name="settings_battery_warn">Разрешите работу без оптимизации батареи, чтобы напоминания приходили вовремя</string>
     <string name="settings_battery_action">Разрешить</string>
+    <string name="settings_notifications_warn">Уведомления выключены — напоминания не будут показаны</string>
+    <string name="settings_notifications_action">Включить</string>
 
     <string name="onboarding_tagline">Помнит о каждом приёме за вас</string>
     <string name="onboarding_feature_reminders_title">Напоминания, которые не теряются</string>

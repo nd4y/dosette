@@ -43,9 +43,12 @@ object LargeLayout {
     const val TITLE_BLOCK = 44
     const val MORE_LINE = 18
     const val SECTION_HEADER = 22
+
+    /** Header with status circles instead of rows: 6 + 20dp circles. */
+    const val COLLAPSED_HEADER = 26
     const val PENDING_ROW = 44
     const val ACTED_ROW = 36
-    const val PRN_ROW = 38
+    const val PRN_ROW = 40
 
     /**
      * Collapsing is a last resort, not a style: with room to spare every
@@ -133,7 +136,7 @@ object LargeLayout {
             header: LargeEntry,
             rows: List<TodayDose>,
         ) {
-            if (budget >= SECTION_HEADER) take(header, SECTION_HEADER) else hidden += rows.size
+            if (budget >= COLLAPSED_HEADER) take(header, COLLAPSED_HEADER) else hidden += rows.size
         }
 
         private fun placeRow(dose: TodayDose) {

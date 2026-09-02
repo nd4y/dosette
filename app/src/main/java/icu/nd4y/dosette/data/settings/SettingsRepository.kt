@@ -4,14 +4,17 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import icu.nd4y.dosette.domain.model.PlaceConfig
 import icu.nd4y.dosette.domain.model.PlaceId
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
+import java.io.IOException
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -114,32 +117,35 @@ class SettingsRepositoryImpl
         private val defaults = AppSettings()
 
         override val settings: Flow<AppSettings> =
-            dataStore.data.map { p ->
-                AppSettings(
-                    activeProfileId = p[Keys.ACTIVE_PROFILE_ID],
-                    nagIntervalMin = p[Keys.NAG_INTERVAL_MIN] ?: defaults.nagIntervalMin,
-                    nagMaxCount = p[Keys.NAG_MAX_COUNT] ?: defaults.nagMaxCount,
-                    snoozeMin = p[Keys.SNOOZE_MIN] ?: defaults.snoozeMin,
-                    missedGraceMin = p[Keys.MISSED_GRACE_MIN] ?: defaults.missedGraceMin,
-                    theme = p[Keys.THEME]?.let(ThemeMode::valueOf) ?: defaults.theme,
-                    dynamicColor = p[Keys.DYNAMIC_COLOR] ?: defaults.dynamicColor,
-                    language = p[Keys.LANGUAGE]?.let(AppLanguage::valueOf) ?: defaults.language,
-                    lowStockNotifyEnabled = p[Keys.LOW_STOCK_NOTIFY] ?: defaults.lowStockNotifyEnabled,
-                    alarmClock = p[Keys.ALARM_CLOCK] ?: defaults.alarmClock,
-                    onboardingDone = p[Keys.ONBOARDING_DONE] ?: defaults.onboardingDone,
-                    lastAutoBackupAt = p[Keys.LAST_AUTO_BACKUP_AT]?.let(Instant::ofEpochMilli),
-                    lastAppointmentSweepAt = p[Keys.LAST_APPOINTMENT_SWEEP_AT]?.let(Instant::ofEpochMilli),
-                    places =
-                        PlaceId.entries
-                            .mapNotNull { id ->
-                                p[Keys.place(id)]?.let { raw ->
-                                    runCatching {
-                                        id to Json.decodeFromString(PlaceConfig.serializer(), raw)
-                                    }.getOrNull()
-                                }
-                            }.toMap(),
-                )
-            }
+            dataStore.data
+                // A torn file must not take the whole app down with it.
+                .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+                .map { p ->
+                    AppSettings(
+                        activeProfileId = p[Keys.ACTIVE_PROFILE_ID],
+                        nagIntervalMin = p[Keys.NAG_INTERVAL_MIN] ?: defaults.nagIntervalMin,
+                        nagMaxCount = p[Keys.NAG_MAX_COUNT] ?: defaults.nagMaxCount,
+                        snoozeMin = p[Keys.SNOOZE_MIN] ?: defaults.snoozeMin,
+                        missedGraceMin = p[Keys.MISSED_GRACE_MIN] ?: defaults.missedGraceMin,
+                        theme = p[Keys.THEME]?.let { enumOrNull<ThemeMode>(it) } ?: defaults.theme,
+                        dynamicColor = p[Keys.DYNAMIC_COLOR] ?: defaults.dynamicColor,
+                        language = p[Keys.LANGUAGE]?.let { enumOrNull<AppLanguage>(it) } ?: defaults.language,
+                        lowStockNotifyEnabled = p[Keys.LOW_STOCK_NOTIFY] ?: defaults.lowStockNotifyEnabled,
+                        alarmClock = p[Keys.ALARM_CLOCK] ?: defaults.alarmClock,
+                        onboardingDone = p[Keys.ONBOARDING_DONE] ?: defaults.onboardingDone,
+                        lastAutoBackupAt = p[Keys.LAST_AUTO_BACKUP_AT]?.let(Instant::ofEpochMilli),
+                        lastAppointmentSweepAt = p[Keys.LAST_APPOINTMENT_SWEEP_AT]?.let(Instant::ofEpochMilli),
+                        places =
+                            PlaceId.entries
+                                .mapNotNull { id ->
+                                    p[Keys.place(id)]?.let { raw ->
+                                        runCatching {
+                                            id to Json.decodeFromString(PlaceConfig.serializer(), raw)
+                                        }.getOrNull()
+                                    }
+                                }.toMap(),
+                    )
+                }
 
         override suspend fun setActiveProfileId(id: String?) {
             dataStore.edit { p ->
@@ -237,3 +243,6 @@ class SettingsRepositoryImpl
             }
         }
     }
+
+/** A value written by a newer build (or a renamed constant) must not poison the whole settings flow. */
+private inline fun <reified E : Enum<E>> enumOrNull(name: String): E? = runCatching { enumValueOf<E>(name) }.getOrNull()

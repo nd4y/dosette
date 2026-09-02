@@ -3,6 +3,7 @@ package icu.nd4y.dosette.data.repository
 import icu.nd4y.dosette.data.db.dao.MedicationDao
 import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
 import icu.nd4y.dosette.data.db.dao.ScheduleDao
+import icu.nd4y.dosette.data.db.dao.StockChange
 import icu.nd4y.dosette.data.db.entity.MedicationWithDetails
 import icu.nd4y.dosette.data.db.timeEntities
 import icu.nd4y.dosette.data.db.toDomain
@@ -41,6 +42,9 @@ interface MedicationRepository {
 
     suspend fun getAllActive(): List<MedicationDetails>
 
+    /** Archived ones included. */
+    suspend fun getAll(): List<MedicationDetails>
+
     suspend fun getDetails(medicationId: String): MedicationDetails?
 
     suspend fun upsert(medication: Medication)
@@ -75,6 +79,18 @@ interface MedicationRepository {
         units: Double,
     )
 
+    /** Correction path: overwrites the counter with a recount, atomically. */
+    suspend fun setStock(
+        variantId: String,
+        units: Double,
+    )
+
+    /** Atomic decrement reporting the stock before and after; null when untracked or gone. */
+    suspend fun consumeStock(
+        variantId: String,
+        units: Double,
+    ): StockChange?
+
     suspend fun refill(
         variantId: String,
         units: Double,
@@ -108,6 +124,9 @@ class MedicationRepositoryImpl
 
         override suspend fun getAllActive(): List<MedicationDetails> =
             medicationDao.getAllActiveWithDetails().map { it.toDetails() }
+
+        override suspend fun getAll(): List<MedicationDetails> =
+            medicationDao.getAllWithDetails().map { it.toDetails() }
 
         override suspend fun getDetails(medicationId: String): MedicationDetails? {
             val medication = medicationDao.getById(medicationId) ?: return null
@@ -152,6 +171,16 @@ class MedicationRepositoryImpl
             variantId: String,
             units: Double,
         ) = variantDao.increment(variantId, units)
+
+        override suspend fun setStock(
+            variantId: String,
+            units: Double,
+        ) = variantDao.setStock(variantId, units)
+
+        override suspend fun consumeStock(
+            variantId: String,
+            units: Double,
+        ): StockChange? = variantDao.consume(variantId, units)
 
         override suspend fun refill(
             variantId: String,

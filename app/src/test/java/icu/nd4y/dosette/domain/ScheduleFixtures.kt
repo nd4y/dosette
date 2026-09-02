@@ -14,6 +14,9 @@ fun schedule(
     type: ScheduleType = ScheduleType.FIXED_TIMES,
     startDate: LocalDate = LocalDate.parse("2026-08-01"),
     endDate: LocalDate? = null,
+    anchorDate: LocalDate? = null,
+    oneOff: Boolean = false,
+    createdAt: Instant = Instant.parse("2026-08-01T00:00:00Z"),
     weekdays: Set<DayOfWeek> = emptySet(),
     intervalDays: Int? = null,
     cycleDaysOn: Int? = null,
@@ -27,13 +30,15 @@ fun schedule(
         type = type,
         startDate = startDate,
         endDate = endDate,
+        anchorDate = anchorDate,
+        oneOff = oneOff,
         weekdays = weekdays,
         intervalDays = intervalDays,
         cycleDaysOn = cycleDaysOn,
         cycleDaysOff = cycleDaysOff,
         defaultDoseAmount = amount,
         remindersEnabled = true,
-        createdAt = Instant.parse("2026-08-01T00:00:00Z"),
+        createdAt = createdAt,
         times =
             times.mapIndexed { index, time ->
                 ScheduleTime(id = "$id-t$index", scheduleId = id, time = time, doseAmount = amount, sortIndex = index)
