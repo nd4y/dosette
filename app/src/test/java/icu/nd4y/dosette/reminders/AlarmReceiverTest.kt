@@ -16,6 +16,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.time.Duration
+import java.time.Instant
 
 /**
  * The receiver is wired by Hilt, so it runs against the real graph of the
@@ -42,5 +44,16 @@ class AlarmReceiverTest {
         assertThat(manager.allNotifications).hasSize(1)
         assertThat(shadowOf(context.getSystemService(AlarmManager::class.java)).scheduledAlarms).isEmpty()
         assertThat(context.getDatabasePath(AppDatabase.NAME).exists()).isFalse()
+    }
+
+    @Test
+    fun `while locked re-arms the next remembered dose time`() {
+        val next = Instant.now().plus(Duration.ofHours(2))
+        AlarmScheduler(context).rememberUpcoming(listOf(next))
+
+        AlarmReceiver().onReceive(context, Intent(context, AlarmReceiver::class.java))
+
+        val alarm = requireNotNull(shadowOf(context.getSystemService(AlarmManager::class.java)).nextScheduledAlarm)
+        assertThat(alarm.triggerAtTime).isEqualTo(next.toEpochMilli())
     }
 }

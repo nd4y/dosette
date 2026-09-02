@@ -117,15 +117,44 @@ object NagStateMachine {
         settings: NagSettings,
     ): Transition =
         when (event) {
-            is NagEvent.OccurrenceDue -> onDue(state, event, now)
-            NagEvent.NagTick -> onNagTick(state, now, settings)
-            NagEvent.Take -> resolve(DoseStatus.TAKEN)
-            NagEvent.Skip -> resolve(DoseStatus.SKIPPED)
-            is NagEvent.Snooze -> onSnooze(state, event.target, now)
-            NagEvent.Dismissed -> onDismissed(state)
-            NagEvent.SnoozeExpired -> onSnoozeExpired(state, now)
-            is NagEvent.PlaceReached -> onPlaceReached(state, event.place, now)
-            NagEvent.GraceExpired -> expire(state)
+            is NagEvent.OccurrenceDue -> {
+                onDue(state, event, now)
+            }
+
+            NagEvent.NagTick -> {
+                onNagTick(state, now, settings)
+            }
+
+            NagEvent.Take -> {
+                resolve(DoseStatus.TAKEN)
+            }
+
+            NagEvent.Skip -> {
+                resolve(DoseStatus.SKIPPED)
+            }
+
+            is NagEvent.Snooze -> {
+                onSnooze(state, event.target, now)
+            }
+
+            NagEvent.Dismissed -> {
+                onDismissed(state)
+            }
+
+            NagEvent.SnoozeExpired -> {
+                onSnoozeExpired(state, now)
+            }
+
+            is NagEvent.PlaceReached -> {
+                onPlaceReached(state, event.place, now)
+            }
+
+            // A snoozed reminder restarts its window when it wakes, so grace
+            // may only end an active one; the engine checks the same, this
+            // keeps the reducer sound on its own.
+            NagEvent.GraceExpired -> {
+                if (state?.phase == ReminderPhase.ACTIVE) expire(state) else Transition(state, emptyList())
+            }
         }
 
     private fun onDue(

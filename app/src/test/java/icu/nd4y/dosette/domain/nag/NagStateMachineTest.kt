@@ -280,12 +280,14 @@ class NagStateMachineTest {
     }
 
     @Test
-    fun `grace expiry finalizes as missed from any phase`() {
+    fun `grace expiry leaves a snoozed reminder alone`() {
+        // The snooze restarts the window when it wakes; ending it here would
+        // silently mark a deliberately postponed dose as missed.
         val snoozed = activeState().copy(phase = ReminderPhase.SNOOZED, snoozedUntil = scheduledAt.plusSeconds(7200))
         val t = NagStateMachine.reduce(snoozed, NagEvent.GraceExpired, scheduledAt.plusSeconds(3601), settings)
 
-        assertThat(t.state).isNull()
-        assertThat(t.effects).contains(NagEffect.FinalizeDose(DoseStatus.MISSED))
+        assertThat(t.state).isEqualTo(snoozed)
+        assertThat(t.effects).isEmpty()
     }
 
     @Test

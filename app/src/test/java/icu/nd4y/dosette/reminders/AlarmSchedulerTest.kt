@@ -78,4 +78,15 @@ class AlarmSchedulerTest {
         assertThat(prefs.getBoolean("alarm_clock", true)).isFalse()
         assertThat(scheduler.directBootAlarm()).isEqualTo(DirectBootAlarm(at, alarmClock = false))
     }
+
+    @Test
+    fun `remembers upcoming dose times and hands out the next one`() {
+        val first = Instant.parse("2026-09-03T08:00:00Z")
+        val second = Instant.parse("2026-09-03T20:00:00Z")
+        scheduler.rememberUpcoming(listOf(first, second))
+
+        assertThat(scheduler.nextUpcomingAfter(first.minusSeconds(60))).isEqualTo(first)
+        assertThat(scheduler.nextUpcomingAfter(first)).isEqualTo(second)
+        assertThat(scheduler.nextUpcomingAfter(second)).isNull()
+    }
 }

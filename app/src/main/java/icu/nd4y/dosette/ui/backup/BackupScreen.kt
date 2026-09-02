@@ -56,9 +56,15 @@ fun BackupScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var exportDialogOpen by remember { mutableStateOf(false) }
 
+    // One launcher per MIME type: a sealed file offered as YAML would get a
+    // ".yaml" appended by some document providers.
     val exportLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.CreateDocument("application/x-yaml"),
+        ) { uri -> uri?.let(viewModel::export) }
+    val exportEncryptedLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("application/octet-stream"),
         ) { uri -> uri?.let(viewModel::export) }
     val importLauncher =
         rememberLauncherForActivityResult(
@@ -83,8 +89,11 @@ fun BackupScreen(
                 exportDialogOpen = false
                 viewModel.setExportPassword(password)
                 val date = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                val extension = if (viewModel.exportEncrypted) "yaml.enc" else "yaml"
-                exportLauncher.launch("dosette-backup-$date.$extension")
+                if (viewModel.exportEncrypted) {
+                    exportEncryptedLauncher.launch("dosette-backup-$date.yaml.enc")
+                } else {
+                    exportLauncher.launch("dosette-backup-$date.yaml")
+                }
             },
             onDismiss = { exportDialogOpen = false },
         )

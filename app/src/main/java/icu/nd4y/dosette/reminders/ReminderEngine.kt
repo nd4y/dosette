@@ -20,6 +20,7 @@ import icu.nd4y.dosette.domain.model.PlaceConfig
 import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.model.ReminderPhase
 import icu.nd4y.dosette.domain.model.ReminderState
+import icu.nd4y.dosette.domain.model.Schedule
 import icu.nd4y.dosette.domain.nag.NagEffect
 import icu.nd4y.dosette.domain.nag.NagEvent
 import icu.nd4y.dosette.domain.nag.NagSettings
@@ -36,6 +37,8 @@ import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -555,6 +558,9 @@ class ReminderEngine
             // Housekeeping and place polls wake nobody: an exact while-idle
             // alarm serves them and keeps the status-bar icon for real reminders.
             alarmScheduler.scheduleExact(plan.at, alarmClock = world.alarmClock && plan.reason.wakesUser)
+            // The day's remaining dose times go to device-protected storage
+            // too: a reboot before the first unlock can still ring them.
+            alarmScheduler.rememberUpcoming(upcomingDoseInstants(schedules, today, clock.instant(), clock.zone))
             // Every mutating entry point ends here, so the widget stays in step.
             widgetRefresher.refresh()
         }
@@ -660,3 +666,19 @@ internal fun formatUnits(value: Double): String =
 /** Only alarms that end in a notification deserve the alarm-clock treatment (and its icon). */
 private val AlarmReason.wakesUser: Boolean
     get() = this != AlarmReason.HOUSEKEEPING && this != AlarmReason.PLACE_POLL
+
+/** Dose times from now through tomorrow, oldest first, capped so the preference stays small. */
+private fun upcomingDoseInstants(
+    schedules: List<Schedule>,
+    today: LocalDate,
+    now: Instant,
+    zone: ZoneId,
+): List<Instant> =
+    OccurrenceGenerator
+        .occurrencesInRange(schedules, today, today.plusDays(1))
+        .map { it.instantAt(zone) }
+        .filter { it.isAfter(now) }
+        .sorted()
+        .take(UPCOMING_LIMIT)
+
+private const val UPCOMING_LIMIT = 24

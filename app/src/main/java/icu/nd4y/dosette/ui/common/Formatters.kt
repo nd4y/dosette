@@ -65,7 +65,7 @@ fun ScheduleBrief.asText(): String =
         }
 
         is ScheduleBrief.Cycle -> {
-            stringResource(R.string.schedule_cycle_summary, daysOn, daysOff)
+            cycleSummary(daysOn, daysOff)
         }
 
         ScheduleBrief.AsNeeded -> {
@@ -76,3 +76,12 @@ fun ScheduleBrief.asText(): String =
             ""
         }
     }
+
+/** "21 days on / 7 days off", each count in its own plural form. */
+@Composable
+fun cycleSummary(
+    daysOn: Int,
+    daysOff: Int,
+): String =
+    pluralStringResource(R.plurals.cycle_days_on, daysOn, daysOn) + " / " +
+        pluralStringResource(R.plurals.cycle_days_off, daysOff, daysOff)
