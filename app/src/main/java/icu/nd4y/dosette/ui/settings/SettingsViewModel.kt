@@ -55,6 +55,14 @@ class SettingsViewModel
             }
         }
 
+        fun setAlarmClock(value: Boolean) {
+            viewModelScope.launch {
+                settingsRepository.setAlarmClock(value)
+                // Re-arms the pending alarm with the new flavour right away.
+                engine.reschedule()
+            }
+        }
+
         fun setTheme(value: ThemeMode) {
             viewModelScope.launch { settingsRepository.setTheme(value) }
         }

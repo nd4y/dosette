@@ -226,6 +226,8 @@
     <string name="theme_system">Same as system</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="settings_alarm_clock">Alarm icon in the status bar</string>
+    <string name="settings_alarm_clock_hint">Off: no icon, but in deep battery saving a reminder may arrive a few minutes late</string>
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_dynamic_color_hint">palette from the wallpaper (Material You)</string>
     <string name="settings_language">Language</string>

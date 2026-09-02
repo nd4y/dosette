@@ -51,6 +51,8 @@ private class FixedSettingsRepository : SettingsRepository {
 
     override suspend fun setLowStockNotifyEnabled(value: Boolean) = Unit
 
+    override suspend fun setAlarmClock(value: Boolean) = Unit
+
     override suspend fun setOnboardingDone(value: Boolean) = Unit
 
     override suspend fun setLastAutoBackupAt(value: Instant?) = Unit

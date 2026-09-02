@@ -69,6 +69,7 @@ internal fun SettingsBackup.toDomain(): AppSettings =
         dynamicColor = dynamicColor,
         language = parseEnum<AppLanguage>(language, "language"),
         lowStockNotifyEnabled = lowStockNotifyEnabled,
+        alarmClock = alarmClock,
         // Import must never re-open onboarding.
         onboardingDone = true,
     )

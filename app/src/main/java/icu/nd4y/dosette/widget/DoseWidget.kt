@@ -33,8 +33,11 @@ class DoseWidgetReceiver : GlanceAppWidgetReceiver() {
  * 2x2 next-dose card, the 4x2 next-slot row and the 4x4 day list.
  */
 class DoseWidget : GlanceAppWidget() {
+    // Taller buckets let a 4x4 (or 4x5) widget list more of the day: the
+    // launcher renders the largest bucket that fits, and LargeContent
+    // budgets its rows by that bucket's height.
     override val sizeMode: SizeMode =
-        SizeMode.Responsive(setOf(COMPACT, MEDIUM, LARGE))
+        SizeMode.Responsive(setOf(COMPACT, MEDIUM, LARGE, TALL, EXTRA_TALL))
 
     override suspend fun provideGlance(
         context: Context,
@@ -56,6 +59,8 @@ class DoseWidget : GlanceAppWidget() {
         val COMPACT = DpSize(110.dp, 110.dp)
         val MEDIUM = DpSize(250.dp, 110.dp)
         val LARGE = DpSize(250.dp, 240.dp)
+        val TALL = DpSize(250.dp, 330.dp)
+        val EXTRA_TALL = DpSize(250.dp, 420.dp)
     }
 }
 

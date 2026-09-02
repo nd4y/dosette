@@ -138,6 +138,7 @@ fun SettingsScreen(
         onNagInterval = viewModel::setNagInterval,
         onSnooze = viewModel::setSnooze,
         onGrace = viewModel::setGrace,
+        onAlarmClock = viewModel::setAlarmClock,
         onTheme = viewModel::setTheme,
         onDynamicColor = viewModel::setDynamicColor,
         onLanguage = viewModel::setLanguage,
@@ -189,6 +190,7 @@ fun SettingsContent(
     onNagInterval: (Int) -> Unit,
     onSnooze: (Int) -> Unit,
     onGrace: (Int) -> Unit,
+    onAlarmClock: (Boolean) -> Unit,
     onTheme: (ThemeMode) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onLanguage: (AppLanguage) -> Unit,
@@ -252,26 +254,24 @@ fun SettingsContent(
                 options = GRACE_CHOICES.map { it to stringResource(R.string.settings_grace_fmt, it) },
                 onSelect = onGrace,
             )
+            CardDivider()
+            SwitchRow(
+                title = stringResource(R.string.settings_alarm_clock),
+                hint = stringResource(R.string.settings_alarm_clock_hint),
+                checked = settings.alarmClock,
+                onCheckedChange = onAlarmClock,
+            )
         }
 
         SettingsCard(title = stringResource(R.string.settings_appearance_section)) {
             ThemeRow(current = settings.theme, onSelect = onTheme)
             CardDivider()
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.settings_dynamic_color),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_dynamic_color_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = settings.dynamicColor, onCheckedChange = onDynamicColor)
-            }
+            SwitchRow(
+                title = stringResource(R.string.settings_dynamic_color),
+                hint = stringResource(R.string.settings_dynamic_color_hint),
+                checked = settings.dynamicColor,
+                onCheckedChange = onDynamicColor,
+            )
             CardDivider()
             LanguageRow(current = settings.language, onSelect = onLanguage)
         }
@@ -283,6 +283,30 @@ fun SettingsContent(
         )
 
         BatteryBanner(exempt = batteryExempt, onRequest = onRequestExemption)
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    title: String,
+    hint: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

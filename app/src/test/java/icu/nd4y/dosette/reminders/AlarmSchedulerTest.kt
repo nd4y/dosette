@@ -8,6 +8,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowAlarmManager
 import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
@@ -31,6 +32,23 @@ class AlarmSchedulerTest {
         scheduler.scheduleExact(Instant.now().plusSeconds(7200))
 
         assertThat(shadowOf(alarmManager).scheduledAlarms).hasSize(1)
+    }
+
+    @Test
+    fun `icon-free flavour is an exact while-idle alarm, the default is not`() {
+        val at = Instant.now().plusSeconds(3600)
+        // Robolectric denies exact alarms by default, which would route
+        // both flavours into the API 31 inexact fallback.
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+
+        scheduler.scheduleExact(at, alarmClock = true)
+        assertThat(requireNotNull(shadowOf(alarmManager).nextScheduledAlarm).alarmClockInfo).isNotNull()
+
+        scheduler.scheduleExact(at, alarmClock = false)
+        val whileIdle = requireNotNull(shadowOf(alarmManager).nextScheduledAlarm)
+        assertThat(whileIdle.alarmClockInfo).isNull()
+        assertThat(whileIdle.isAllowWhileIdle).isTrue()
+        assertThat(whileIdle.triggerAtTime).isEqualTo(at.toEpochMilli())
     }
 
     @Test

@@ -95,7 +95,7 @@ class ReminderEngine
                     }
                 applyEvent(world, key, event)
                 syncGeofences(world)
-                rescheduleLocked(world.settings)
+                rescheduleLocked(world)
             }
 
         /** Snooze with an explicit target (duration or place) from the app UI. */
@@ -107,7 +107,7 @@ class ReminderEngine
                 val world = loadWorld()
                 applyEvent(world, key, NagEvent.Snooze(target))
                 syncGeofences(world)
-                rescheduleLocked(world.settings)
+                rescheduleLocked(world)
             }
 
         /**
@@ -164,7 +164,7 @@ class ReminderEngine
                     .filter { it.snoozedUntilPlace == place }
                     .forEach { state -> applyEvent(world, state.occurrenceKey, NagEvent.PlaceReached(place)) }
                 syncGeofences(world)
-                rescheduleLocked(world.settings)
+                rescheduleLocked(world)
             }
 
         /** deleteIntent fired: the user swiped the ongoing reminder away. */
@@ -208,7 +208,7 @@ class ReminderEngine
             handleDueOccurrences(world, now, slackEnd)
             handleStates(world, now, slackEnd)
             handleAppointments(world, now, slackEnd)
-            rescheduleLocked(world.settings)
+            rescheduleLocked(world)
         }
 
         private suspend fun handleDueOccurrences(
@@ -523,7 +523,8 @@ class ReminderEngine
                 .occurrencesOn(med.schedules, key.date)
                 .firstOrNull { it.time == key.time }
 
-        private suspend fun rescheduleLocked(settings: NagSettings) {
+        private suspend fun rescheduleLocked(world: World) {
+            val settings = world.settings
             val schedules =
                 medicationRepository
                     .getAllActive()
@@ -539,7 +540,7 @@ class ReminderEngine
                     AlarmObligations(schedules, states, appointments),
                     settings,
                 )
-            alarmScheduler.scheduleExact(plan.at)
+            alarmScheduler.scheduleExact(plan.at, alarmClock = world.alarmClock)
             // Every mutating entry point ends here, so the widget stays in step.
             widgetRefresher.refresh()
         }
@@ -578,6 +579,7 @@ class ReminderEngine
                         missedGraceMin = settings.missedGraceMin,
                     ),
                 lowStockNotifyEnabled = settings.lowStockNotifyEnabled,
+                alarmClock = settings.alarmClock,
                 places = settings.places,
                 appointmentSweepMark = settings.lastAppointmentSweepAt,
                 medications = medications,
@@ -599,6 +601,8 @@ class ReminderEngine
         private data class World(
             val settings: NagSettings,
             val lowStockNotifyEnabled: Boolean,
+            /** Alarm flavour, see [AlarmScheduler.scheduleExact]. */
+            val alarmClock: Boolean,
             val places: Map<PlaceId, PlaceConfig>,
             /** Appointment reminders up to this instant were already posted. */
             val appointmentSweepMark: Instant?,

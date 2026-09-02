@@ -31,6 +31,12 @@ data class AppSettings(
     val dynamicColor: Boolean = true,
     val language: AppLanguage = AppLanguage.SYSTEM,
     val lowStockNotifyEnabled: Boolean = true,
+    /**
+     * true = setAlarmClock (to-the-minute in Doze, alarm icon in the status
+     * bar); false = exact while-idle alarm (no icon, may slip a few
+     * minutes in deep idle).
+     */
+    val alarmClock: Boolean = true,
     val onboardingDone: Boolean = false,
     val lastAutoBackupAt: Instant? = null,
     /** Appointment reminders up to this instant were already posted. */
@@ -58,6 +64,8 @@ interface SettingsRepository {
     suspend fun setLanguage(value: AppLanguage)
 
     suspend fun setLowStockNotifyEnabled(value: Boolean)
+
+    suspend fun setAlarmClock(value: Boolean)
 
     suspend fun setOnboardingDone(value: Boolean)
 
@@ -95,6 +103,7 @@ class SettingsRepositoryImpl
             val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
             val LANGUAGE = stringPreferencesKey("language")
             val LOW_STOCK_NOTIFY = booleanPreferencesKey("low_stock_notify")
+            val ALARM_CLOCK = booleanPreferencesKey("alarm_clock")
             val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
             val LAST_AUTO_BACKUP_AT = longPreferencesKey("last_auto_backup_at")
             val LAST_APPOINTMENT_SWEEP_AT = longPreferencesKey("last_appointment_sweep_at")
@@ -116,6 +125,7 @@ class SettingsRepositoryImpl
                     dynamicColor = p[Keys.DYNAMIC_COLOR] ?: defaults.dynamicColor,
                     language = p[Keys.LANGUAGE]?.let(AppLanguage::valueOf) ?: defaults.language,
                     lowStockNotifyEnabled = p[Keys.LOW_STOCK_NOTIFY] ?: defaults.lowStockNotifyEnabled,
+                    alarmClock = p[Keys.ALARM_CLOCK] ?: defaults.alarmClock,
                     onboardingDone = p[Keys.ONBOARDING_DONE] ?: defaults.onboardingDone,
                     lastAutoBackupAt = p[Keys.LAST_AUTO_BACKUP_AT]?.let(Instant::ofEpochMilli),
                     lastAppointmentSweepAt = p[Keys.LAST_APPOINTMENT_SWEEP_AT]?.let(Instant::ofEpochMilli),
@@ -169,6 +179,10 @@ class SettingsRepositoryImpl
             dataStore.edit { it[Keys.LOW_STOCK_NOTIFY] = value }
         }
 
+        override suspend fun setAlarmClock(value: Boolean) {
+            dataStore.edit { it[Keys.ALARM_CLOCK] = value }
+        }
+
         override suspend fun setOnboardingDone(value: Boolean) {
             dataStore.edit { it[Keys.ONBOARDING_DONE] = value }
         }
@@ -218,6 +232,7 @@ class SettingsRepositoryImpl
                 p[Keys.DYNAMIC_COLOR] = settings.dynamicColor
                 p[Keys.LANGUAGE] = settings.language.name
                 p[Keys.LOW_STOCK_NOTIFY] = settings.lowStockNotifyEnabled
+                p[Keys.ALARM_CLOCK] = settings.alarmClock
                 p[Keys.ONBOARDING_DONE] = settings.onboardingDone
             }
         }

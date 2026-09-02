@@ -13,10 +13,11 @@ import javax.inject.Singleton
 
 /**
  * Exactly one system alarm exists at any moment (fixed request code +
- * FLAG_UPDATE_CURRENT). setAlarmClock is used deliberately: it is fully
- * Doze-exempt and not subject to the once-per-9-minutes while-idle
+ * FLAG_UPDATE_CURRENT). setAlarmClock is the default deliberately: it is
+ * fully Doze-exempt and not subject to the once-per-9-minutes while-idle
  * throttle that would silently stretch short nag intervals. The cost is
- * an alarm icon in the status bar while a reminder is pending.
+ * an alarm icon in the status bar while a reminder is pending — the user
+ * can trade it for setExactAndAllowWhileIdle in Settings.
  */
 @Singleton
 class AlarmScheduler
@@ -24,21 +25,28 @@ class AlarmScheduler
     constructor(
         @ApplicationContext private val context: Context,
     ) {
-        fun scheduleExact(at: Instant) {
+        fun scheduleExact(
+            at: Instant,
+            alarmClock: Boolean = true,
+        ) {
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             val triggerAtMillis = maxOf(at.toEpochMilli(), System.currentTimeMillis() + MIN_LEAD_MILLIS)
             // On API 31-32 the exact-alarm special access is revocable and
-            // setAlarmClock then throws SecurityException from every engine
+            // exact alarms then throw SecurityException from every engine
             // pass — degrade to an inexact alarm so the chain stays alive
             // (ExactAlarmPermissionReceiver re-arms exactly on re-grant).
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, alarmIntent())
                 return
             }
-            alarmManager.setAlarmClock(
-                AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent()),
-                alarmIntent(),
-            )
+            if (alarmClock) {
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent()),
+                    alarmIntent(),
+                )
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, alarmIntent())
+            }
         }
 
         private fun alarmIntent(): PendingIntent =
