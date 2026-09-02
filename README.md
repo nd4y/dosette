@@ -59,6 +59,11 @@ is teal `#00696B`; with dynamic color enabled the palette follows the device wal
   to an inexact alarm instead of dying. There is deliberately **no WorkManager of our own and no
   foreground service** (Glance brings its own worker for widget updates) — do not add them: a missed
   daily job in Doze means a missed reminder.
+- Direct boot: the database is credential-encrypted and unreadable until the first unlock, and
+  `BOOT_COMPLETED` only arrives after it. The scheduler therefore mirrors the next alarm instant into
+  device-protected storage and `LockedBootReceiver` re-arms it on `LOCKED_BOOT_COMPLETED`; an alarm that
+  fires while still locked shows a generic "time for a medication" notice, which the reconcile on
+  `BOOT_COMPLETED` replaces with the real reminders.
 - Occurrences are computed on the fly from immutable schedule versions; only facts (taken / skipped /
   missed) are stored, so schedule edits never rewrite history. Every-N-days and cycle rhythms count from
   the version start date; an edit that keeps the cadence carries that anchor over (`anchor_date` in the

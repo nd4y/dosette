@@ -2,6 +2,7 @@ package icu.nd4y.dosette
 
 import android.app.Application
 import android.util.Log
+import androidx.core.os.UserManagerCompat
 import dagger.hilt.android.HiltAndroidApp
 import icu.nd4y.dosette.data.ProfileBootstrap
 import icu.nd4y.dosette.di.IoDispatcher
@@ -28,6 +29,11 @@ class DosetteApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Channels.ensureCreated(this)
+        // Direct boot: a receiver started the process before the first
+        // unlock, while the database is still credential-encrypted — opening
+        // it would crash. BootReceiver reconciles once the unlock delivers
+        // BOOT_COMPLETED.
+        if (!UserManagerCompat.isUserUnlocked(this)) return
         // Catch up on anything that became due while the process was dead
         // and make sure the alarm chain is armed.
         CoroutineScope(SupervisorJob() + ioDispatcher).launch {

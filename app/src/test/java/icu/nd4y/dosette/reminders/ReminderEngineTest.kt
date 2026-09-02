@@ -103,6 +103,10 @@ private class FakeNotifier : ReminderNotifier {
         appointmentId: String,
         offsetsMin: List<Int>,
     ) = Unit
+
+    override fun postLockedNotice() = Unit
+
+    override fun cancelLockedNotice() = Unit
 }
 
 private class FakePlaceMonitor : icu.nd4y.dosette.reminders.places.PlaceMonitor {

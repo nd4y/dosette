@@ -21,6 +21,8 @@
     <string name="notification_low_stock_title">Запас на исходе: %1$s</string>
     <string name="notification_low_stock_text">Осталось %1$s</string>
     <string name="notification_appointment_time">Сегодня в %1$s</string>
+    <string name="notification_locked_title">Пора принять лекарство</string>
+    <string name="notification_locked_text">Разблокируйте телефон, чтобы увидеть напоминание</string>
 
     <string name="default_profile_name">Я</string>
 
