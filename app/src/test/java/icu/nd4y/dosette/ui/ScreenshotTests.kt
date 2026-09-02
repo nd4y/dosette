@@ -494,6 +494,7 @@ class ScreenshotTests {
                         onNagInterval = {},
                         onSnooze = {},
                         onGrace = {},
+                        onAlarmClock = {},
                         onTheme = {},
                         onDynamicColor = {},
                         onLanguage = {},

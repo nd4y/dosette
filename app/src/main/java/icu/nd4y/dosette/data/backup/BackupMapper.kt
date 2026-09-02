@@ -49,6 +49,7 @@ object BackupMapper {
                     dynamicColor = data.settings.dynamicColor,
                     language = data.settings.language.name,
                     lowStockNotifyEnabled = data.settings.lowStockNotifyEnabled,
+                    alarmClock = data.settings.alarmClock,
                 ),
             profiles =
                 data.profiles.map { profile ->

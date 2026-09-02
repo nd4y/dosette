@@ -32,6 +32,8 @@ data class SettingsBackup(
     @SerialName("dynamic_color") val dynamicColor: Boolean,
     val language: String,
     @SerialName("low_stock_notify") val lowStockNotifyEnabled: Boolean,
+    /** Defaulted: backups written before the setting existed still parse. */
+    @SerialName("alarm_clock") val alarmClock: Boolean = true,
 )
 
 @Serializable

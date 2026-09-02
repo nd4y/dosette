@@ -11,6 +11,7 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
@@ -41,10 +42,8 @@ import icu.nd4y.dosette.ui.today.DaySlot
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
 import icu.nd4y.dosette.ui.today.TodayDose
-import icu.nd4y.dosette.ui.today.slotSections
 import java.time.format.DateTimeFormatter
 
-private const val MAX_LARGE_ROWS = 5
 private const val MAX_MEDIUM_ROWS = 2
 private const val MINUTES_PER_HOUR = 60
 
@@ -220,50 +219,54 @@ internal fun LargeContent(state: WidgetState) {
             DayRing(state, sizeDp = 44.dp, fontSize = 12.sp)
         }
 
-        var remaining = MAX_LARGE_ROWS
-        if (state.carryover.isNotEmpty()) {
-            // A dose snoozed across midnight outranks everything below.
-            Row(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp)) {
-                Text(
-                    text = context.getString(R.string.day_yesterday),
-                    style =
-                        TextStyle(
-                            color = GlanceTheme.colors.error,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                )
-            }
-            state.carryover.forEach { dose ->
-                if (remaining <= 0) return@forEach
-                remaining--
-                Spacer(GlanceModifier.height(4.dp))
-                PendingRow(dose, compactButton = false)
-            }
-        }
-        slotSections(state.doses).forEach { doses ->
-            if (remaining <= 0) return@forEach
-            SlotHeader(doses.first().slot, doses)
-            doses.forEach { dose ->
-                if (remaining <= 0) return@forEach
-                remaining--
-                Spacer(GlanceModifier.height(4.dp))
-                if (dose.status == DoseUiStatus.PENDING) {
-                    PendingRow(dose, compactButton = false)
-                } else {
-                    ActedRow(dose)
+        // The size bucket Glance rendered this layout for, not the row cap:
+        // rows past the widget's bottom edge would be clipped silently.
+        val plan =
+            LargeLayout.plan(
+                LocalSize.current.height.value
+                    .toInt(),
+                state.carryover,
+                state.doses,
+            )
+        plan.entries.forEach { entry ->
+            when (entry) {
+                LargeEntry.CarryoverHeader -> {
+                    // A dose snoozed across midnight outranks everything below.
+                    Row(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp)) {
+                        Text(
+                            text = context.getString(R.string.day_yesterday),
+                            style =
+                                TextStyle(
+                                    color = GlanceTheme.colors.error,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                        )
+                    }
+                }
+
+                is LargeEntry.SlotHeader -> {
+                    SlotHeader(entry.doses, collapsed = entry.collapsed)
+                }
+
+                is LargeEntry.DoseRow -> {
+                    Spacer(GlanceModifier.height(4.dp))
+                    if (entry.dose.status == DoseUiStatus.PENDING) {
+                        PendingRow(entry.dose, compactButton = false)
+                    } else {
+                        ActedRow(entry.dose)
+                    }
                 }
             }
         }
 
-        val hidden = state.carryover.size + state.doses.size - (MAX_LARGE_ROWS - remaining)
-        if (hidden > 0) {
+        if (plan.hidden > 0) {
             Spacer(GlanceModifier.height(4.dp))
             Text(
-                text = context.getString(R.string.widget_more_doses, hidden),
+                text = context.getString(R.string.widget_more_doses, plan.hidden),
                 style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
             )
-        } else if (state.prn.isNotEmpty() && remaining > 0) {
+        } else if (state.prn.isNotEmpty() && plan.prnFits) {
             Spacer(GlanceModifier.height(6.dp))
             PrnRow(state.prn.first())
         }
@@ -301,20 +304,21 @@ private fun AllDoneContent(
     }
 }
 
+/**
+ * Slot title line. A [collapsed] slot (nothing pending) carries its
+ * doses' status marks inline instead of spending a row on each.
+ */
 @Composable
 private fun SlotHeader(
-    slot: DaySlot,
     doses: List<TodayDose>,
+    collapsed: Boolean,
 ) {
-    val context = LocalContext.current
-    // Only genuinely taken doses earn the label; a missed slot stays silent.
-    val allTaken = doses.all { it.status == DoseUiStatus.TAKEN }
     Row(
         modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "${slotLabel(slot)} · ${doses.minOf { it.time }.format(TimeFormat)}",
+            text = "${slotLabel(doses.first().slot)} · ${doses.minOf { it.time }.format(TimeFormat)}",
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurface,
@@ -323,11 +327,11 @@ private fun SlotHeader(
                 ),
         )
         Spacer(GlanceModifier.defaultWeight())
-        if (allTaken) {
-            Text(
-                text = context.getString(R.string.slot_all_done),
-                style = TextStyle(color = GlanceTheme.colors.primary, fontSize = 10.sp),
-            )
+        if (collapsed) {
+            doses.forEach { dose ->
+                Spacer(GlanceModifier.width(4.dp))
+                StatusCircle(dose.status)
+            }
         }
     }
 }

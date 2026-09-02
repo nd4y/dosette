@@ -315,6 +315,7 @@ private val GOLDEN_V1_YAML =
       dynamic_color: true
       language: "RU"
       low_stock_notify: true
+      alarm_clock: true
     profiles:
     - id: "p1"
       name: "Тест"

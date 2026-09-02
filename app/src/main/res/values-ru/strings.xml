@@ -232,6 +232,8 @@
     <string name="theme_system">Как в системе</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
+    <string name="settings_alarm_clock">Значок будильника в статус-баре</string>
+    <string name="settings_alarm_clock_hint">выкл: значка нет, но в глубоком энергосбережении напоминание может опоздать на несколько минут</string>
     <string name="settings_dynamic_color">Динамический цвет</string>
     <string name="settings_dynamic_color_hint">палитра из обоев (Material You)</string>
     <string name="settings_language">Язык</string>
