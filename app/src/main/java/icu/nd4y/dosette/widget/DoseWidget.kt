@@ -89,7 +89,7 @@ fun widgetLayoutFor(size: DpSize): WidgetLayout =
 
 /** Material You on Android 12+, the app's fixed teal scheme below. */
 @Composable
-private fun widgetColors() =
+internal fun widgetColors() =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         GlanceTheme.colors
     } else {
@@ -97,7 +97,7 @@ private fun widgetColors() =
     }
 
 @Composable
-private fun WidgetRoot(state: WidgetState) {
+internal fun WidgetRoot(state: WidgetState) {
     val size = LocalSize.current
     Box(
         modifier =

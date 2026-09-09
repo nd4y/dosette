@@ -34,6 +34,24 @@ data class LargePlan(
 )
 
 /**
+ * The entries grouped by section — each header with the rows that follow
+ * it. Rendered as one Column per section: Glance draws at most ten children
+ * per container and silently drops the rest, which a flat column of headers
+ * and rows hit on a 4x4 widget with a full day.
+ */
+fun LargePlan.sections(): List<List<LargeEntry>> {
+    val sections = mutableListOf<MutableList<LargeEntry>>()
+    entries.forEach { entry ->
+        if (entry is LargeEntry.DoseRow && sections.isNotEmpty()) {
+            sections.last().add(entry)
+        } else {
+            sections.add(mutableListOf(entry))
+        }
+    }
+    return sections
+}
+
+/**
  * Fits the day list into the widget's height. A Glance Column does not
  * scroll and clips silently, so without a budget a slot header could be
  * drawn with its rows lost below the edge — exactly the "empty section"
@@ -150,7 +168,11 @@ object LargeLayout {
 
                 else -> {
                     take(header, costs.sectionHeader)
-                    rows.forEach(::placeRow)
+                    // A section column holds the header and at most nine rows
+                    // (the Glance cap of ten children per container).
+                    rows.forEachIndexed { index, dose ->
+                        if (index < MAX_SECTION_ROWS) placeRow(dose) else hidden++
+                    }
                 }
             }
         }
@@ -176,6 +198,7 @@ object LargeLayout {
         }
     }
 
+    private const val MAX_SECTION_ROWS = 9
     private const val OUTER_PADDING = 28
     private const val TITLE_PADDING = 12
     private const val TITLE_TEXT = 32
