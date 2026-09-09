@@ -320,6 +320,23 @@ class ReminderEngineTest {
         }
 
     @Test
+    fun `take at a stated time records that time instead of now`() =
+        runTest {
+            // Missed by the sweep: the grace window closed without an action.
+            clock.advance(Duration.ofMinutes(61))
+            engine.processDueEvents()
+            assertThat(doseLogRepository.getScheduled(key)?.status).isEqualTo(DoseStatus.MISSED)
+
+            val statedAt = doseInstant.plus(Duration.ofMinutes(15))
+            engine.takeAt(key, statedAt)
+
+            val log = doseLogRepository.getScheduled(key)
+            assertThat(log?.status).isEqualTo(DoseStatus.TAKEN)
+            assertThat(log?.actedAt).isEqualTo(statedAt)
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(8.0)
+        }
+
+    @Test
     fun `take decrements by the amount of its own slot`() =
         runTest {
             // Second slot at 20:00 carries a double dose.

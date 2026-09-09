@@ -186,7 +186,12 @@
     <string name="calendar_next_month">Следующий месяц</string>
     <string name="calendar_prev_year">Предыдущий год</string>
     <string name="calendar_next_year">Следующий год</string>
-    <string name="mark_taken">Отметить принятым</string>
+    <string name="mark_taken_now">Принято сейчас</string>
+    <string name="mark_taken_on_time">Принято вовремя (%1$s)</string>
+    <string name="mark_taken_at">Принято в другое время…</string>
+    <string name="take_on_time">Принял вовремя (%1$s)</string>
+    <string name="take_at">Принял в другое время…</string>
+    <string name="intake_time_title">Время приёма</string>
     <string name="mark_skipped">Отметить пропущенным</string>
     <string name="undo_mark">Отменить отметку</string>
     <string name="prn_taken_snackbar">«%1$s» — принято</string>

@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.ui.common.TimeFormat
+import icu.nd4y.dosette.ui.common.TimePickerDialog
 import icu.nd4y.dosette.ui.common.formatAmount
 import icu.nd4y.dosette.ui.designsystem.MedIconBox
 import java.time.LocalTime
@@ -115,22 +116,13 @@ fun AddOneOffDialog(
     )
 
     if (timePickerOpen) {
-        val pickerState =
-            rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = true)
-        AlertDialog(
-            onDismissRequest = { timePickerOpen = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    time = LocalTime.of(pickerState.hour, pickerState.minute)
-                    timePickerOpen = false
-                }) { Text(stringResource(android.R.string.ok)) }
+        TimePickerDialog(
+            initial = time,
+            onPick = {
+                time = it
+                timePickerOpen = false
             },
-            dismissButton = {
-                TextButton(onClick = { timePickerOpen = false }) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-            text = { TimePicker(state = pickerState) },
+            onDismiss = { timePickerOpen = false },
         )
     }
 }

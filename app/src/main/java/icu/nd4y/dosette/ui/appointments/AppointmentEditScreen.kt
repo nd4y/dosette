@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
+import icu.nd4y.dosette.ui.common.TimePickerDialog
 import icu.nd4y.dosette.ui.common.currentLocale
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.ScreenHeader
@@ -241,13 +242,13 @@ fun AppointmentEditContent(
     }
 
     if (timePickerOpen) {
-        AppointmentTimePicker(
+        TimePickerDialog(
             initial = draft.time,
-            onDismiss = { timePickerOpen = false },
             onPick = { time ->
                 timePickerOpen = false
                 onUpdate { it.copy(time = time) }
             },
+            onDismiss = { timePickerOpen = false },
         )
     }
 
@@ -353,37 +354,6 @@ private fun AppointmentDatePicker(
     ) {
         DatePicker(state = state)
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AppointmentTimePicker(
-    initial: LocalTime,
-    onDismiss: () -> Unit,
-    onPick: (LocalTime) -> Unit,
-) {
-    val state =
-        rememberTimePickerState(
-            initialHour = initial.hour,
-            initialMinute = initial.minute,
-            is24Hour = true,
-        )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = { onPick(LocalTime.of(state.hour, state.minute)) }) {
-                Text(stringResource(R.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-        text = {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                TimePicker(state = state)
-            }
-        },
-    )
 }
 
 @Composable

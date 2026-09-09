@@ -361,8 +361,17 @@ class TodayViewModel
             }
         }
 
-        fun take(dose: TodayDose) {
-            viewModelScope.launch { engine.onUserAction(dose.key, UserDoseAction.TAKE) }
+        /** Mark taken — right now, or at the time the user states for a late or retroactive mark. */
+        fun take(
+            dose: TodayDose,
+            intake: IntakeTime = IntakeTime.Now,
+        ) {
+            viewModelScope.launch {
+                when (val at = intake.resolve(dose.key, clock.zone)) {
+                    null -> engine.onUserAction(dose.key, UserDoseAction.TAKE)
+                    else -> engine.takeAt(dose.key, at)
+                }
+            }
         }
 
         fun skip(dose: TodayDose) {

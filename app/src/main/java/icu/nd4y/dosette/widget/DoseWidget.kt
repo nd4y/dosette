@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
@@ -33,15 +34,16 @@ class DoseWidgetReceiver : GlanceAppWidgetReceiver() {
 
 /**
  * Home-screen widget: the day ring plus upcoming doses, markable in place.
- * One widget, three layouts — the launcher size bucket picks between the
- * 2x2 next-dose card, the 4x2 next-slot row and the 4x4 day list.
+ * One widget, three layouts picked by the exact cell size: the 2-cell-wide
+ * next-dose card, the wider next-slot row and, from 240dp of height, the
+ * day list.
  */
 class DoseWidget : GlanceAppWidget() {
-    // Taller buckets let a 4x4 (or 4x5) widget list more of the day: the
-    // launcher renders the largest bucket that fits, and LargeContent
-    // budgets its rows by that bucket's height.
-    override val sizeMode: SizeMode =
-        SizeMode.Responsive(setOf(COMPACT, COMPACT_TALL, MEDIUM, MEDIUM_TALL, LARGE, TALL, EXTRA_TALL))
+    // The exact cell size, not a bucket: the layouts budget their rows by
+    // height, and a bucket below the real size hid rows behind "+N more"
+    // while the bottom of the widget stayed empty (a 4x3 cell of 322dp was
+    // rendered for a 240dp bucket).
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(
         context: Context,
@@ -67,18 +69,23 @@ class DoseWidget : GlanceAppWidget() {
     }
 
     companion object {
-        val COMPACT = DpSize(110.dp, 110.dp)
+        /** Narrower than this (two cells on most launchers): the next-dose card. */
+        val MEDIUM_MIN_WIDTH: Dp = 250.dp
 
-        // Taller 2x2 / 4x2 cells (most launchers) unlock the name lines and
-        // the second dose row; the nominal 110dp keeps only what fits.
-        val COMPACT_TALL = DpSize(110.dp, 150.dp)
-        val MEDIUM = DpSize(250.dp, 110.dp)
-        val MEDIUM_TALL = DpSize(250.dp, 150.dp)
-        val LARGE = DpSize(250.dp, 240.dp)
-        val TALL = DpSize(250.dp, 330.dp)
-        val EXTRA_TALL = DpSize(250.dp, 420.dp)
+        /** Below this height a wide widget shows the next slot; from it, the day list. */
+        val LARGE_MIN_HEIGHT: Dp = 240.dp
     }
 }
+
+/** The three layouts, chosen by the widget's exact size. */
+enum class WidgetLayout { COMPACT, MEDIUM, LARGE }
+
+fun widgetLayoutFor(size: DpSize): WidgetLayout =
+    when {
+        size.width < DoseWidget.MEDIUM_MIN_WIDTH -> WidgetLayout.COMPACT
+        size.height < DoseWidget.LARGE_MIN_HEIGHT -> WidgetLayout.MEDIUM
+        else -> WidgetLayout.LARGE
+    }
 
 /** Material You on Android 12+, the app's fixed teal scheme below. */
 @Composable
@@ -100,10 +107,10 @@ private fun WidgetRoot(state: WidgetState) {
                 .cornerRadius(28.dp)
                 .clickableOpenApp(),
     ) {
-        when {
-            size.width < DoseWidget.MEDIUM.width -> CompactContent(state)
-            size.height < DoseWidget.LARGE.height -> MediumContent(state)
-            else -> LargeContent(state)
+        when (widgetLayoutFor(size)) {
+            WidgetLayout.COMPACT -> CompactContent(state)
+            WidgetLayout.MEDIUM -> MediumContent(state)
+            WidgetLayout.LARGE -> LargeContent(state)
         }
     }
 }

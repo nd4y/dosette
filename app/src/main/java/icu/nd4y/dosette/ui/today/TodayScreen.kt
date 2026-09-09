@@ -71,6 +71,7 @@ import icu.nd4y.dosette.domain.nag.SnoozeTarget
 import icu.nd4y.dosette.ui.calendar.AddOneOffDialog
 import icu.nd4y.dosette.ui.calendar.CalendarPanel
 import icu.nd4y.dosette.ui.common.TimeFormat
+import icu.nd4y.dosette.ui.common.TimePickerDialog
 import icu.nd4y.dosette.ui.common.currentLocale
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.EmptyState
@@ -84,6 +85,7 @@ import icu.nd4y.dosette.ui.designsystem.strokeGlyph
 import icu.nd4y.dosette.ui.designsystem.trackPressFor
 import icu.nd4y.dosette.ui.theme.LocalDarkTheme
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -149,7 +151,7 @@ fun TodayScreen(
 fun TodayContent(
     state: TodayUiState,
     contentPadding: PaddingValues,
-    onTake: (TodayDose) -> Unit,
+    onTake: (TodayDose, IntakeTime) -> Unit,
     onSkip: (TodayDose) -> Unit,
     onSnooze: (TodayDose, SnoozeTarget) -> Unit,
     onUndo: (TodayDose) -> Unit,
@@ -328,7 +330,7 @@ private fun DayHeaderRow(
 @Composable
 private fun DayContent(
     state: TodayUiState,
-    onTake: (TodayDose) -> Unit,
+    onTake: (TodayDose, IntakeTime) -> Unit,
     onSkip: (TodayDose) -> Unit,
     onSnooze: (TodayDose, SnoozeTarget) -> Unit,
     onUndo: (TodayDose) -> Unit,
@@ -395,7 +397,7 @@ private fun DayContent(
 
 /** The per-dose callbacks bundled, so item builders stay small. */
 private class DoseActions(
-    val onTake: (TodayDose) -> Unit,
+    val onTake: (TodayDose, IntakeTime) -> Unit,
     val onSkip: (TodayDose) -> Unit,
     val onSnooze: (TodayDose, SnoozeTarget) -> Unit,
     val onUndo: (TodayDose) -> Unit,
@@ -578,7 +580,7 @@ private fun DoseItem(
     dose: TodayDose,
     readOnly: Boolean,
     snoozePlaces: Set<PlaceId>,
-    onTake: (TodayDose) -> Unit,
+    onTake: (TodayDose, IntakeTime) -> Unit,
     onSkip: (TodayDose) -> Unit,
     onSnooze: (TodayDose, SnoozeTarget) -> Unit,
     onUndo: (TodayDose) -> Unit,
@@ -599,7 +601,7 @@ private fun DoseItem(
             animatedDose.status != DoseUiStatus.PENDING -> {
                 ActedDoseRow(
                     dose = animatedDose,
-                    onTake = { onTake(animatedDose) },
+                    onTake = { intake -> onTake(animatedDose, intake) },
                     onSkip = { onSkip(animatedDose) },
                     onUndo = { onUndo(animatedDose) },
                 )
@@ -613,7 +615,7 @@ private fun DoseItem(
                 PendingDoseCard(
                     dose = animatedDose,
                     snoozePlaces = snoozePlaces,
-                    onTake = { onTake(animatedDose) },
+                    onTake = { intake -> onTake(animatedDose, intake) },
                     onSkip = { onSkip(animatedDose) },
                     onSnooze = { target -> onSnooze(animatedDose, target) },
                     onDeleteOneOff = if (animatedDose.oneOff) ({ onDeleteOneOff(animatedDose) }) else null,
@@ -662,11 +664,12 @@ private fun PlannedDoseRow(dose: TodayDose) {
 @Composable
 private fun ActedDoseRow(
     dose: TodayDose,
-    onTake: () -> Unit,
+    onTake: (IntakeTime) -> Unit,
     onSkip: () -> Unit,
     onUndo: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var pickerOpen by remember { mutableStateOf(false) }
     val press = remember { PressPosition() }
     Box {
         Row(
@@ -698,11 +701,27 @@ private fun ActedDoseRow(
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, offset = press.menuOffset) {
             if (dose.status != DoseUiStatus.TAKEN) {
+                // A late mark says when the dose was really taken: just now,
+                // at the planned time, or at a time picked in a dialog.
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.mark_taken)) },
+                    text = { Text(stringResource(R.string.mark_taken_now)) },
                     onClick = {
                         menuOpen = false
-                        onTake()
+                        onTake(IntakeTime.Now)
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.mark_taken_on_time, dose.time.format(TimeFormat))) },
+                    onClick = {
+                        menuOpen = false
+                        onTake(IntakeTime.OnTime)
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.mark_taken_at)) },
+                    onClick = {
+                        menuOpen = false
+                        pickerOpen = true
                     },
                 )
             }
@@ -723,7 +742,32 @@ private fun ActedDoseRow(
                 },
             )
         }
+        if (pickerOpen) {
+            IntakeTimePicker(
+                dose = dose,
+                onPick = { intake ->
+                    pickerOpen = false
+                    onTake(intake)
+                },
+                onDismiss = { pickerOpen = false },
+            )
+        }
     }
+}
+
+/** The "taken at another time" dialog; the picked time is read against the dose's day. */
+@Composable
+private fun IntakeTimePicker(
+    dose: TodayDose,
+    onPick: (IntakeTime) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    TimePickerDialog(
+        initial = dose.time,
+        title = stringResource(R.string.intake_time_title),
+        onPick = { onPick(IntakeTime.At(it)) },
+        onDismiss = onDismiss,
+    )
 }
 
 @Composable
@@ -859,7 +903,7 @@ private fun ProfileChips(
 private fun PendingDoseCard(
     dose: TodayDose,
     snoozePlaces: Set<PlaceId>,
-    onTake: () -> Unit,
+    onTake: (IntakeTime) -> Unit,
     onSkip: () -> Unit,
     onSnooze: (SnoozeTarget) -> Unit,
     onDeleteOneOff: (() -> Unit)? = null,
@@ -894,8 +938,8 @@ private fun PendingDoseCard(
                 )
             }
             TakeSplitButton(
+                dose = dose,
                 snoozePlaces = snoozePlaces,
-                snoozable = dose.reminderActive,
                 onTake = onTake,
                 onSkip = onSkip,
                 onSnooze = onSnooze,
@@ -907,17 +951,21 @@ private fun PendingDoseCard(
 
 @Composable
 private fun TakeSplitButton(
+    dose: TodayDose,
     snoozePlaces: Set<PlaceId>,
-    snoozable: Boolean,
-    onTake: () -> Unit,
+    onTake: (IntakeTime) -> Unit,
     onSkip: () -> Unit,
     onSnooze: (SnoozeTarget) -> Unit,
     onDeleteOneOff: (() -> Unit)?,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var pickerOpen by remember { mutableStateOf(false) }
+    // Once the planned time has passed a take can say when it really
+    // happened; a dose still ahead has nothing to date.
+    val due = remember(menuOpen) { !dose.date.atTime(dose.time).isAfter(LocalDateTime.now()) }
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         Surface(
-            onClick = onTake,
+            onClick = { onTake(IntakeTime.Now) },
             shape = RoundedCornerShape(topStart = 22.dp, bottomStart = 22.dp, topEnd = 6.dp, bottomEnd = 6.dp),
             color = MaterialTheme.colorScheme.primary,
         ) {
@@ -944,6 +992,22 @@ private fun TakeSplitButton(
                 }
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                if (due) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.take_on_time, dose.time.format(TimeFormat))) },
+                        onClick = {
+                            menuOpen = false
+                            onTake(IntakeTime.OnTime)
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.take_at)) },
+                        onClick = {
+                            menuOpen = false
+                            pickerOpen = true
+                        },
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_skip)) },
                     onClick = {
@@ -953,7 +1017,7 @@ private fun TakeSplitButton(
                 )
                 // A snooze parks a ringing reminder; for a past or future dose
                 // there is nothing to park, so the entries stay away.
-                if (snoozable) {
+                if (dose.reminderActive) {
                     SNOOZE_MINUTE_CHOICES.forEach { minutes ->
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.snooze_for_min, minutes)) },
@@ -991,6 +1055,16 @@ private fun TakeSplitButton(
                         },
                     )
                 }
+            }
+            if (pickerOpen) {
+                IntakeTimePicker(
+                    dose = dose,
+                    onPick = { intake ->
+                        pickerOpen = false
+                        onTake(intake)
+                    },
+                    onDismiss = { pickerOpen = false },
+                )
             }
         }
     }

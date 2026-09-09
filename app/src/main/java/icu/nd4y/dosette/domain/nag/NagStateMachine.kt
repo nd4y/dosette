@@ -36,8 +36,10 @@ sealed interface NagEvent {
     /** The nag interval elapsed for an active reminder. */
     data object NagTick : NagEvent
 
-    /** User marked the dose taken. */
-    data object Take : NagEvent
+    /** User marked the dose taken — at [actedAt] if they said when, else right now. */
+    data class Take(
+        val actedAt: Instant? = null,
+    ) : NagEvent
 
     /** User deliberately skipped the dose. */
     data object Skip : NagEvent
@@ -80,9 +82,10 @@ sealed interface NagEffect {
 
     data object CancelReminder : NagEffect
 
-    /** Write the dose log with the given final status. */
+    /** Write the dose log with the given final status; [actedAt] = the stated intake time, null = now. */
     data class FinalizeDose(
         val status: DoseStatus,
+        val actedAt: Instant? = null,
     ) : NagEffect
 
     data object DecrementStock : NagEffect
@@ -125,8 +128,8 @@ object NagStateMachine {
                 onNagTick(state, now, settings)
             }
 
-            NagEvent.Take -> {
-                resolve(DoseStatus.TAKEN)
+            is NagEvent.Take -> {
+                resolve(DoseStatus.TAKEN, event.actedAt)
             }
 
             NagEvent.Skip -> {
@@ -211,10 +214,13 @@ object NagStateMachine {
         }
     }
 
-    private fun resolve(status: DoseStatus): Transition {
+    private fun resolve(
+        status: DoseStatus,
+        actedAt: Instant? = null,
+    ): Transition {
         val effects =
             buildList {
-                add(NagEffect.FinalizeDose(status))
+                add(NagEffect.FinalizeDose(status, actedAt))
                 if (status == DoseStatus.TAKEN) add(NagEffect.DecrementStock)
                 add(NagEffect.CancelReminder)
                 add(NagEffect.Reschedule)
