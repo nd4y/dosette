@@ -6,8 +6,8 @@ import kotlin.math.roundToInt
 
 /**
  * Height budgets for the compact (2x2) and medium (4x2) widgets, the same
- * idea as [LargeLayout]: Glance clips silently, and in a dense launcher
- * the nominal 110dp bucket is shorter than the content drawn at scale 1.
+ * idea as [LargeLayout]: Glance clips silently, and a dense launcher's
+ * two-row cell holds fewer rows than a full slot has.
  */
 object SmallLayout {
     /** Which of the optional lines fit under the ring row and above the button. */
@@ -69,7 +69,7 @@ object SmallLayout {
 
     // Medium: padding 24, a header line, rows of spacer 5 + padding 10 +
     // max(chip 28, two text lines), and the "+N more" line.
-    private const val MAX_MEDIUM_ROWS = 2
+    private const val MAX_MEDIUM_ROWS = 4
     private const val MEDIUM_PADDING = 24
     private const val MEDIUM_HEADER_TEXT = 16
     private const val MEDIUM_ROW_FIXED = 15

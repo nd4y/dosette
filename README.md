@@ -7,15 +7,17 @@ Offline medication tracker for Android. Material 3 Expressive, no accounts, no n
 - **Medications with flexible schedules**: fixed times, weekdays, every-N-days, cycles (X on / Y off), as-needed.
 - **Persistent reminders**: the notification cannot be dismissed for good — swiping it away silently re-posts it in place, and the alert repeats on a configurable interval until the dose is marked taken or skipped (or, if you prefer, a fixed number of times). Snooze for a chosen duration or **until you get home / to work** (geofence + Wi-Fi recognition, configured in Settings → Places; the geofence needs location "all the time", which Settings asks for and flags while missing, and a place snooze wakes on its own after 12 hours at most), with a configurable missed-dose grace window.
 - **Package variants with per-variant stock**: a 150 mg dose can be taken as one 150 mg capsule or two 75 mg ones — each package form keeps its own stock pool and is decremented correctly.
-- **History and adherence**: a calendar with per-day status dots (statuses editable retroactively, an accidental mark can be undone — as-needed intakes via an undo snackbar), 30-day adherence stats with per-medication breakdown and a no-miss streak.
+- **History and adherence**: a calendar with per-day status dots (statuses editable retroactively — a missed or skipped dose can be marked taken just now, on time or at a picked time; an accidental mark can be undone, as-needed intakes via an undo snackbar), 30-day adherence stats with per-medication breakdown and a no-miss streak.
 - **One-time doses**: a dose for a specific day and time can be added right from the calendar — it gets reminders, stock decrement and statistics like any scheduled intake, and can be deleted as a whole.
 - **Stock tracking** with low-stock notifications and refill amounts.
 - **Multiple profiles** — family members in one app, reminders fire for everyone.
 - **Doctor appointments** with reminders (1 day / 2 h / 30 min before).
 - **Full backup as versioned YAML** — export/import through any documents provider (local file, Google Drive), optionally **password-encrypted** (PBKDF2 + AES-256-GCM, `.yaml.enc`). Import validates the file, previews the contents and auto-saves the current data first. Everything the app stores (the medication database, settings, configured places) is excluded from Android's cloud backup — data leaves the device only as your own (optionally encrypted) export; direct device-to-device transfer keeps everything.
-- **Home-screen widget** (2×2 / 4×2 / 4×4 via resize): the day ring, upcoming doses and one-tap
-  take right from the launcher; follows Material You dynamic color and updates on the same
-  alarms as the reminders.
+- **Home-screen widget**: the day ring, upcoming doses and one-tap take right from the launcher.
+  Resizable: two cells wide it is a next-dose card, wider it lists the next slot's doses, and from
+  about 240 dp of height the whole day; the layout is budgeted by the exact cell size, so a taller
+  widget lists more. Follows Material You dynamic color and updates on the same alarms as the
+  reminders.
 - English and Russian UI, light and dark themes, Material You dynamic color.
 
 ## Install

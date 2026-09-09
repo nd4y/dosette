@@ -176,7 +176,12 @@
     <string name="calendar_next_month">Next month</string>
     <string name="calendar_prev_year">Previous year</string>
     <string name="calendar_next_year">Next year</string>
-    <string name="mark_taken">Mark as taken</string>
+    <string name="mark_taken_now">Taken just now</string>
+    <string name="mark_taken_on_time">Taken on time (%1$s)</string>
+    <string name="mark_taken_at">Taken at another time…</string>
+    <string name="take_on_time">Took it on time (%1$s)</string>
+    <string name="take_at">Took it at another time…</string>
+    <string name="intake_time_title">Time taken</string>
     <string name="mark_skipped">Mark as skipped</string>
     <string name="undo_mark">Undo mark</string>
     <string name="prn_taken_snackbar">%1$s taken</string>

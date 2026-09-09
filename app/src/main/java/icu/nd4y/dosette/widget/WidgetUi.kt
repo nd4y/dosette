@@ -56,8 +56,8 @@ internal fun CompactContent(state: WidgetState) {
         return
     }
     val context = LocalContext.current
-    // The bucket height, not the cell: a dense launcher gives the nominal
-    // 110dp, and the name lines only fit in taller cells.
+    // The widget's own height (exact size mode): a dense launcher's cell is
+    // short, and the name lines only fit in taller ones.
     val plan =
         SmallLayout.compact(
             LocalSize.current.height.value
@@ -236,8 +236,8 @@ internal fun LargeContent(state: WidgetState) {
             DayRing(state, sizeDp = 44.dp, fontSize = 12.sp)
         }
 
-        // The size bucket Glance rendered this layout for, not the row cap:
-        // rows past the widget's bottom edge would be clipped silently.
+        // The widget's own height, not a row cap: rows past the bottom edge
+        // would be clipped silently.
         val plan =
             LargeLayout.plan(
                 LocalSize.current.height.value

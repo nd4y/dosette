@@ -28,6 +28,13 @@ class SmallLayoutTest {
     }
 
     @Test
+    fun `a two-row launcher cell lists three rows of a full slot`() {
+        // Pixel Launcher: two 100dp rows plus the gutter, exact size mode.
+        assertThat(SmallLayout.medium(heightDp = 211, doseCount = 4))
+            .isEqualTo(SmallLayout.MediumPlan(rows = 3, hidden = 1))
+    }
+
+    @Test
     fun `a taller medium cell lists two rows`() {
         assertThat(SmallLayout.medium(heightDp = 150, doseCount = 3)).isEqualTo(SmallLayout.MediumPlan(2, 1))
         assertThat(SmallLayout.medium(heightDp = 150, doseCount = 1)).isEqualTo(SmallLayout.MediumPlan(1, 0))

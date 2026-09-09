@@ -55,6 +55,7 @@ import icu.nd4y.dosette.R
 import icu.nd4y.dosette.domain.model.MedicationForm
 import icu.nd4y.dosette.domain.model.ScheduleType
 import icu.nd4y.dosette.ui.common.TimeFormat
+import icu.nd4y.dosette.ui.common.TimePickerDialog
 import icu.nd4y.dosette.ui.common.currentLocale
 import icu.nd4y.dosette.ui.common.cycleSummary
 import icu.nd4y.dosette.ui.common.everyNDaysText
@@ -602,32 +603,15 @@ private fun TimesStep(
     }
 
     pickerFor?.let { index ->
-        val initial = state.times.getOrNull(index)?.time ?: LocalTime.of(8, 0)
-        val pickerState =
-            rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = true)
-        AlertDialog(
-            onDismissRequest = { pickerFor = null },
-            confirmButton = {
-                TextButton(onClick = {
-                    update { s ->
-                        s.copy(
-                            times =
-                                s.times.mapIndexed { i, t ->
-                                    if (i == index) {
-                                        t.copy(time = LocalTime.of(pickerState.hour, pickerState.minute))
-                                    } else {
-                                        t
-                                    }
-                                },
-                        )
-                    }
-                    pickerFor = null
-                }) { Text(stringResource(android.R.string.ok)) }
+        TimePickerDialog(
+            initial = state.times.getOrNull(index)?.time ?: LocalTime.of(8, 0),
+            onPick = { picked ->
+                update { s ->
+                    s.copy(times = s.times.mapIndexed { i, t -> if (i == index) t.copy(time = picked) else t })
+                }
+                pickerFor = null
             },
-            dismissButton = {
-                TextButton(onClick = { pickerFor = null }) { Text(stringResource(android.R.string.cancel)) }
-            },
-            text = { TimePicker(state = pickerState) },
+            onDismiss = { pickerFor = null },
         )
     }
 }

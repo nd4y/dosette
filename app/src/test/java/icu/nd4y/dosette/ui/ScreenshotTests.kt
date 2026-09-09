@@ -382,7 +382,7 @@ class ScreenshotTests {
                     TodayContent(
                         state = state,
                         contentPadding = screenPadding,
-                        onTake = {},
+                        onTake = { _, _ -> },
                         onSkip = {},
                         onSnooze = { _, _ -> },
                         onUndo = {},

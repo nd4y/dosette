@@ -99,7 +99,7 @@ class NagStateMachineTest {
 
     @Test
     fun `take finalizes decrements stock and cancels`() {
-        val t = NagStateMachine.reduce(activeState(), NagEvent.Take, scheduledAt.plusSeconds(60), settings)
+        val t = NagStateMachine.reduce(activeState(), NagEvent.Take(), scheduledAt.plusSeconds(60), settings)
 
         assertThat(t.state).isNull()
         assertThat(t.effects)
@@ -122,10 +122,20 @@ class NagStateMachineTest {
 
     @Test
     fun `take without prior state still writes the log`() {
-        val t = NagStateMachine.reduce(null, NagEvent.Take, scheduledAt, settings)
+        val t = NagStateMachine.reduce(null, NagEvent.Take(), scheduledAt, settings)
 
         assertThat(t.state).isNull()
         assertThat(t.effects).contains(NagEffect.FinalizeDose(DoseStatus.TAKEN))
+    }
+
+    @Test
+    fun `take with a stated time carries it into the log effect`() {
+        val statedAt = scheduledAt.plusSeconds(900)
+        val t =
+            NagStateMachine.reduce(activeState(), NagEvent.Take(statedAt), scheduledAt.plusSeconds(7200), settings)
+
+        assertThat(t.state).isNull()
+        assertThat(t.effects).contains(NagEffect.FinalizeDose(DoseStatus.TAKEN, statedAt))
     }
 
     @Test

@@ -87,7 +87,7 @@ class ReminderEngine
                 val event =
                     when (action) {
                         UserDoseAction.TAKE -> {
-                            NagEvent.Take
+                            NagEvent.Take()
                         }
 
                         UserDoseAction.SKIP -> {
@@ -111,6 +111,22 @@ class ReminderEngine
             mutex.withLock {
                 val world = loadWorld()
                 applyEvent(world, key, NagEvent.Snooze(target))
+                syncGeofences(world)
+                rescheduleLocked(world)
+            }
+
+        /**
+         * Take with the intake time the user stated — a late or retroactive
+         * mark from the app that should not pretend the dose was taken the
+         * moment it was recorded.
+         */
+        suspend fun takeAt(
+            key: OccurrenceKey,
+            actedAt: Instant,
+        ): Unit =
+            mutex.withLock {
+                val world = loadWorld()
+                applyEvent(world, key, NagEvent.Take(actedAt))
                 syncGeofences(world)
                 rescheduleLocked(world)
             }
@@ -425,7 +441,7 @@ class ReminderEngine
                 }
 
                 is NagEffect.FinalizeDose -> {
-                    if (med != null) finalizeFromEffect(key, med, prior, effect.status)
+                    if (med != null) finalizeFromEffect(key, med, prior, effect)
                 }
 
                 NagEffect.DecrementStock -> {
@@ -451,8 +467,9 @@ class ReminderEngine
             key: OccurrenceKey,
             med: MedicationDetails,
             prior: Prior,
-            status: DoseStatus,
+            effect: NagEffect.FinalizeDose,
         ) {
+            val status = effect.status
             // No occurrence — the schedule was deleted or replaced under a
             // live state; nothing to record. A log already in this status is
             // left alone so its actedAt survives repeated delivery.
@@ -467,7 +484,8 @@ class ReminderEngine
                     .atTime(key.time)
                     .atZone(clock.zone)
                     .toInstant()
-            val actedAt = if (status == DoseStatus.MISSED) null else clock.instant()
+            // A stated intake time (a late mark) wins over the moment of the action.
+            val actedAt = if (status == DoseStatus.MISSED) null else effect.actedAt ?: clock.instant()
             doseLogRepository.finalizeScheduled(
                 buildLog(med, occurrence, scheduledAt, status, actedAt),
             )
@@ -528,15 +546,6 @@ class ReminderEngine
                 updatedAt = clock.instant(),
             )
         }
-
-        /** Occurrence matching [key], or null when its schedule no longer produces it. */
-        private fun occurrenceFor(
-            med: MedicationDetails,
-            key: OccurrenceKey,
-        ): Occurrence? =
-            OccurrenceGenerator
-                .occurrencesOn(med.schedules, key.date)
-                .firstOrNull { it.time == key.time }
 
         private suspend fun rescheduleLocked(world: World) {
             val settings = world.settings
@@ -651,6 +660,15 @@ private suspend fun MedicationRepository.restoreStockOf(log: DoseLog) {
         incrementStock(log.variantId, log.consumedUnits)
     }
 }
+
+/** Occurrence matching [key], or null when its schedule no longer produces it. */
+private fun occurrenceFor(
+    med: MedicationDetails,
+    key: OccurrenceKey,
+): Occurrence? =
+    OccurrenceGenerator
+        .occurrencesOn(med.schedules, key.date)
+        .firstOrNull { it.time == key.time }
 
 internal fun medicationTitle(med: MedicationDetails): String {
     val strength =
