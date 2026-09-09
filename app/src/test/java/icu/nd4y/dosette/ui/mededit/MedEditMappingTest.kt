@@ -102,6 +102,18 @@ class MedEditMappingTest {
     }
 
     @Test
+    fun `prefill without an open regular schedule selects no schedule`() {
+        val details =
+            MedicationDetails(
+                medication = medication(),
+                schedules = listOf(schedule(id = "old", endDate = LocalDate.parse("2026-08-15"))),
+                variants = listOf(variant()),
+            )
+
+        assertThat(prefillFrom(details).scheduleType).isNull()
+    }
+
+    @Test
     fun `main schedule skips one-offs and closed versions`() {
         val oneOff =
             schedule(

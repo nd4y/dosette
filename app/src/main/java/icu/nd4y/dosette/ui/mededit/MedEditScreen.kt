@@ -482,6 +482,15 @@ private fun ScheduleStep(
         hint = stringResource(R.string.schedule_type_prn_hint),
         onClick = { update { it.copy(scheduleType = ScheduleType.AS_NEEDED) } },
     )
+
+    // Kept in the cabinet for one-time doses only: no version, no reminders,
+    // nothing on the Today screen until a dose is added from the calendar.
+    ScheduleTypeCard(
+        selected = state.scheduleType == null,
+        title = stringResource(R.string.schedule_type_none),
+        hint = stringResource(R.string.schedule_type_none_hint),
+        onClick = { update { it.copy(scheduleType = null) } },
+    )
 }
 
 @Composable
@@ -806,13 +815,17 @@ private fun ReviewStep(state: MedEditUiState) {
                 ScheduleType.AS_NEEDED -> {
                     stringResource(R.string.schedule_as_needed)
                 }
+
+                null -> {
+                    stringResource(R.string.schedule_none)
+                }
             }
         Text(
             text = typeText,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        if (state.scheduleType != ScheduleType.AS_NEEDED) {
+        if (state.hasTimes) {
             Text(
                 text =
                     state.times

@@ -111,6 +111,10 @@
     <string name="schedule_type_cycle_hint">for example, 21 days on and 7 off</string>
     <string name="schedule_type_prn">As needed</string>
     <string name="schedule_type_prn_hint">no schedule and no reminders</string>
+    <string name="schedule_type_none">No schedule</string>
+    <string name="schedule_type_none_hint">one-time doses only, added from the calendar</string>
+    <string name="schedule_none">One-time doses only</string>
+    <string name="detail_no_schedule">No regular intake. A one-time dose is added from the calendar on the day you need it.</string>
     <string name="interval_days_label">Interval, days</string>
     <string name="cycle_on_label">Days on</string>
     <string name="cycle_off_label">Days off</string>
