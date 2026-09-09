@@ -6,7 +6,7 @@ import org.junit.Test
 class SmallLayoutTest {
     @Test
     fun `the nominal compact bucket keeps only the ring row and the button`() {
-        val plan = SmallLayout.compact(heightDp = 110)
+        val plan = SmallLayout.compact(widthDp = 146, heightDp = 110)
 
         assertThat(plan.showName).isFalse()
         assertThat(plan.showSubtitle).isFalse()
@@ -14,10 +14,18 @@ class SmallLayoutTest {
 
     @Test
     fun `a taller compact cell lists the name and the dose`() {
-        assertThat(SmallLayout.compact(heightDp = 150)).isEqualTo(SmallLayout.CompactPlan(true, true))
+        assertThat(SmallLayout.compact(widthDp = 146, heightDp = 150)).isEqualTo(SmallLayout.CompactPlan(true, true))
         // Larger fonts eat the subtitle first, then the name.
-        assertThat(SmallLayout.compact(heightDp = 150, fontScale = 1.5f))
+        assertThat(SmallLayout.compact(widthDp = 146, heightDp = 150, fontScale = 1.5f))
             .isEqualTo(SmallLayout.CompactPlan(showName = true, showSubtitle = false))
+    }
+
+    @Test
+    fun `the provider minimum and a cramped cell get the tight card`() {
+        assertThat(SmallLayout.compact(widthDp = 110, heightDp = 110).tight).isTrue()
+        // Too short for the regular card even when wide enough.
+        assertThat(SmallLayout.compact(widthDp = 146, heightDp = 100).tight).isTrue()
+        assertThat(SmallLayout.compact(widthDp = 146, heightDp = 211).tight).isFalse()
     }
 
     @Test

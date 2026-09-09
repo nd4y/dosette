@@ -10,10 +10,15 @@ import kotlin.math.roundToInt
  * two-row cell holds fewer rows than a full slot has.
  */
 object SmallLayout {
-    /** Which of the optional lines fit under the ring row and above the button. */
+    /**
+     * What the compact card shows. [tight] = the cell is too small for the
+     * regular card (a dense launcher's 110dp minimum): a smaller ring, the
+     * time on one line, no countdown and no name lines.
+     */
     data class CompactPlan(
         val showName: Boolean,
         val showSubtitle: Boolean,
+        val tight: Boolean = false,
     )
 
     /** How many dose rows the medium widget lists; the rest goes to "+N more". */
@@ -23,9 +28,14 @@ object SmallLayout {
     )
 
     fun compact(
+        widthDp: Int,
         heightDp: Int,
         fontScale: Float = 1f,
     ): CompactPlan {
+        // Narrower and the 20sp time wraps; shorter and the button is clipped.
+        if (widthDp < TIGHT_WIDTH || heightDp < COMPACT_BASE) {
+            return CompactPlan(showName = false, showSubtitle = false, tight = true)
+        }
         val name = scaled(COMPACT_NAME_TEXT, fontScale)
         val subtitle = scaled(COMPACT_SUBTITLE_TEXT, fontScale)
         return when {
@@ -64,6 +74,7 @@ object SmallLayout {
 
     // Compact: padding 24 + ring row 44 + spacer 8 + button 32.
     private const val COMPACT_BASE = 108
+    private const val TIGHT_WIDTH = 140
     private const val COMPACT_NAME_TEXT = 17
     private const val COMPACT_SUBTITLE_TEXT = 13
 

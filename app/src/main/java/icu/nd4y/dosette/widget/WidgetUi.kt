@@ -55,15 +55,15 @@ internal fun CompactContent(state: WidgetState) {
         AllDoneContent(state, ringSize = 56.dp, ringFont = 15.sp)
         return
     }
-    val context = LocalContext.current
-    // The widget's own height (exact size mode): a dense launcher's cell is
-    // short, and the name lines only fit in taller ones.
-    val plan =
-        SmallLayout.compact(
-            LocalSize.current.height.value
-                .toInt(),
-            fontScale(),
-        )
+    // The widget's own size (exact size mode): a dense launcher's cell is
+    // short, the name lines only fit in taller ones, and the 110dp minimum
+    // gets a card of its own.
+    val size = LocalSize.current
+    val plan = SmallLayout.compact(size.width.value.toInt(), size.height.value.toInt(), fontScale())
+    if (plan.tight) {
+        TightCompactContent(state, next)
+        return
+    }
     Column(
         modifier = GlanceModifier.fillMaxSize().padding(12.dp),
     ) {
@@ -73,6 +73,7 @@ internal fun CompactContent(state: WidgetState) {
             Column {
                 Text(
                     text = next.time.format(TimeFormat),
+                    maxLines = 1,
                     style =
                         TextStyle(
                             color = GlanceTheme.colors.onSurface,
@@ -82,6 +83,7 @@ internal fun CompactContent(state: WidgetState) {
                 )
                 Text(
                     text = nextDoseLabel(state, next),
+                    maxLines = 1,
                     style =
                         TextStyle(
                             color = GlanceTheme.colors.primary,
@@ -112,34 +114,70 @@ internal fun CompactContent(state: WidgetState) {
             )
         }
         Spacer(GlanceModifier.height(8.dp))
-        Row(
-            modifier =
-                GlanceModifier
-                    .fillMaxWidth()
-                    .height(32.dp)
-                    .background(GlanceTheme.colors.primary)
-                    .cornerRadius(16.dp)
-                    .clickable(takeAction(next)),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(
-                provider = ImageProvider(R.drawable.ic_widget_check),
-                contentDescription = null,
-                modifier = GlanceModifier.size(14.dp),
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.onPrimary),
-            )
+        TakeButton(next, height = 32.dp, fontSize = 12.sp)
+    }
+}
+
+/** The 110dp card: ring and time on one line, the take button, nothing else. */
+@Composable
+private fun TightCompactContent(
+    state: WidgetState,
+    next: TodayDose,
+) {
+    Column(modifier = GlanceModifier.fillMaxSize().padding(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            DayRing(state, sizeDp = 34.dp, fontSize = 10.sp)
             Spacer(GlanceModifier.width(6.dp))
             Text(
-                text = context.getString(R.string.action_take),
+                text = next.time.format(TimeFormat),
+                maxLines = 1,
                 style =
                     TextStyle(
-                        color = GlanceTheme.colors.onPrimary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
                     ),
             )
         }
+        Spacer(GlanceModifier.defaultWeight())
+        TakeButton(next, height = 28.dp, fontSize = 11.sp)
+    }
+}
+
+/** The full-width take button of the compact card. */
+@Composable
+private fun TakeButton(
+    dose: TodayDose,
+    height: Dp,
+    fontSize: TextUnit,
+) {
+    Row(
+        modifier =
+            GlanceModifier
+                .fillMaxWidth()
+                .height(height)
+                .background(GlanceTheme.colors.primary)
+                .cornerRadius(height / 2)
+                .clickable(takeAction(dose)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            provider = ImageProvider(R.drawable.ic_widget_check),
+            contentDescription = null,
+            modifier = GlanceModifier.size(14.dp),
+            colorFilter = ColorFilter.tint(GlanceTheme.colors.onPrimary),
+        )
+        Spacer(GlanceModifier.width(6.dp))
+        Text(
+            text = LocalContext.current.getString(R.string.action_take),
+            style =
+                TextStyle(
+                    color = GlanceTheme.colors.onPrimary,
+                    fontSize = fontSize,
+                    fontWeight = FontWeight.Medium,
+                ),
+        )
     }
 }
 
@@ -193,14 +231,17 @@ internal fun MediumContent(state: WidgetState) {
                         ),
                 )
             }
+            // Padding instead of spacer children: Glance draws at most ten
+            // children per container and drops the rest without a word.
             slotDoses.take(plan.rows).forEach { dose ->
-                Spacer(GlanceModifier.height(5.dp))
-                PendingRow(dose, compactButton = true)
+                Box(modifier = GlanceModifier.padding(top = 5.dp)) {
+                    PendingRow(dose, compactButton = true)
+                }
             }
             if (plan.hidden > 0) {
-                Spacer(GlanceModifier.height(3.dp))
                 Text(
                     text = context.getString(R.string.widget_more_doses, plan.hidden),
+                    modifier = GlanceModifier.padding(top = 3.dp),
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
                 )
             }
@@ -246,47 +287,60 @@ internal fun LargeContent(state: WidgetState) {
                 state.doses,
                 fontScale(),
             )
-        plan.entries.forEach { entry ->
-            when (entry) {
-                LargeEntry.CarryoverHeader -> {
-                    // A dose snoozed across midnight outranks everything below.
-                    Row(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp)) {
-                        Text(
-                            text = context.getString(R.string.day_yesterday),
-                            style =
-                                TextStyle(
-                                    color = GlanceTheme.colors.error,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                        )
-                    }
-                }
-
-                is LargeEntry.SlotHeader -> {
-                    SlotHeader(entry.doses, collapsed = entry.collapsed)
-                }
-
-                is LargeEntry.DoseRow -> {
-                    Spacer(GlanceModifier.height(4.dp))
-                    if (entry.dose.status == DoseUiStatus.PENDING) {
-                        PendingRow(entry.dose, compactButton = false)
-                    } else {
-                        ActedRow(entry.dose)
-                    }
-                }
+        // One Column per section and padding instead of spacer children:
+        // Glance draws at most ten children per container and drops the rest
+        // without a word — a flat column of headers and rows lost half of a
+        // full day on a 4x4 widget.
+        plan.sections().forEach { section ->
+            Column {
+                section.forEach { entry -> LargeEntryView(entry) }
             }
         }
 
         if (plan.hidden > 0) {
-            Spacer(GlanceModifier.height(4.dp))
             Text(
                 text = context.getString(R.string.widget_more_doses, plan.hidden),
+                modifier = GlanceModifier.padding(top = 4.dp),
                 style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
             )
         } else if (state.prn.isNotEmpty() && plan.prnFits) {
-            Spacer(GlanceModifier.height(6.dp))
-            PrnRow(state.prn.first())
+            Box(modifier = GlanceModifier.padding(top = 6.dp)) {
+                PrnRow(state.prn.first())
+            }
+        }
+    }
+}
+
+@Composable
+private fun LargeEntryView(entry: LargeEntry) {
+    when (entry) {
+        LargeEntry.CarryoverHeader -> {
+            // A dose snoozed across midnight outranks everything below.
+            Row(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text(
+                    text = LocalContext.current.getString(R.string.day_yesterday),
+                    style =
+                        TextStyle(
+                            color = GlanceTheme.colors.error,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                )
+            }
+        }
+
+        is LargeEntry.SlotHeader -> {
+            SlotHeader(entry.doses, collapsed = entry.collapsed)
+        }
+
+        is LargeEntry.DoseRow -> {
+            Box(modifier = GlanceModifier.padding(top = 4.dp)) {
+                if (entry.dose.status == DoseUiStatus.PENDING) {
+                    PendingRow(entry.dose, compactButton = false)
+                } else {
+                    ActedRow(entry.dose)
+                }
+            }
         }
     }
 }
@@ -346,9 +400,11 @@ private fun SlotHeader(
         )
         Spacer(GlanceModifier.defaultWeight())
         if (collapsed) {
-            doses.forEach { dose ->
-                Spacer(GlanceModifier.width(4.dp))
-                StatusCircle(dose.status)
+            // Padding, not spacers, and a cap: the row may hold ten children.
+            doses.take(MAX_HEADER_MARKS).forEach { dose ->
+                Box(modifier = GlanceModifier.padding(start = 4.dp)) {
+                    StatusCircle(dose.status)
+                }
             }
         }
     }
@@ -666,6 +722,7 @@ private fun nextDoseLabel(
 }
 
 private const val MIN_RING_PX = 48
+private const val MAX_HEADER_MARKS = 8
 private const val CHIP_ICON_FRACTION = 0.55
 
 /** The user's font size setting; text-based heights in the layout budgets scale with it. */

@@ -30,15 +30,15 @@ private fun dose(
     )
 
 class LargeLayoutTest {
-    // A full day: two at midnight (already taken), one mid-morning, two in
-    // the afternoon — the shape that showed an empty section on a 4x3 widget.
+    // A full day: two at breakfast (already taken), one at lunch, two in the
+    // evening — three slots, five doses, the oldest slot acted on.
     private val day =
         listOf(
-            dose("00:00", DoseUiStatus.TAKEN, "n1"),
-            dose("00:00", DoseUiStatus.TAKEN, "n2"),
-            dose("10:00", name = "m1"),
-            dose("14:00", name = "a1"),
-            dose("14:00", name = "a2"),
+            dose("07:00", DoseUiStatus.TAKEN, "n1"),
+            dose("07:00", DoseUiStatus.TAKEN, "n2"),
+            dose("12:00", name = "m1"),
+            dose("18:00", name = "a1"),
+            dose("18:00", name = "a2"),
         )
 
     private fun LargePlan.rowNames() = entries.filterIsInstance<LargeEntry.DoseRow>().map { it.dose.name }
@@ -56,7 +56,7 @@ class LargeLayoutTest {
     @Test
     fun `an acted slot folds into its header only when the day does not fit`() {
         // 330dp: fully expanded the day overflows by a row; folding the
-        // taken midnight slot (the oldest) is enough, the rest stays listed.
+        // taken breakfast slot (the oldest) is enough, the rest stays listed.
         val plan = LargeLayout.plan(heightDp = 330, carryover = emptyList(), doses = day)
 
         val headers = plan.entries.filterIsInstance<LargeEntry.SlotHeader>()
@@ -90,13 +90,13 @@ class LargeLayoutTest {
 
     @Test
     fun `a header is never drawn without its first row`() {
-        // 240dp (the base large bucket): title + collapsed night + morning
-        // fit; the afternoon header alone must not appear with its rows
+        // 240dp (the base large bucket): title + collapsed morning + lunch
+        // fit; the evening header alone must not appear with its rows
         // clipped below the widget's edge.
         val plan = LargeLayout.plan(heightDp = 240, carryover = emptyList(), doses = day)
 
         val headers = plan.entries.filterIsInstance<LargeEntry.SlotHeader>()
-        assertThat(headers.map { it.doses.first().slot }).containsExactly(DaySlot.NIGHT, DaySlot.MORNING).inOrder()
+        assertThat(headers.map { it.doses.first().slot }).containsExactly(DaySlot.MORNING, DaySlot.AFTERNOON).inOrder()
         assertThat(plan.rowNames()).containsExactly("m1")
         assertThat(plan.hidden).isEqualTo(2)
         assertThat(plan.prnFits).isFalse()
@@ -107,7 +107,7 @@ class LargeLayoutTest {
         val plan = LargeLayout.plan(heightDp = 160, carryover = emptyList(), doses = day)
 
         val headers = plan.entries.filterIsInstance<LargeEntry.SlotHeader>()
-        assertThat(headers.map { it.doses.first().slot }).containsExactly(DaySlot.NIGHT)
+        assertThat(headers.map { it.doses.first().slot }).containsExactly(DaySlot.MORNING)
         assertThat(plan.rowNames()).isEmpty()
         assertThat(plan.hidden).isEqualTo(3)
     }
@@ -130,8 +130,36 @@ class LargeLayoutTest {
     }
 
     @Test
+    fun `sections group each header with its rows`() {
+        // With the carryover the day overflows by a few dp, so the taken
+        // breakfast slot folds: a section of one entry, the header alone.
+        val yesterday = listOf(dose("23:50", name = "y1", date = LocalDate.parse("2026-09-01")))
+        val plan = LargeLayout.plan(heightDp = 420, carryover = yesterday, doses = day)
+
+        val sections = plan.sections()
+        assertThat(sections.map { it.first() })
+            .containsExactly(
+                LargeEntry.CarryoverHeader,
+                LargeEntry.SlotHeader(day.take(2), collapsed = true),
+                LargeEntry.SlotHeader(listOf(day[2]), collapsed = false),
+                LargeEntry.SlotHeader(day.takeLast(2), collapsed = false),
+            ).inOrder()
+        assertThat(sections.map { it.size }).containsExactly(2, 1, 2, 3).inOrder()
+    }
+
+    @Test
+    fun `a section lists at most nine rows`() {
+        // Glance draws ten children per container: the header plus nine rows.
+        val crowded = (0 until 12).map { dose("09:%02d".format(it), name = "c$it") }
+        val plan = LargeLayout.plan(heightDp = 900, carryover = emptyList(), doses = crowded)
+
+        assertThat(plan.rowNames()).hasSize(9)
+        assertThat(plan.hidden).isEqualTo(3)
+    }
+
+    @Test
     fun `text costs grow with the font scale`() {
-        // 330dp fits the whole day at scale 1 (night folded); at 1.4 the
+        // 330dp fits the whole day at scale 1 (morning folded); at 1.4 the
         // taller rows push the last afternoon dose out.
         assertThat(LargeLayout.plan(heightDp = 330, carryover = emptyList(), doses = day).hidden).isEqualTo(0)
         val large = LargeLayout.plan(heightDp = 330, carryover = emptyList(), doses = day, fontScale = 1.4f)
