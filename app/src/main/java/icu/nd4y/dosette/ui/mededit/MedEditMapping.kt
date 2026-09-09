@@ -14,7 +14,11 @@ import java.time.LocalTime
 fun mainScheduleOf(schedules: List<Schedule>): Schedule? =
     schedules.filter { it.endDate == null && !it.oneOff }.maxByOrNull { it.createdAt }
 
-/** Wizard state pre-filled from an existing medication for the edit flow. */
+/**
+ * Wizard state pre-filled from an existing medication for the edit flow.
+ * No open regular schedule (never had one, or the course ended) selects
+ * «no schedule», so a save that leaves the step alone adds nothing.
+ */
 fun prefillFrom(details: MedicationDetails): MedEditUiState {
     val med = details.medication
     val schedule = mainScheduleOf(details.schedules)
@@ -28,7 +32,7 @@ fun prefillFrom(details: MedicationDetails): MedEditUiState {
         strengthUnit = med.strengthUnit.orEmpty(),
         instructions = med.instructions.orEmpty(),
         colorSeed = med.colorSeed,
-        scheduleType = schedule?.type ?: ScheduleType.FIXED_TIMES,
+        scheduleType = schedule?.type,
         weekdays = schedule?.weekdays ?: emptySet(),
         intervalText = (schedule?.intervalDays ?: DEFAULT_INTERVAL_DAYS).toString(),
         cycleOnText = (schedule?.cycleDaysOn ?: DEFAULT_CYCLE_ON).toString(),

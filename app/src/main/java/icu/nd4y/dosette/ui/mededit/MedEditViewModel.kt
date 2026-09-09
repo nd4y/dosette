@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 import javax.inject.Inject
@@ -54,8 +55,9 @@ data class MedEditUiState(
     val strengthUnit: String = "",
     val instructions: String = "",
     val colorSeed: Int = 0,
-    // Schedule.
-    val scheduleType: ScheduleType = ScheduleType.FIXED_TIMES,
+    // Schedule. null = no regular schedule: the medication stays in the
+    // cabinet for one-time doses added from the calendar.
+    val scheduleType: ScheduleType? = ScheduleType.FIXED_TIMES,
     val weekdays: Set<DayOfWeek> = emptySet(),
     val intervalText: String = "2",
     val cycleOnText: String = "21",
@@ -70,10 +72,12 @@ data class MedEditUiState(
     val stepIndex: Int get() = visibleSteps.indexOf(step)
     val stepCount: Int get() = visibleSteps.size
 
-    /** PRN has no times to configure. */
+    /** Only a timed regimen has slots to configure. */
+    val hasTimes: Boolean get() = scheduleType != null && scheduleType != ScheduleType.AS_NEEDED
+
     val visibleSteps: List<WizardStep>
         get() =
-            if (scheduleType == ScheduleType.AS_NEEDED) {
+            if (!hasTimes) {
                 listOf(WizardStep.BASICS, WizardStep.SCHEDULE, WizardStep.STOCK, WizardStep.REVIEW)
             } else {
                 WizardStep.entries.toList()
@@ -224,7 +228,7 @@ class MedEditViewModel
                     ),
                 )
                 variants.forEach { medicationRepository.upsertVariant(it) }
-                medicationRepository.addSchedule(buildSchedule(state, medicationId, now))
+                buildSchedule(state, medicationId, now)?.let { medicationRepository.addSchedule(it) }
 
                 engine.reschedule()
                 _uiState.value = state.copy(saved = true)
@@ -264,27 +268,46 @@ class MedEditViewModel
             }
             variants.forEach { medicationRepository.upsertVariant(it) }
 
-            val current = mainScheduleOf(original.schedules)
-            val built = buildSchedule(state, med.id, now)
-            val replacement = current?.let { carryAnchor(it, built) } ?: built
-            when {
-                current == null -> {
-                    medicationRepository.addSchedule(replacement)
-                }
+            applyScheduleEdit(mainScheduleOf(original.schedules), buildSchedule(state, med.id, now), today)
+        }
 
-                scheduleMatches(current, replacement) -> {
+        /**
+         * A changed intake plan becomes a new version; «no schedule» ends the
+         * current one with nothing in its place. Either way past days keep
+         * recomputing under the version they had.
+         */
+        private suspend fun applyScheduleEdit(
+            current: Schedule?,
+            built: Schedule?,
+            today: LocalDate,
+        ) {
+            val replacement = if (current != null && built != null) carryAnchor(current, built) else built
+            when {
+                current == null && replacement == null -> {
                     Unit
                 }
 
-                current.startDate.isBefore(today) -> {
-                    medicationRepository.replaceSchedule(current.id, today.minusDays(1), replacement)
+                current == null -> {
+                    medicationRepository.addSchedule(requireNotNull(replacement))
                 }
 
-                else -> {
+                replacement != null && scheduleMatches(current, replacement) -> {
+                    Unit
+                }
+
+                !current.startDate.isBefore(today) -> {
                     // The current version starts today: closing it yesterday
                     // would invert its date range — swap it out instead.
                     medicationRepository.deleteSchedule(current.id)
-                    medicationRepository.addSchedule(replacement)
+                    if (replacement != null) medicationRepository.addSchedule(replacement)
+                }
+
+                replacement == null -> {
+                    medicationRepository.closeSchedule(current.id, today.minusDays(1))
+                }
+
+                else -> {
+                    medicationRepository.replaceSchedule(current.id, today.minusDays(1), replacement)
                 }
             }
         }
@@ -380,11 +403,12 @@ class MedEditViewModel
             state: MedEditUiState,
             medicationId: String,
             now: java.time.Instant,
-        ): Schedule {
+        ): Schedule? {
+            val type = state.scheduleType ?: return null
             val scheduleId = UUID.randomUUID().toString()
             val today = now.atZone(clock.zone).toLocalDate()
             val times =
-                if (state.scheduleType == ScheduleType.AS_NEEDED) {
+                if (!state.hasTimes) {
                     emptyList()
                 } else {
                     // Two slots at the same wall-clock minute would collapse
@@ -405,16 +429,15 @@ class MedEditViewModel
             return Schedule(
                 id = scheduleId,
                 medicationId = medicationId,
-                type = state.scheduleType,
+                type = type,
                 startDate = today,
                 endDate = null,
-                weekdays = if (state.scheduleType == ScheduleType.WEEKDAYS) state.weekdays else emptySet(),
-                intervalDays =
-                    if (state.scheduleType == ScheduleType.EVERY_N_DAYS) intervalOrNull(state) else null,
-                cycleDaysOn = if (state.scheduleType == ScheduleType.CYCLE) state.cycleOnText.toIntOrNull() else null,
-                cycleDaysOff = if (state.scheduleType == ScheduleType.CYCLE) state.cycleOffText.toIntOrNull() else null,
+                weekdays = if (type == ScheduleType.WEEKDAYS) state.weekdays else emptySet(),
+                intervalDays = if (type == ScheduleType.EVERY_N_DAYS) intervalOrNull(state) else null,
+                cycleDaysOn = if (type == ScheduleType.CYCLE) state.cycleOnText.toIntOrNull() else null,
+                cycleDaysOff = if (type == ScheduleType.CYCLE) state.cycleOffText.toIntOrNull() else null,
                 defaultDoseAmount = times.firstOrNull()?.doseAmount ?: 1.0,
-                remindersEnabled = state.scheduleType != ScheduleType.AS_NEEDED,
+                remindersEnabled = type != ScheduleType.AS_NEEDED,
                 createdAt = now,
                 times = times,
             )

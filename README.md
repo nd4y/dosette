@@ -4,7 +4,7 @@ Offline medication tracker for Android. Material 3 Expressive, no accounts, no n
 
 ## Features
 
-- **Medications with flexible schedules**: fixed times, weekdays, every-N-days, cycles (X on / Y off), as-needed.
+- **Medications with flexible schedules**: fixed times, weekdays, every-N-days, cycles (X on / Y off), as-needed — or no schedule at all, for a medication kept in the cabinet for one-time doses only.
 - **Persistent reminders**: the notification cannot be dismissed for good — swiping it away silently re-posts it in place, and the alert repeats on a configurable interval until the dose is marked taken or skipped (or, if you prefer, a fixed number of times). Snooze for a chosen duration or **until you get home / to work** (geofence + Wi-Fi recognition, configured in Settings → Places; the geofence needs location "all the time", which Settings asks for and flags while missing, and a place snooze wakes on its own after 12 hours at most), with a configurable missed-dose grace window.
 - **Package variants with per-variant stock**: a 150 mg dose can be taken as one 150 mg capsule or two 75 mg ones — each package form keeps its own stock pool and is decremented correctly.
 - **History and adherence**: a calendar with per-day status dots (statuses editable retroactively — a missed or skipped dose can be marked taken just now, on time or at a picked time; an accidental mark can be undone, as-needed intakes via an undo snackbar), 30-day adherence stats with per-medication breakdown and a no-miss streak.

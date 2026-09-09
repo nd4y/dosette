@@ -61,6 +61,12 @@ interface MedicationRepository {
     /** Removes the schedule version outright — one-off doses only. */
     suspend fun deleteSchedule(scheduleId: String)
 
+    /** Ends the regimen: closes [scheduleId] on [closeOn] with nothing in its place. */
+    suspend fun closeSchedule(
+        scheduleId: String,
+        closeOn: LocalDate,
+    )
+
     suspend fun upsertVariant(variant: MedicationVariant)
 
     suspend fun getVariant(variantId: String): MedicationVariant?
@@ -154,6 +160,11 @@ class MedicationRepositoryImpl
         )
 
         override suspend fun deleteSchedule(scheduleId: String) = scheduleDao.delete(scheduleId)
+
+        override suspend fun closeSchedule(
+            scheduleId: String,
+            closeOn: LocalDate,
+        ) = scheduleDao.closeSchedule(scheduleId, closeOn)
 
         override suspend fun upsertVariant(variant: MedicationVariant) = variantDao.upsert(variant.toEntity())
 

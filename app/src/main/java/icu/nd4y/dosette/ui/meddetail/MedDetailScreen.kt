@@ -260,7 +260,16 @@ private fun DetailHero(state: MedDetailUiState) {
 @Composable
 private fun ScheduleBlock(med: MedicationDetails) {
     DetailBlock(title = stringResource(R.string.review_schedule)) {
-        med.schedules.filter { it.endDate == null }.forEach { schedule ->
+        val open = med.schedules.filter { it.endDate == null }
+        if (open.isEmpty()) {
+            // Nothing regular: the medication is kept for one-time doses.
+            Text(
+                text = stringResource(R.string.detail_no_schedule),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        open.forEach { schedule ->
             // Wrap: 4-5 daily slots would otherwise run off the screen.
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

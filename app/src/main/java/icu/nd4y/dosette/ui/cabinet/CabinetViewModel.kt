@@ -47,6 +47,7 @@ sealed interface ScheduleBrief {
 
     data object AsNeeded : ScheduleBrief
 
+    /** No regimen active today: a medication kept for one-time doses (or a course that ended). */
     data object None : ScheduleBrief
 }
 

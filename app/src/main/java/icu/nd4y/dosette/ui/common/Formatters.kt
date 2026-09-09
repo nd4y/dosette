@@ -73,7 +73,7 @@ fun ScheduleBrief.asText(): String =
         }
 
         ScheduleBrief.None -> {
-            ""
+            stringResource(R.string.schedule_none)
         }
     }
 

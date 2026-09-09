@@ -119,6 +119,10 @@
     <string name="schedule_type_cycle_hint">например, 21 день приёма и 7 перерыва</string>
     <string name="schedule_type_prn">По необходимости</string>
     <string name="schedule_type_prn_hint">без расписания и напоминаний</string>
+    <string name="schedule_type_none">Без расписания</string>
+    <string name="schedule_type_none_hint">только разовые приёмы, назначаются из календаря</string>
+    <string name="schedule_none">Только разовые приёмы</string>
+    <string name="detail_no_schedule">Регулярного приёма нет. Разовый приём назначается из календаря на нужный день.</string>
     <string name="interval_days_label">Интервал, дней</string>
     <string name="cycle_on_label">Дней приёма</string>
     <string name="cycle_off_label">Дней перерыва</string>
