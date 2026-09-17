@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Dosette</string>
+
+    <string name="today_title">Today</string>
+    <string name="today_title_profile">Today · %1$s</string>
+    <string name="today_progress">%1$d of %2$d taken</string>
+    <string name="header_yesterday">Yesterday</string>
+    <string name="header_prn">As needed</string>
+    <string name="empty_today">No doses today</string>
+    <string name="no_phone_data">Open Dosette on the phone once — the day syncs from there</string>
+    <string name="phone_unreachable">Phone not connected: taps wait in a queue</string>
+    <string name="dose_gone">This dose is no longer on the list</string>
+
+    <string name="planned_at">Planned for %1$s</string>
+    <string name="planned_at_amount">Planned for %1$s · %2$s pcs</string>
+    <string name="dose_amount">%1$s pcs</string>
+
+    <string name="action_take">Take</string>
+    <string name="action_skip">Skip</string>
+    <string name="action_snooze">Snooze</string>
+
+    <string name="status_pending">Pending</string>
+    <string name="status_taken">Taken</string>
+    <string name="status_taken_at">Taken at %1$s</string>
+    <string name="status_skipped">Skipped</string>
+    <string name="status_missed">Missed</string>
+    <string name="sending">Sending to the phone…</string>
+
+    <string name="confirm_taken">Taken</string>
+    <string name="confirm_skipped">Skipped</string>
+    <string name="confirm_snoozed">Snoozed</string>
+    <string name="confirm_queued">Waiting for phone</string>
+    <string name="confirm_failed">Failed</string>
+</resources>

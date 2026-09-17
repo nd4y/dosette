@@ -43,11 +43,12 @@ class ReminderNotifierTest {
     }
 
     @Test
-    fun `reminder is ongoing with three actions and a delete intent`() {
+    fun `reminder is not ongoing, with three actions and a delete intent`() {
         notifier.postReminder(payload, alert = true)
 
+        // Ongoing would keep it off the paired watch: Wear OS does not bridge those.
         val notification = postedNotification(NotificationIds.reminder(key))
-        assertThat(notification.flags and android.app.Notification.FLAG_ONGOING_EVENT).isNotEqualTo(0)
+        assertThat(notification.flags and android.app.Notification.FLAG_ONGOING_EVENT).isEqualTo(0)
         assertThat(notification.actions).hasLength(3)
         assertThat(notification.deleteIntent).isNotNull()
         assertThat(NotificationCompat.getChannelId(notification)).isEqualTo(Channels.DOSE_ALERTS)

@@ -31,7 +31,7 @@ class TestEngine(
     val settingsRepository = FakeSettingsRepository(settings)
     val notifier = FakeReminderNotifier()
     val placeMonitor = FakePlaceMonitor()
-    val widgetRefresher = FakeWidgetRefresher()
+    val mirrorRefresher = FakeMirrorRefresher()
 
     val profileRepository = ProfileRepositoryImpl(db.profileDao())
     val appointmentRepository = AppointmentRepositoryImpl(db.appointmentDao())
@@ -50,7 +50,7 @@ class TestEngine(
             notifier = notifier,
             alarmScheduler = AlarmScheduler(ApplicationProvider.getApplicationContext()),
             placeMonitor = placeMonitor,
-            widgetRefresher = widgetRefresher,
+            mirrorRefresher = mirrorRefresher,
             clock = clock,
         )
 

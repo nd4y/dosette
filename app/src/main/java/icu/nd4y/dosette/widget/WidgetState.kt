@@ -7,6 +7,7 @@ import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.ScheduleType
+import icu.nd4y.dosette.ui.common.strengthLabel
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
 import icu.nd4y.dosette.ui.today.TodayDose
@@ -113,7 +114,11 @@ class WidgetStateLoader
                         PrnMed(
                             medicationId = details.medication.id,
                             name = details.medication.name,
-                            strengthText = null,
+                            strengthText =
+                                strengthLabel(
+                                    details.medication.strengthValue,
+                                    details.medication.strengthUnit,
+                                ),
                             form = details.medication.form,
                             colorSeed = details.medication.colorSeed,
                         )

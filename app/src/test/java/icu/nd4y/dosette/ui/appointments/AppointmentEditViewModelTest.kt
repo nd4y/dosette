@@ -107,7 +107,7 @@ class AppointmentEditViewModelTest {
             assertThat(saved.createdAt).isEqualTo(harness.clock.instant())
             // A brand-new visit has no notices to drop.
             assertThat(harness.notifier.cancelledAppointments).isEmpty()
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(1)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 
     @Test
@@ -194,7 +194,7 @@ class AppointmentEditViewModelTest {
             assertThat(completed).isEqualTo(1)
             assertThat(harness.notifier.cancelledAppointments).containsExactly("a1" to listOf(1440, 120))
             assertThat(harness.appointmentRepository.getById("a1")).isNull()
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(1)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 
     @Test

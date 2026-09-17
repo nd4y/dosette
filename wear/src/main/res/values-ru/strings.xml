@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="today_title">Сегодня</string>
+    <string name="today_title_profile">Сегодня · %1$s</string>
+    <string name="today_progress">Принято %1$d из %2$d</string>
+    <string name="header_yesterday">Вчера</string>
+    <string name="header_prn">По необходимости</string>
+    <string name="empty_today">На сегодня приёмов нет</string>
+    <string name="no_phone_data">Откройте Dosette на телефоне — день синхронизируется оттуда</string>
+    <string name="phone_unreachable">Телефон не подключён: отметки встанут в очередь</string>
+    <string name="dose_gone">Этого приёма уже нет в списке</string>
+
+    <string name="planned_at">Приём в %1$s</string>
+    <string name="planned_at_amount">Приём в %1$s · %2$s шт</string>
+    <string name="dose_amount">%1$s шт</string>
+
+    <string name="action_take">Принял</string>
+    <string name="action_skip">Пропустить</string>
+    <string name="action_snooze">Отложить</string>
+
+    <string name="status_pending">Ожидает</string>
+    <string name="status_taken">Принято</string>
+    <string name="status_taken_at">Принято в %1$s</string>
+    <string name="status_skipped">Пропущено</string>
+    <string name="status_missed">Пропущен</string>
+    <string name="sending">Отправляется на телефон…</string>
+
+    <string name="confirm_taken">Принято</string>
+    <string name="confirm_skipped">Пропущено</string>
+    <string name="confirm_snoozed">Отложено</string>
+    <string name="confirm_queued">Ждёт телефон</string>
+    <string name="confirm_failed">Не удалось</string>
+</resources>

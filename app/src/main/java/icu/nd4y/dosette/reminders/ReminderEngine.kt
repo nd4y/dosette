@@ -65,7 +65,7 @@ class ReminderEngine
         private val notifier: ReminderNotifier,
         private val alarmScheduler: AlarmScheduler,
         private val placeMonitor: PlaceMonitor,
-        private val widgetRefresher: WidgetRefresher,
+        private val mirrorRefresher: MirrorRefresher,
         private val clock: Clock,
     ) {
         private val mutex = Mutex()
@@ -570,8 +570,8 @@ class ReminderEngine
             // The day's remaining dose times go to device-protected storage
             // too: a reboot before the first unlock can still ring them.
             alarmScheduler.rememberUpcoming(upcomingDoseInstants(schedules, today, clock.instant(), clock.zone))
-            // Every mutating entry point ends here, so the widget stays in step.
-            widgetRefresher.refresh()
+            // Every mutating entry point ends here, so the widget and the watch stay in step.
+            mirrorRefresher.refresh()
         }
 
         private fun payloadFor(

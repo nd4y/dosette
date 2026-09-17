@@ -7,6 +7,7 @@ import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
 import icu.nd4y.dosette.di.IoDispatcher
 import icu.nd4y.dosette.reminders.notifications.ReminderNotifier
+import icu.nd4y.dosette.watch.WatchInbox
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -26,6 +27,9 @@ class BootReceiver : BroadcastReceiver() {
     lateinit var notifier: ReminderNotifier
 
     @Inject
+    lateinit var watchInbox: WatchInbox
+
+    @Inject
     @IoDispatcher
     lateinit var ioDispatcher: CoroutineDispatcher
 
@@ -42,6 +46,9 @@ class BootReceiver : BroadcastReceiver() {
                     // reconcile below re-posts the real reminders in its place.
                     notifier.cancelLockedNotice()
                     engine.reconcile()
+                    // A watch action delivered before the unlock found the
+                    // database locked and is still queued.
+                    watchInbox.drain()
                 }.onFailure { Log.e("BootReceiver", "reconcile failed", it) }
             } finally {
                 result.finish()

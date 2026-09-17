@@ -18,6 +18,11 @@ Offline medication tracker for Android. Material 3 Expressive, no accounts, no n
   about 240 dp of height the whole day; the layout is budgeted by the exact cell size, so a taller
   widget lists more. Follows Material You dynamic color and updates on the same alarms as the
   reminders.
+- **Wear OS companion** (built for the Pixel Watch): dose reminders are mirrored to the paired watch
+  with Take / Skip / Snooze on the wrist, and the watch app lists the day — yesterday's leftovers,
+  today's doses with their marks, as-needed medications — so a dose can be marked from the watch
+  whenever the phone is out of reach. Taps are queued on the watch and applied by the phone once it
+  is back, stamped with the time of the tap rather than the time of delivery.
 - English and Russian UI, light and dark themes, Material You dynamic color.
 
 ## Install
@@ -30,6 +35,25 @@ Grab the APK from [Releases](https://github.com/nd4y/dosette/releases), or add t
 
 Requires Android 8.0+. For reminders to arrive on time, allow notifications and grant the
 battery-optimization exemption when the app asks during onboarding.
+
+### Watch app
+
+Every release also carries `dosette-wear-vX.Y.Z.apk` for a Wear OS 3+ watch (Pixel Watch 3 is the
+reference device). It is a companion: it needs the phone app on the paired phone and has no data of
+its own. Install it over adb — on the watch enable developer options (Settings → System → About →
+tap the build number seven times), then *Developer options → ADB debugging* and *Wireless debugging*,
+pair and install:
+
+```bash
+adb pair <watch-ip>:<pairing-port>
+adb connect <watch-ip>:<port>
+adb -s <watch-ip>:<port> install -r dosette-wear-vX.Y.Z.apk
+```
+
+Both APKs share the package name and the signing key (the Data Layer links them by that), so keep
+them apart: in Obtainium set the app's *Filter APKs by regular expression* to `^dosette-v` — without it Obtainium asks
+which of the two APKs to install on every update. Notifications are mirrored to the watch as long as
+the Pixel Watch app allows them for Dosette (they are, by default).
 
 ## Backup format
 
@@ -73,15 +97,25 @@ is teal `#00696B`; with dynamic color enabled the palette follows the device wal
   backup), so changing a time or a dose never shifts the days.
 - Backup import/export goes through the Storage Access Framework, so Google Drive works with zero
   Google API code.
+- The watch link is the Wearable Data Layer of Google Play services, over Bluetooth — still no
+  internet. After every engine pass the phone puts the day (the same picture the widget renders) into
+  one data item; the watch keeps the last copy, so the list is readable with the phone out of reach.
+  Each tap on the watch is its own data item, applied by the phone's listener service and deleted as
+  the acknowledgement; whatever a reboot or a locked phone left behind is drained at start-up. Dose
+  reminders are deliberately **not** `ongoing` notifications: Wear OS never bridges those, and since
+  Android 14 the flag stops no swipe anyway — the delete intent is what re-posts the reminder.
 
 ## Building
 
-- JDK 21, Android SDK 37. Local builds: `./gradlew :app:assembleDebug`.
-- Checks: `./gradlew spotlessCheck :app:detekt :app:lint :app:testDebugUnitTest`.
-- Screenshot suite: `./gradlew recordRoborazziDebug --tests "icu.nd4y.dosette.ui.ScreenshotTests"` —
-  PNGs land in `app/src/test/screenshots`.
+- Modules: `:app` (phone), `:wear` (watch), `:link` (the wire format they share).
+- JDK 21, Android SDK 37. Local builds: `./gradlew :app:assembleDebug :wear:assembleDebug`.
+- Checks: `./gradlew spotlessCheck :app:detekt :wear:detekt :app:lint :wear:lint :app:testDebugUnitTest :wear:testDebugUnitTest`.
+- Screenshot suites: `./gradlew :app:recordRoborazziDebug --tests "icu.nd4y.dosette.ui.ScreenshotTests"`
+  and `./gradlew :wear:recordRoborazziDebug` — PNGs land in `app/src/test/screenshots` and
+  `wear/src/test/screenshots`.
 - Release APKs are built and signed only by the GitHub Actions release workflow on `v*` tags
-  (`versionCode = major*10000 + minor*100 + patch`, one universal APK per release).
+  (`versionCode = major*10000 + minor*100 + patch`; one universal phone APK and one watch APK per
+  release).
 
 ## License
 

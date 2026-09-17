@@ -25,10 +25,10 @@ import icu.nd4y.dosette.domain.model.ScheduleType
 import icu.nd4y.dosette.domain.nag.SnoozeTarget
 import icu.nd4y.dosette.domain.schedule.OccurrenceGenerator
 import icu.nd4y.dosette.domain.stats.AdherenceCalculator
+import icu.nd4y.dosette.reminders.MirrorRefresher
 import icu.nd4y.dosette.reminders.PrnIntakes
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.UserDoseAction
-import icu.nd4y.dosette.reminders.WidgetRefresher
 import icu.nd4y.dosette.ui.calendar.CalendarDay
 import icu.nd4y.dosette.ui.calendar.OneOffMedOption
 import icu.nd4y.dosette.ui.common.dayTicker
@@ -153,7 +153,7 @@ class TodayViewModel
         private val reminderStateRepository: ReminderStateRepository,
         private val engine: ReminderEngine,
         private val prnIntakes: PrnIntakes,
-        private val widgetRefresher: WidgetRefresher,
+        private val mirrorRefresher: MirrorRefresher,
         private val clock: Clock,
     ) : ViewModel() {
         // Snackbars display sequentially for seconds each; a buffer of one
@@ -357,7 +357,7 @@ class TodayViewModel
                 // Glance sessions expire; without an explicit refresh the
                 // widget keeps showing the previous profile until the next
                 // alarm fires.
-                widgetRefresher.refresh()
+                mirrorRefresher.refresh()
             }
         }
 

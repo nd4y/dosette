@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
@@ -14,11 +15,11 @@ plugins {
 // races with parallel build tasks writing into app/build.
 spotless {
     kotlin {
-        target("app/src/**/*.kt")
+        target("app/src/**/*.kt", "link/src/**/*.kt", "wear/src/**/*.kt")
         ktlint()
     }
     kotlinGradle {
-        target("*.gradle.kts", "app/*.gradle.kts")
+        target("*.gradle.kts", "app/*.gradle.kts", "link/*.gradle.kts", "wear/*.gradle.kts")
         ktlint()
     }
     format("misc") {
