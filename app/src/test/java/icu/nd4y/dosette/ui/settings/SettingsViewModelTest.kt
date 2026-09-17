@@ -61,7 +61,7 @@ class SettingsViewModelTest {
             viewModel.runAndAwait { setNagInterval(5) }
 
             assertThat(stored.nagIntervalMin).isEqualTo(5)
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(1)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 
     @Test
@@ -70,7 +70,7 @@ class SettingsViewModelTest {
             viewModel.runAndAwait { setSnooze(15) }
 
             assertThat(stored.snoozeMin).isEqualTo(15)
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(0)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(0)
         }
 
     @Test
@@ -79,7 +79,7 @@ class SettingsViewModelTest {
             viewModel.runAndAwait { setGrace(30) }
 
             assertThat(stored.missedGraceMin).isEqualTo(30)
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(1)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 
     @Test
@@ -88,7 +88,7 @@ class SettingsViewModelTest {
             viewModel.runAndAwait { setAlarmClock(false) }
 
             assertThat(stored.alarmClock).isFalse()
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(1)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 
     @Test
@@ -175,6 +175,6 @@ class SettingsViewModelTest {
             viewModel.runAndAwait { clearPlace(PlaceId.HOME) }
 
             assertThat(stored.places).isEmpty()
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(1)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 }

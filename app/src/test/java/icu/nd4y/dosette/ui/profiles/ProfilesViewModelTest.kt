@@ -36,7 +36,7 @@ class ProfilesViewModelTest {
                 profileRepository = harness.profileRepository,
                 settingsRepository = harness.settingsRepository,
                 engine = harness.engine,
-                widgetRefresher = harness.widgetRefresher,
+                mirrorRefresher = harness.mirrorRefresher,
                 clock = harness.clock,
             )
         runTest {
@@ -109,7 +109,7 @@ class ProfilesViewModelTest {
             assertThat(harness.profileRepository.getAll().map { it.id }).containsExactly("p2")
             assertThat(activeProfileId).isEqualTo("p2")
             // The engine ran a pass over the new world.
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(1)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 
     @Test
@@ -133,7 +133,7 @@ class ProfilesViewModelTest {
 
             assertThat(harness.profileRepository.getAll().map { it.id }).containsExactly("p1")
             assertThat(activeProfileId).isEqualTo("p1")
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(0)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(0)
         }
 
     @Test
@@ -142,6 +142,6 @@ class ProfilesViewModelTest {
             viewModel.runAndAwait { setActive("p2") }
 
             assertThat(activeProfileId).isEqualTo("p2")
-            assertThat(harness.widgetRefresher.refreshes).isEqualTo(1)
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 }

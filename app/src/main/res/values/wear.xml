@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Advertised on the Data Layer so the watch app can tell "no phone in reach"
+     from "a phone without Dosette". Read by Play services, not by the app. -->
+<resources>
+    <string-array name="android_wear_capabilities" translatable="false">
+        <item>dosette_phone</item>
+    </string-array>
+</resources>

@@ -26,7 +26,7 @@ class PrnIntakes
         private val doseLogRepository: DoseLogRepository,
         private val settingsRepository: SettingsRepository,
         private val notifier: ReminderNotifier,
-        private val widgetRefresher: WidgetRefresher,
+        private val mirrorRefresher: MirrorRefresher,
     ) {
         suspend fun take(medicationId: String): PrnIntake? {
             val med = medicationRepository.getDetails(medicationId) ?: return null
@@ -43,7 +43,7 @@ class PrnIntakes
                         notifier.postLowStock(med.medication.id, medicationTitle(med), formatUnits(after))
                     }
                 }
-                widgetRefresher.refresh()
+                mirrorRefresher.refresh()
             }
             return intake
         }
@@ -51,6 +51,6 @@ class PrnIntakes
         /** Snackbar undo of [take]: removes the log and returns the stock. */
         suspend fun undo(logId: String) {
             doseLogRepository.undoPrn(logId)
-            widgetRefresher.refresh()
+            mirrorRefresher.refresh()
         }
     }

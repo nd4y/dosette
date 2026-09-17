@@ -95,6 +95,19 @@
                 android:resource="@xml/dose_widget_info" />
         </receiver>
 
+        <!-- Taps on the watch arrive as Data Layer items; exported so Play services can bind. -->
+        <service
+            android:name=".watch.WatchListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:host="*"
+                    android:pathPrefix="/dosette/action/"
+                    android:scheme="wear" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".reminders.TimeChangeReceiver"
             android:exported="false">

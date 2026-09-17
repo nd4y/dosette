@@ -27,25 +27,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Static checks
-        run: ./gradlew spotlessCheck :app:detekt --stacktrace
+        run: ./gradlew spotlessCheck :app:detekt :link:detekt :wear:detekt --stacktrace
 
       - name: Unit tests and screenshot verify
-        run: ./gradlew :app:verifyRoborazziDebug --stacktrace
+        run: ./gradlew :app:verifyRoborazziDebug :link:testDebugUnitTest :wear:verifyRoborazziDebug --stacktrace
 
       - name: Coverage gate
         run: ./gradlew :app:koverVerify --stacktrace
 
       - name: Android lint
-        run: ./gradlew :app:lint --stacktrace
+        run: ./gradlew :app:lint :wear:lint --stacktrace
 
       - name: Assemble debug
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:assembleDebug :wear:assembleDebug --stacktrace
 
       # R8 smoke: keep-rule breakage (the widget's failure class) must
       # surface here, not in the tag-triggered release build. Debug-signed,
       # nothing is published.
       - name: Assemble minified release
-        run: ./gradlew :app:assembleRelease --stacktrace
+        run: ./gradlew :app:assembleRelease :wear:assembleRelease --stacktrace
 
       - name: Upload reports on failure
         if: failure()
@@ -56,3 +56,4 @@ jobs:
             **/build/reports/**
             **/build/outputs/roborazzi/**
             app/src/test/screenshots/*_compare.png
+            wear/src/test/screenshots/*_compare.png

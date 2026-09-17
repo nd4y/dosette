@@ -8,6 +8,7 @@ import icu.nd4y.dosette.data.ProfileBootstrap
 import icu.nd4y.dosette.di.IoDispatcher
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.notifications.Channels
+import icu.nd4y.dosette.watch.WatchInbox
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +22,9 @@ class DosetteApp : Application() {
 
     @Inject
     lateinit var profileBootstrap: ProfileBootstrap
+
+    @Inject
+    lateinit var watchInbox: WatchInbox
 
     @Inject
     @IoDispatcher
@@ -40,6 +44,8 @@ class DosetteApp : Application() {
             runCatching {
                 profileBootstrap.ensureDefaultProfile(getString(R.string.default_profile_name))
                 engine.processDueEvents()
+                // Marks made on the watch while the phone was away or asleep.
+                watchInbox.drain()
             }.onFailure { Log.e("DosetteApp", "startup reconcile failed", it) }
         }
     }

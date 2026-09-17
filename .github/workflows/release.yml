@@ -24,23 +24,25 @@ jobs:
       # A tag can land on any commit; do not sign what does not pass tests.
       # AGP creates unit tests only for the debug build type.
       - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testDebugUnitTest :link:testDebugUnitTest :wear:testDebugUnitTest --stacktrace
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
 
-      - name: Build signed release APK
+      - name: Build signed release APKs
         env:
           DOSETTE_KEYSTORE: ${{ runner.temp }}/release.jks
           DOSETTE_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           DOSETTE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           DOSETTE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease "-Pdosette.version=$GITHUB_REF_NAME" --stacktrace
+        run: ./gradlew :app:assembleRelease :wear:assembleRelease "-Pdosette.version=$GITHUB_REF_NAME" --stacktrace
 
       - name: Rename and checksum
         run: |
           mv app/build/outputs/apk/release/app-release.apk "dosette-$GITHUB_REF_NAME.apk"
           sha256sum "dosette-$GITHUB_REF_NAME.apk" > "dosette-$GITHUB_REF_NAME.apk.sha256"
+          mv wear/build/outputs/apk/release/wear-release.apk "dosette-wear-$GITHUB_REF_NAME.apk"
+          sha256sum "dosette-wear-$GITHUB_REF_NAME.apk" > "dosette-wear-$GITHUB_REF_NAME.apk.sha256"
 
       - name: Create GitHub release
         # Third-party action in a job holding the signing secrets: pinned to

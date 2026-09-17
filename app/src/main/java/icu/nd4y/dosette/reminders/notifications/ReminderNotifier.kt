@@ -116,22 +116,28 @@ class AndroidReminderNotifier
                     .setContentText(text)
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
                     .setColor(context.getColor(R.color.notification_accent))
-                    .setOngoing(true)
+                    // Deliberately not ongoing: Wear OS never bridges an ongoing
+                    // notification to the watch, and since Android 14 the flag
+                    // no longer stops a swipe anyway — the delete intent below
+                    // is what brings the reminder back.
                     .setAutoCancel(false)
                     .setOnlyAlertOnce(false)
                     .setSilent(!alert)
                     .setContentIntent(contentIntent(id))
                     .setDeleteIntent(actionIntent(payload.key, NotificationActionReceiver.ACTION_DISMISSED, id, 0))
+                    // Action icons are for the watch, where a bridged action
+                    // without one is a bare text chip; the phone stopped
+                    // drawing them in Android 7.
                     .addAction(
-                        0,
+                        R.drawable.ic_widget_skip,
                         localized.getString(R.string.action_skip),
                         actionIntent(payload.key, NotificationActionReceiver.ACTION_SKIP, id, 2),
                     ).addAction(
-                        0,
+                        R.drawable.ic_notif_snooze,
                         localized.getString(R.string.action_snooze),
                         actionIntent(payload.key, NotificationActionReceiver.ACTION_SNOOZE, id, 3),
                     ).addAction(
-                        0,
+                        R.drawable.ic_widget_check,
                         localized.getString(R.string.action_take),
                         actionIntent(payload.key, NotificationActionReceiver.ACTION_TAKE, id, 1),
                     ).build()
