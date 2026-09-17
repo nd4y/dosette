@@ -47,6 +47,13 @@ jobs:
       - name: Assemble minified release
         run: ./gradlew :app:assembleRelease :wear:assembleRelease --stacktrace
 
+      # The Wear capability array is read by Play services by name, nothing in
+      # the code references it; the resource shrinker silently dropped it once.
+      - name: Wear capability survives resource shrinking
+        run: |
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT2" dump resources app/build/outputs/apk/release/app-release.apk | grep -q "array/android_wear_capabilities"
+
       - name: Upload reports on failure
         if: failure()
         uses: actions/upload-artifact@v7
