@@ -6,6 +6,7 @@ import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
 import icu.nd4y.dosette.data.repository.ProfileRepository
 import icu.nd4y.dosette.data.repository.ReminderStateRepository
+import icu.nd4y.dosette.data.repository.WatchActionRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.alarm.AlarmObligations
 import icu.nd4y.dosette.domain.alarm.AlarmPlanner
@@ -66,6 +67,7 @@ class ReminderEngine
         private val alarmScheduler: AlarmScheduler,
         private val placeMonitor: PlaceMonitor,
         private val mirrorRefresher: MirrorRefresher,
+        private val watchActions: WatchActionRepository,
         private val clock: Clock,
     ) {
         private val mutex = Mutex()
@@ -99,6 +101,32 @@ class ReminderEngine
                         }
                     }
                 applyEvent(world, key, event)
+                syncGeofences(world)
+                rescheduleLocked(world)
+            }
+
+        /**
+         * A queued watch tap is applied once, even after undo or a failed ack.
+         * Lock the engine before opening the transaction, as other engine
+         * entry points do. Alarm/UI reconciliation is retried after commit.
+         */
+        suspend fun onWatchAction(
+            key: OccurrenceKey,
+            action: UserDoseAction,
+            actedAt: Instant,
+            deliveryId: String,
+        ): Unit =
+            mutex.withLock {
+                val world = loadWorld()
+                watchActions.applyOnce(deliveryId) {
+                    val event =
+                        when (action) {
+                            UserDoseAction.TAKE -> NagEvent.Take(actedAt.coerceAtMost(clock.instant()))
+                            UserDoseAction.SKIP -> NagEvent.Skip
+                            UserDoseAction.SNOOZE -> NagEvent.Snooze(SnoozeTarget.ForMinutes(world.settings.snoozeMin))
+                        }
+                    applyEvent(world, key, event)
+                }
                 syncGeofences(world)
                 rescheduleLocked(world)
             }
@@ -487,7 +515,7 @@ class ReminderEngine
             // A stated intake time (a late mark) wins over the moment of the action.
             val actedAt = if (status == DoseStatus.MISSED) null else effect.actedAt ?: clock.instant()
             doseLogRepository.finalizeScheduled(
-                buildLog(med, occurrence, scheduledAt, status, actedAt),
+                occurrence.toScheduledLog(med, scheduledAt, status, actedAt, clock.instant()),
             )
         }
 
@@ -512,39 +540,6 @@ class ReminderEngine
             ) {
                 notifier.postLowStock(med.medication.id, medicationTitle(med), formatUnits(change.after))
             }
-        }
-
-        private fun buildLog(
-            med: MedicationDetails,
-            occurrence: Occurrence,
-            scheduledAt: Instant,
-            status: DoseStatus,
-            actedAt: Instant?,
-        ): DoseLog {
-            val key = occurrence.key
-            val amount = occurrence.amount
-            val variant = if (status == DoseStatus.TAKEN) med.defaultVariant else null
-            val consumed =
-                variant?.let {
-                    InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
-                }
-            return DoseLog(
-                id = UUID.randomUUID().toString(),
-                profileId = med.medication.profileId,
-                medicationId = med.medication.id,
-                scheduleId = occurrence.scheduleId,
-                kind = DoseKind.SCHEDULED,
-                date = key.date,
-                time = key.time,
-                scheduledAt = scheduledAt,
-                status = status,
-                actedAt = actedAt,
-                amount = amount,
-                variantId = variant?.id,
-                consumedUnits = consumed,
-                note = null,
-                updatedAt = clock.instant(),
-            )
         }
 
         private suspend fun rescheduleLocked(world: World) {
@@ -653,6 +648,38 @@ class ReminderEngine
             const val MISSED_SWEEP_DAYS = 7L
         }
     }
+
+/** Builds the persisted scheduled intake; the engine supplies its transaction time. */
+private fun Occurrence.toScheduledLog(
+    med: MedicationDetails,
+    scheduledAt: Instant,
+    status: DoseStatus,
+    actedAt: Instant?,
+    updatedAt: Instant,
+): DoseLog {
+    val variant = if (status == DoseStatus.TAKEN) med.defaultVariant else null
+    val consumed =
+        variant?.let {
+            InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
+        }
+    return DoseLog(
+        id = UUID.randomUUID().toString(),
+        profileId = med.medication.profileId,
+        medicationId = med.medication.id,
+        scheduleId = scheduleId,
+        kind = DoseKind.SCHEDULED,
+        date = key.date,
+        time = key.time,
+        scheduledAt = scheduledAt,
+        status = status,
+        actedAt = actedAt,
+        amount = amount,
+        variantId = variant?.id,
+        consumedUnits = consumed,
+        note = null,
+        updatedAt = updatedAt,
+    )
+}
 
 /** Returns the stock a taken dose's log consumed (no-op for other logs). */
 private suspend fun MedicationRepository.restoreStockOf(log: DoseLog) {

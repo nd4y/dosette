@@ -337,6 +337,22 @@ class OccurrenceGeneratorTest {
     }
 
     @Test
+    fun `long cycle counts do not overflow when their sum exceeds an integer`() {
+        val start = LocalDate.parse("2026-08-01")
+        val schedule =
+            fixture(
+                type = ScheduleType.CYCLE,
+                startDate = start,
+                cycleDaysOn = Int.MAX_VALUE,
+                cycleDaysOff = Int.MAX_VALUE,
+            )
+
+        assertThat(isActiveOn(schedule, start)).isTrue()
+        assertThat(isActiveOn(schedule, start.plusDays(Int.MAX_VALUE.toLong()))).isFalse()
+        assertThat(isActiveOn(schedule, start.plusDays(2L * Int.MAX_VALUE))).isTrue()
+    }
+
+    @Test
     fun `a one-off dose is planned even in the past`() {
         val day = LocalDate.parse("2026-09-02")
         val oneOff =

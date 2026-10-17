@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlarmManager
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -51,6 +52,27 @@ class AlarmSchedulerTest {
         assertThat(whileIdle.alarmClockInfo).isNull()
         assertThat(whileIdle.isAllowWhileIdle).isTrue()
         assertThat(whileIdle.triggerAtTime).isEqualTo(at.toEpochMilli())
+    }
+
+    @Test
+    @Config(sdk = [31, 34])
+    fun `denied special access degrades both alarm modes and grant restores exact alarms`() {
+        val at = Instant.now().plusSeconds(3600)
+        ShadowAlarmManager.setCanScheduleExactAlarms(false)
+
+        listOf(true, false).forEach { alarmClock ->
+            scheduler.scheduleExact(at, alarmClock = alarmClock)
+            val fallback = requireNotNull(shadowOf(alarmManager).nextScheduledAlarm)
+            assertThat(fallback.alarmClockInfo).isNull()
+            assertThat(fallback.isAllowWhileIdle).isTrue()
+            assertThat(fallback.windowLengthMs).isNotEqualTo(0L)
+        }
+
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        scheduler.scheduleExact(at)
+        val restored = shadowOf(alarmManager).scheduledAlarms.single()
+        assertThat(restored.alarmClockInfo).isNotNull()
+        assertThat(shadowOf(alarmManager).scheduledAlarms).hasSize(1)
     }
 
     @Test

@@ -25,13 +25,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Record goldens
-        run: ./gradlew :app:recordRoborazziDebug --stacktrace
+        run: ./gradlew :app:recordRoborazziDebug :wear:recordRoborazziDebug --stacktrace
 
       - name: Commit updated goldens
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/test/screenshots
+          git add app/src/test/screenshots wear/src/test/screenshots
           git diff --cached --quiet && echo "goldens unchanged" && exit 0
           git commit -m "Re-record screenshot goldens on CI"
           git push

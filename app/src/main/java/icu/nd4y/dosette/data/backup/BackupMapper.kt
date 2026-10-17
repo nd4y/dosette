@@ -76,6 +76,7 @@ object BackupMapper {
         )
 
     fun fromSnapshot(snapshot: BackupSnapshot): BackupData {
+        check(snapshot.schemaVersion >= 1) { "unsupported backup schema ${snapshot.schemaVersion}" }
         if (snapshot.schemaVersion > BackupSnapshot.CURRENT_SCHEMA_VERSION) {
             throw BackupFormatException(
                 "Backup schema ${snapshot.schemaVersion} is newer than supported " +
@@ -111,11 +112,13 @@ object BackupMapper {
     private fun validate(data: BackupData) {
         validateReferences(data)
         validateValues(data)
+        validateInventory(data)
     }
 
     private fun validateReferences(data: BackupData) {
         val profileIds = data.profiles.mapTo(mutableSetOf()) { it.id }
-        val medIds = data.medications.mapTo(mutableSetOf()) { it.id }
+        val medicationsById = data.medications.associateBy { it.id }
+        val medIds = medicationsById.keys
         val variantsByMed = data.variants.groupBy({ it.medicationId }, { it.id })
 
         // Duplicate ids must fail here with a readable message, not surface
@@ -126,6 +129,12 @@ object BackupMapper {
         check(data.variants.distinctBy { it.id }.size == data.variants.size) { "duplicate variant ids" }
         check(data.doseLogs.distinctBy { it.id }.size == data.doseLogs.size) { "duplicate dose log ids" }
         check(data.appointments.distinctBy { it.id }.size == data.appointments.size) { "duplicate appointment ids" }
+        val times = data.schedules.flatMap { it.times }
+        check(times.distinctBy { it.id }.size == times.size) { "duplicate schedule time ids" }
+        val scheduledLogs = data.doseLogs.filter { it.kind == DoseKind.SCHEDULED }
+        check(scheduledLogs.distinctBy { Triple(it.medicationId, it.date, it.time) }.size == scheduledLogs.size) {
+            "duplicate scheduled dose occurrences"
+        }
 
         data.settings.activeProfileId?.let {
             check(it in profileIds) { "active_profile_id $it points to a missing profile" }
@@ -143,6 +152,9 @@ object BackupMapper {
         }
         for (log in data.doseLogs) {
             check(log.medicationId in medIds) { "dose log ${log.id} references missing medication ${log.medicationId}" }
+            check(medicationsById[log.medicationId]?.profileId == log.profileId) {
+                "dose log ${log.id} belongs to a different profile than its medication"
+            }
             // A scheduled log without a planned time has no occurrence
             // identity and would crash every reminder pass after import.
             if (log.kind == DoseKind.SCHEDULED) {
@@ -179,8 +191,16 @@ object BackupMapper {
                     Unit
                 }
             }
+            check(schedule.defaultDoseAmount.isFinite() && schedule.defaultDoseAmount > 0) {
+                "schedule ${schedule.id}: default_dose_amount must be positive and finite"
+            }
+            check(schedule.times.distinctBy { it.time }.size == schedule.times.size) {
+                "schedule ${schedule.id}: duplicate dose times"
+            }
             for (slot in schedule.times) {
-                check(slot.doseAmount > 0) { "schedule ${schedule.id}: dose_amount must be positive" }
+                check(slot.doseAmount.isFinite() && slot.doseAmount > 0) {
+                    "schedule ${schedule.id}: dose_amount must be positive and finite"
+                }
             }
         }
         val s = data.settings
@@ -189,6 +209,29 @@ object BackupMapper {
         check(s.snoozeMin >= 1 && s.missedGraceMin >= 1) {
             "settings: snooze_min and missed_grace_min must be at least 1"
         }
+    }
+
+    private fun validateInventory(data: BackupData) {
+        data.medications.forEach { med ->
+            med.strengthValue?.let { checkNonnegative(it, "medication ${med.id}: strength_value") }
+        }
+        data.variants.forEach { variant ->
+            checkNonnegative(variant.currentStock, "variant ${variant.id}: current_stock")
+            variant.strengthValue?.let { checkNonnegative(it, "variant ${variant.id}: strength_value") }
+            variant.lowStockThreshold?.let { checkNonnegative(it, "variant ${variant.id}: low_stock_threshold") }
+            variant.defaultRefillAmount?.let { checkNonnegative(it, "variant ${variant.id}: default_refill_amount") }
+        }
+        data.doseLogs.forEach { log ->
+            checkNonnegative(log.amount, "dose log ${log.id}: amount")
+            log.consumedUnits?.let { checkNonnegative(it, "dose log ${log.id}: consumed_units") }
+        }
+    }
+
+    private fun checkNonnegative(
+        value: Double,
+        field: String,
+    ) {
+        check(value.isFinite() && value >= 0) { "$field must be finite and nonnegative" }
     }
 
     private inline fun check(

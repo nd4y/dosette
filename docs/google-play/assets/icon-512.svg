@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108" role="img" aria-label="Dosette capsule icon">
+<rect width="108" height="108" fill="#00696B"/>
+<g transform="rotate(45 54 54)">
+<path fill="#FFFFFF" d="M40,44 L68,44 A10,10 0 0 1 68,64 L40,64 A10,10 0 0 1 40,44 Z"/>
+<path fill="none" stroke="#00696B" stroke-width="4" d="M54,44 L54,64"/>
+</g>
+</svg>

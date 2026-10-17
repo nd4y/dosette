@@ -101,6 +101,7 @@ class MigrationTest {
             true,
             AppDatabase.MIGRATION_1_2,
             AppDatabase.MIGRATION_2_3,
+            AppDatabase.MIGRATION_3_4,
         )
     }
 
@@ -112,5 +113,26 @@ class MigrationTest {
 
     private companion object {
         const val DB_NAME = "migration-test"
+    }
+
+    @Test
+    fun `3 to 4 adds independent durable watch receipts without losing profiles`() {
+        helper.createDatabase(dbPath, 3).use { db ->
+            db.execSQL(
+                "INSERT INTO profiles (id, name, colorSeed, avatarKey, sortOrder, createdAt) " +
+                    "VALUES ('p1', 'Test', 0, NULL, 0, 1000)",
+            )
+        }
+        val db = helper.runMigrationsAndValidate(dbPath, 4, true, AppDatabase.MIGRATION_3_4)
+        db.query("SELECT name FROM profiles WHERE id = 'p1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(0)).isEqualTo("Test")
+        }
+        db.execSQL("INSERT INTO watch_action_receipts (id) VALUES ('watch-action')")
+        db.execSQL("DELETE FROM profiles")
+        db.query("SELECT id FROM watch_action_receipts").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(0)).isEqualTo("watch-action")
+        }
     }
 }

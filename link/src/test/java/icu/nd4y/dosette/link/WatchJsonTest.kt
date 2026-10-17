@@ -78,4 +78,37 @@ class WatchJsonTest {
         assertThat(LinkPaths.actionPath("a1")).startsWith(LinkPaths.PREFIX)
         assertThat(LinkPaths.TODAY).startsWith(LinkPaths.PREFIX)
     }
+
+    @Test
+    fun `invalid snapshot times dates versions and duplicate ids are rejected`() {
+        val dose = snapshot.doses.first()
+        val invalid =
+            listOf(
+                snapshot.copy(schema = 2),
+                snapshot.copy(date = "not-a-date"),
+                snapshot.copy(doses = listOf(dose.copy(timeMinutes = -1))),
+                snapshot.copy(doses = listOf(dose.copy(timeMinutes = 24 * 60))),
+                snapshot.copy(doses = listOf(dose.copy(actedTimeMinutes = 24 * 60))),
+                snapshot.copy(doses = listOf(dose, dose)),
+                snapshot.copy(prn = listOf(WatchPrn("", "Unknown"))),
+                snapshot.copy(prn = snapshot.prn + snapshot.prn),
+            )
+        invalid.forEach { assertThat(WatchJson.decodeSnapshot(WatchJson.encode(it))).isNull() }
+    }
+
+    @Test
+    fun `invalid action identity targets and negative timestamps are rejected`() {
+        val action = WatchAction("a1", WatchActionKind.TAKE, doseId = "dose", actedAt = 1)
+        val invalid =
+            listOf(
+                action.copy(id = "../other"),
+                action.copy(id = ""),
+                action.copy(actedAt = -1),
+                action.copy(doseId = null),
+                action.copy(medicationId = "m1"),
+                action.copy(kind = WatchActionKind.TAKE_PRN),
+            )
+        invalid.forEach { assertThat(WatchJson.decodeAction(WatchJson.encode(it))).isNull() }
+        assertThat(WatchJson.decodeSnapshot(" ".repeat(100_001))).isNull()
+    }
 }

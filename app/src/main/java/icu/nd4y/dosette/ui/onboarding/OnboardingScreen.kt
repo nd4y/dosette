@@ -47,6 +47,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import icu.nd4y.dosette.R
+import icu.nd4y.dosette.ui.common.canScheduleExactAlarms
+import icu.nd4y.dosette.ui.common.openExactAlarmSettings
 import icu.nd4y.dosette.ui.common.openNotificationSettings
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.strokeGlyph
@@ -64,6 +66,7 @@ fun OnboardingScreen(
     var batteryExempt by remember {
         mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
     }
+    var exactAlarmsAllowed by remember { mutableStateOf(canScheduleExactAlarms(context)) }
     val activity = LocalActivity.current
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -84,12 +87,15 @@ fun OnboardingScreen(
     LifecycleResumeEffect(Unit) {
         notificationsGranted = NotificationManagerCompat.from(context).areNotificationsEnabled()
         batteryExempt = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+        exactAlarmsAllowed = canScheduleExactAlarms(context)
         onPauseOrDispose { }
     }
 
     OnboardingContent(
         notificationsGranted = notificationsGranted,
         batteryExempt = batteryExempt,
+        exactAlarmsAllowed = exactAlarmsAllowed,
+        onRequestExactAlarms = { openExactAlarmSettings(context) },
         onRequestNotifications = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -129,6 +135,8 @@ fun OnboardingContent(
     onRequestBattery: () -> Unit,
     onStart: () -> Unit,
     modifier: Modifier = Modifier,
+    exactAlarmsAllowed: Boolean = true,
+    onRequestExactAlarms: () -> Unit = {},
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -198,6 +206,16 @@ fun OnboardingContent(
             grantedLabel = stringResource(R.string.onboarding_granted),
             onRequest = onRequestNotifications,
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PermissionCard(
+                granted = exactAlarmsAllowed,
+                title = stringResource(R.string.onboarding_exact_alarms_title),
+                text = stringResource(R.string.onboarding_exact_alarms_text),
+                actionLabel = stringResource(R.string.onboarding_allow),
+                grantedLabel = stringResource(R.string.onboarding_granted),
+                onRequest = onRequestExactAlarms,
+            )
+        }
         PermissionCard(
             granted = batteryExempt,
             title = stringResource(R.string.onboarding_battery_title),

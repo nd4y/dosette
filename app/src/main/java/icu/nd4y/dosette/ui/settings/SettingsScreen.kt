@@ -1,7 +1,6 @@
 package icu.nd4y.dosette.ui.settings
 
 import android.Manifest
-import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -63,6 +62,8 @@ import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.ThemeMode
 import icu.nd4y.dosette.domain.model.PlaceId
 import icu.nd4y.dosette.domain.nag.NagSettings
+import icu.nd4y.dosette.ui.common.canScheduleExactAlarms
+import icu.nd4y.dosette.ui.common.openExactAlarmSettings
 import icu.nd4y.dosette.ui.common.openNotificationSettings
 import icu.nd4y.dosette.ui.designsystem.DosetteIcons
 import icu.nd4y.dosette.ui.designsystem.ScreenHeader
@@ -92,6 +93,7 @@ fun SettingsScreen(
         notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
         backgroundLocationGranted = hasBackgroundLocation(context)
         exactAlarmsAllowed = canScheduleExactAlarms(context)
+        viewModel.onPermissionsChanged()
         onPauseOrDispose {}
     }
 
@@ -99,43 +101,31 @@ fun SettingsScreen(
     // coordinates or the Wi-Fi name; the pending action survives the dialog.
     var pendingPlaceAction by remember { mutableStateOf<Pair<PlaceId, PlaceAction>?>(null) }
     var permissionDenied by remember { mutableStateOf(false) }
+    var disclosureAction by remember { mutableStateOf<Pair<PlaceId, PlaceAction>?>(null) }
+    var showBackgroundDisclosure by remember { mutableStateOf(false) }
     val backgroundLocationLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             backgroundLocationGranted = granted
+            if (granted) viewModel.onPermissionsChanged()
         }
 
-    // Geofences need "all the time" access on Android 10+. Android 11+ answers
-    // this request with the app's location settings page instead of a dialog.
-    fun requestBackgroundLocation() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        }
-    }
+    fun requestBackgroundLocation() =
+        requestBackgroundLocationAccess(
+            context = context,
+            onLegacyRequest = { backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) },
+            onFailure = { permissionDenied = true },
+        )
 
     fun executePlaceAction(
         id: PlaceId,
         action: PlaceAction,
-    ) {
-        // The caller asks for the permission first; the check here keeps the
-        // location call honest for lint and for any future caller.
-        val fineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-        if (fineLocation != PackageManager.PERMISSION_GRANTED) return
-        when (action) {
-            PlaceAction.USE_LOCATION -> {
-                LocationServices
-                    .getFusedLocationProviderClient(context)
-                    .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
-                    .addOnSuccessListener { location ->
-                        location?.let { viewModel.setPlaceFromLocation(id, it.latitude, it.longitude) }
-                    }
-                if (!backgroundLocationGranted) requestBackgroundLocation()
-            }
-
-            PlaceAction.USE_WIFI -> {
-                viewModel.bindCurrentWifi(id)
-            }
-        }
-    }
+    ) = capturePlace(
+        context = context,
+        viewModel = viewModel,
+        request = id to action,
+        onLocationSaved = { if (!backgroundLocationGranted) showBackgroundDisclosure = true },
+        onFailure = { permissionDenied = true },
+    )
 
     val locationPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
@@ -149,6 +139,39 @@ fun SettingsScreen(
                 permissionDenied = true
             }
         }
+
+    fun runPlaceAction(
+        id: PlaceId,
+        action: PlaceAction,
+    ) = requestPlaceAccess(
+        context = context,
+        request = id to action,
+        onGranted = { executePlaceAction(it.first, it.second) },
+        onRequest = {
+            pendingPlaceAction = it
+            locationPermissionLauncher.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            )
+        },
+    )
+
+    if (disclosureAction != null || showBackgroundDisclosure) {
+        PlaceLocationDisclosure(
+            background = showBackgroundDisclosure,
+            onDismiss = {
+                disclosureAction = null
+                showBackgroundDisclosure = false
+            },
+            onContinue = {
+                val action = disclosureAction
+                val background = showBackgroundDisclosure
+                disclosureAction = null
+                showBackgroundDisclosure = false
+                if (background) requestBackgroundLocation()
+                if (action != null) runPlaceAction(action.first, action.second)
+            },
+        )
+    }
 
     if (permissionDenied) {
         AlertDialog(
@@ -177,30 +200,14 @@ fun SettingsScreen(
         onTheme = viewModel::setTheme,
         onDynamicColor = viewModel::setDynamicColor,
         onLanguage = viewModel::setLanguage,
-        onPlaceAction = { id, action ->
-            val hasPermission =
-                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                    PackageManager.PERMISSION_GRANTED
-            if (hasPermission) {
-                executePlaceAction(id, action)
-            } else {
-                pendingPlaceAction = id to action
-                locationPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                    ),
-                )
-            }
-        },
+        onPlaceAction = { id, action -> disclosureAction = id to action },
         onPlaceClear = viewModel::clearPlace,
         backgroundLocationGranted = backgroundLocationGranted,
-        onRequestBackgroundLocation = ::requestBackgroundLocation,
+        onRequestBackgroundLocation = { showBackgroundDisclosure = true },
         notificationsEnabled = notificationsEnabled,
         onOpenNotificationSettings = { openNotificationSettings(context) },
         onRequestExemption = {
-            // ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS is legitimate
-            // off-Play; falls back to the general settings list.
+            // Let the user choose the battery exemption needed for timely reminders.
             val direct =
                 Intent(
                     Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
@@ -757,16 +764,4 @@ private fun WarningBanner(
             }
         }
     }
-}
-
-/** Android 12 and 12L can revoke the exact-alarm access; everything else grants it for good. */
-private fun canScheduleExactAlarms(context: Context): Boolean =
-    Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-        context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
-
-/** The special-access page where exact alarms are switched back on. */
-private fun openExactAlarmSettings(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
-    runCatching { context.startActivity(intent) }
 }

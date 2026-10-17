@@ -26,6 +26,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
+      - name: Release-script tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
       - name: Static checks
         run: ./gradlew spotlessCheck :app:detekt :link:detekt :wear:detekt --stacktrace
 
@@ -44,8 +47,11 @@ jobs:
       # R8 smoke: keep-rule breakage (the widget's failure class) must
       # surface here, not in the tag-triggered release build. Debug-signed,
       # nothing is published.
-      - name: Assemble minified release
-        run: ./gradlew :app:assembleRelease :wear:assembleRelease --stacktrace
+      - name: Assemble minified APKs and App Bundles
+        run: ./gradlew :app:assembleRelease :wear:assembleRelease :app:bundleRelease :wear:bundleRelease --stacktrace
+
+      - name: Verify release artifacts (debug signing allowed for CI)
+        run: python3 scripts/verify_release.py --smoke
 
       # The Wear capability array is read by Play services by name, nothing in
       # the code references it; the resource shrinker silently dropped it once.

@@ -87,7 +87,7 @@ data class MedEditUiState(
         get() =
             when (step) {
                 WizardStep.BASICS -> {
-                    name.isNotBlank()
+                    name.isNotBlank() && strengthText.isOptionalNonnegativeDecimal()
                 }
 
                 WizardStep.SCHEDULE -> {
@@ -101,7 +101,7 @@ data class MedEditUiState(
                         }
 
                         ScheduleType.CYCLE -> {
-                            (cycleOnText.toIntOrNull() ?: 0) >= 1 && (cycleOffText.toIntOrNull() ?: 0) >= 0
+                            (cycleOnText.toIntOrNull() ?: 0) >= 1 && (cycleOffText.toIntOrNull() ?: -1) >= 0
                         }
 
                         else -> {
@@ -111,11 +111,20 @@ data class MedEditUiState(
                 }
 
                 WizardStep.TIMES -> {
-                    times.isNotEmpty() && times.all { (it.amountText.toDoubleOrNull() ?: 0.0) > 0 }
+                    times.isNotEmpty() && times.all { (it.amountText.decimalOrNull() ?: 0.0) > 0 }
                 }
 
                 WizardStep.STOCK -> {
-                    !trackStock || variants.all { (it.stockText.toDoubleOrNull() ?: -1.0) >= 0.0 }
+                    !trackStock ||
+                        (
+                            variants.isNotEmpty() &&
+                                variants.all {
+                                    (it.stockText.decimalOrNull() ?: -1.0) >= 0.0 &&
+                                        it.strengthText.isOptionalNonnegativeDecimal() &&
+                                        it.thresholdText.isOptionalNonnegativeDecimal() &&
+                                        it.refillText.isOptionalNonnegativeDecimal()
+                                }
+                        )
                 }
 
                 WizardStep.REVIEW -> {
@@ -186,13 +195,13 @@ class MedEditViewModel
         private var saveInFlight = false
 
         private fun save() {
-            if (saveInFlight) return
-            saveInFlight = true
             val state = _uiState.value
+            if (saveInFlight || state.visibleSteps.any { !state.copy(step = it).canProceed }) return
+            saveInFlight = true
             val editTarget = original
             if (state.editing && editTarget != null) {
                 viewModelScope.launch {
-                    saveEdit(state, editTarget)
+                    engine.exclusive { saveEdit(state, editTarget) }
                     engine.reschedule()
                     _uiState.value = state.copy(saved = true)
                 }
@@ -208,7 +217,7 @@ class MedEditViewModel
                 val now = clock.instant()
                 val medicationId = UUID.randomUUID().toString()
 
-                val strengthValue = state.strengthText.replace(',', '.').toDoubleOrNull()
+                val strengthValue = state.strengthText.decimalOrNull()
                 val variants = buildVariants(state, medicationId, strengthValue)
 
                 medicationRepository.upsert(
@@ -246,9 +255,10 @@ class MedEditViewModel
         ) {
             val now = clock.instant()
             val today = now.atZone(clock.zone).toLocalDate()
-            val med = original.medication
-            val strengthValue = state.strengthText.replace(',', '.').toDoubleOrNull()
-            val variants = buildVariantsForEdit(state, original, strengthValue)
+            val current = medicationRepository.getDetails(original.medication.id) ?: return
+            val med = current.medication
+            val strengthValue = state.strengthText.decimalOrNull()
+            val variants = buildVariantsForEdit(state, current, strengthValue)
 
             medicationRepository.upsert(
                 med.copy(
@@ -263,12 +273,16 @@ class MedEditViewModel
                 ),
             )
             val keptIds = variants.map { it.id }.toSet()
-            original.variants.filter { it.id !in keptIds }.forEach {
+            current.variants.filter { it.id !in keptIds }.forEach {
                 medicationRepository.deleteVariant(it.id)
             }
-            variants.forEach { medicationRepository.upsertVariant(it) }
+            val originalStock = original.variants.associate { it.id to it.currentStock }
+            variants.forEach { variant ->
+                val updateStock = state.trackStock && originalStock[variant.id] != variant.currentStock
+                medicationRepository.upsertVariantFromEditor(variant, updateStock)
+            }
 
-            applyScheduleEdit(mainScheduleOf(original.schedules), buildSchedule(state, med.id, now), today)
+            applyScheduleEdit(mainScheduleOf(current.schedules), buildSchedule(state, med.id, now), today)
         }
 
         /**
@@ -347,13 +361,13 @@ class MedEditViewModel
                     medicationId = med.id,
                     label = null,
                     strengthValue =
-                        draft.strengthText.replace(',', '.').toDoubleOrNull() ?: medicationStrength,
+                        draft.strengthText.decimalOrNull() ?: medicationStrength,
                     strengthUnit = unit,
                     sortOrder = index,
                     trackingEnabled = true,
-                    currentStock = draft.stockText.replace(',', '.').toDoubleOrNull() ?: prior?.currentStock ?: 0.0,
-                    lowStockThreshold = draft.thresholdText.replace(',', '.').toDoubleOrNull(),
-                    defaultRefillAmount = draft.refillText.replace(',', '.').toDoubleOrNull(),
+                    currentStock = draft.stockText.decimalOrNull() ?: prior?.currentStock ?: 0.0,
+                    lowStockThreshold = draft.thresholdText.decimalOrNull(),
+                    defaultRefillAmount = draft.refillText.decimalOrNull(),
                     lastRefillAt = prior?.lastRefillAt,
                 )
             }
@@ -387,13 +401,13 @@ class MedEditViewModel
                     id = draft.id,
                     medicationId = medicationId,
                     label = null,
-                    strengthValue = draft.strengthText.replace(',', '.').toDoubleOrNull() ?: medicationStrength,
+                    strengthValue = draft.strengthText.decimalOrNull() ?: medicationStrength,
                     strengthUnit = state.strengthUnit.trim().ifEmpty { null },
                     sortOrder = index,
                     trackingEnabled = true,
-                    currentStock = draft.stockText.replace(',', '.').toDoubleOrNull() ?: 0.0,
-                    lowStockThreshold = draft.thresholdText.replace(',', '.').toDoubleOrNull(),
-                    defaultRefillAmount = draft.refillText.replace(',', '.').toDoubleOrNull(),
+                    currentStock = draft.stockText.decimalOrNull() ?: 0.0,
+                    lowStockThreshold = draft.thresholdText.decimalOrNull(),
+                    defaultRefillAmount = draft.refillText.decimalOrNull(),
                     lastRefillAt = null,
                 )
             }
@@ -421,7 +435,7 @@ class MedEditViewModel
                                 id = UUID.randomUUID().toString(),
                                 scheduleId = scheduleId,
                                 time = slot.time,
-                                doseAmount = slot.amountText.replace(',', '.').toDoubleOrNull() ?: 1.0,
+                                doseAmount = slot.amountText.decimalOrNull() ?: 1.0,
                                 sortIndex = index,
                             )
                         }
@@ -445,3 +459,7 @@ class MedEditViewModel
 
         private fun intervalOrNull(state: MedEditUiState): Int? = state.intervalText.toIntOrNull()
     }
+
+private fun String.decimalOrNull(): Double? = replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
+
+private fun String.isOptionalNonnegativeDecimal(): Boolean = isBlank() || (decimalOrNull() ?: -1.0) >= 0.0

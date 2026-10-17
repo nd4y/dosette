@@ -2,7 +2,9 @@ package icu.nd4y.dosette.data.backup
 
 import android.content.Context
 import android.net.Uri
+import androidx.room.withTransaction
 import dagger.hilt.android.qualifiers.ApplicationContext
+import icu.nd4y.dosette.data.db.AppDatabase
 import icu.nd4y.dosette.data.db.dao.BackupDao
 import icu.nd4y.dosette.data.db.dao.BackupEntities
 import icu.nd4y.dosette.data.db.entity.ScheduleWithTimes
@@ -35,6 +37,7 @@ class BackupManager
     constructor(
         @ApplicationContext private val context: Context,
         private val backupDao: BackupDao,
+        private val database: AppDatabase,
         private val settingsRepository: SettingsRepository,
         private val engine: ReminderEngine,
         private val notifier: ReminderNotifier,
@@ -45,7 +48,8 @@ class BackupManager
             uri: Uri,
             password: String?,
         ) {
-            val yaml = BackupCodec.encode(BackupMapper.toSnapshot(collect(), clock.instant()))
+            val snapshot = engine.exclusive { BackupMapper.toSnapshot(collect(), clock.instant()) }
+            val yaml = BackupCodec.encode(snapshot)
             val payload =
                 if (password.isNullOrBlank()) {
                     yaml.toByteArray(Charsets.UTF_8)
@@ -81,24 +85,27 @@ class BackupManager
             // Parse and validate BEFORE anything is written anywhere.
             val data = BackupMapper.fromSnapshot(BackupCodec.decode(readText(uri, password)))
 
-            writeAutoBackup()
-
-            // No reminder pass may run against a half-swapped world.
+            // Lock order is engine, then Room, as for a watch action. The Room
+            // transaction also excludes PRN intakes and refills outside the engine mutex:
+            // none can land between the recovery snapshot and the data replacement.
             engine.exclusive {
-                backupDao.replaceAll(
-                    BackupEntities(
-                        profiles = data.profiles.map { it.toEntity() },
-                        medications = data.medications.map { it.toEntity() },
-                        variants = data.variants.map { it.toEntity() },
-                        schedules = data.schedules.map { it.toEntity() },
-                        scheduleTimes = data.schedules.flatMap { it.timeEntities() },
-                        doseLogs = data.doseLogs.map { it.toEntity() },
-                        appointments = data.appointments.map { it.toEntity() },
-                    ),
-                )
-                settingsRepository.replaceAll(data.settings)
-
-                // Ghost reminders must not survive the data swap.
+                database.withTransaction {
+                    writeAutoBackup()
+                    backupDao.replaceAll(
+                        BackupEntities(
+                            profiles = data.profiles.map { it.toEntity() },
+                            medications = data.medications.map { it.toEntity() },
+                            variants = data.variants.map { it.toEntity() },
+                            schedules = data.schedules.map { it.toEntity() },
+                            scheduleTimes = data.schedules.flatMap { it.timeEntities() },
+                            doseLogs = data.doseLogs.map { it.toEntity() },
+                            appointments = data.appointments.map { it.toEntity() },
+                        ),
+                    )
+                    // A failed settings write rolls the database replacement back too.
+                    settingsRepository.replaceAll(data.settings)
+                }
+                // Ghost reminders must not survive a successful data swap.
                 notifier.cancelAll()
             }
             engine.reschedule()
@@ -106,18 +113,19 @@ class BackupManager
         }
 
         private suspend fun collect(): BackupData {
-            val times = backupDao.scheduleTimes().groupBy { it.scheduleId }
+            val entities = backupDao.snapshot()
+            val times = entities.scheduleTimes.groupBy { it.scheduleId }
             return BackupData(
                 settings = settingsRepository.settings.first(),
-                profiles = backupDao.profiles().map { it.toDomain() },
-                medications = backupDao.medications().map { it.toDomain() },
-                variants = backupDao.variants().map { it.toDomain() },
+                profiles = entities.profiles.map { it.toDomain() },
+                medications = entities.medications.map { it.toDomain() },
+                variants = entities.variants.map { it.toDomain() },
                 schedules =
-                    backupDao.schedules().map { schedule ->
+                    entities.schedules.map { schedule ->
                         ScheduleWithTimes(schedule, times[schedule.id].orEmpty()).toDomain()
                     },
-                doseLogs = backupDao.doseLogs().map { it.toDomain() },
-                appointments = backupDao.appointments().map { it.toDomain() },
+                doseLogs = entities.doseLogs.map { it.toDomain() },
+                appointments = entities.appointments.map { it.toDomain() },
             )
         }
 
@@ -126,11 +134,14 @@ class BackupManager
             val now = clock.instant()
             val dir = File(context.filesDir, AUTO_BACKUP_DIR).apply { mkdirs() }
             val stamp = TIMESTAMP_FORMAT.format(now.atZone(clock.zone))
-            File(dir, "pre-import-$stamp.yaml")
+            // Several imports may finish within the same clock tick; never overwrite
+            // the only recovery copy of the data preceding an earlier import.
+            File
+                .createTempFile("pre-import-$stamp-", ".yaml", dir)
                 .writeText(BackupCodec.encode(BackupMapper.toSnapshot(collect(), now)))
             dir
                 .listFiles { file -> file.name.endsWith(".yaml") }
-                ?.sortedByDescending { it.name }
+                ?.sortedByDescending { it.lastModified() }
                 ?.drop(KEEP_AUTO_BACKUPS)
                 ?.forEach { it.delete() }
             settingsRepository.setLastAutoBackupAt(now)

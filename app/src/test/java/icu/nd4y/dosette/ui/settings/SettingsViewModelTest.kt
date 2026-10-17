@@ -56,6 +56,14 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `returning from permissions re-plans alarms and waiting places`() =
+        runTest {
+            viewModel.runAndAwait { onPermissionsChanged() }
+
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
+        }
+
+    @Test
     fun `nag interval persists and re-plans the alarm`() =
         runTest {
             viewModel.runAndAwait { setNagInterval(5) }
@@ -133,6 +141,7 @@ class SettingsViewModelTest {
 
             assertThat(stored.places[PlaceId.HOME])
                 .isEqualTo(PlaceConfig(latitude = 55.75, longitude = 37.62, wifiSsid = "home-net"))
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 
     @Test
@@ -155,6 +164,7 @@ class SettingsViewModelTest {
 
             assertThat(stored.places[PlaceId.HOME])
                 .isEqualTo(PlaceConfig(latitude = 55.75, longitude = 37.62, wifiSsid = "home-net"))
+            assertThat(harness.mirrorRefresher.refreshes).isEqualTo(1)
         }
 
     @Test

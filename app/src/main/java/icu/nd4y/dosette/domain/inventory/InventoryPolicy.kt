@@ -57,7 +57,7 @@ object InventoryPolicy {
         } else if (on < 1 || off < 0) {
             0.0
         } else {
-            perActiveDay * on / (on + off)
+            perActiveDay * on / (on.toLong() + off.toLong())
         }
 
     /**

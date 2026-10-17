@@ -8,12 +8,6 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
-// Same tag-driven version as the phone app: both APKs come out of one release.
-val releaseVersion: String? =
-    (findProperty("dosette.version") as String?)?.removePrefix("v")?.also {
-        require(Regex("""\d+\.\d+\.\d+""").matches(it)) { "dosette.version must be X.Y.Z, got $it" }
-    }
-
 android {
     namespace = "icu.nd4y.dosette.wear"
     compileSdk = 37
@@ -24,16 +18,8 @@ android {
         applicationId = "icu.nd4y.dosette"
         minSdk = 30
         targetSdk = 36
-        versionCode =
-            releaseVersion
-                ?.split('.')
-                ?.map(String::toInt)
-                ?.let { (major, minor, patch) ->
-                    require(minor in 0..99 && patch in 0..99) { "minor and patch must be 0..99, got $releaseVersion" }
-                    major * 10_000 + minor * 100 + patch
-                }
-                ?: 1
-        versionName = releaseVersion ?: "0.0.0-dev"
+        versionCode = rootProject.extra["dosette.wearVersionCode"] as Int
+        versionName = rootProject.extra["dosette.versionName"] as String
     }
 
     signingConfigs {
@@ -56,9 +42,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // The release key exists only in CI; local release builds use the debug key.
+            // Untagged local smoke builds use debug signing; versioned builds require the release key.
             signingConfig =
-                if (System.getenv("DOSETTE_KEYSTORE") != null) {
+                if (rootProject.extra["dosette.hasReleaseSigning"] as Boolean) {
                     signingConfigs.getByName("release")
                 } else {
                     signingConfigs.getByName("debug")

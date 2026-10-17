@@ -84,4 +84,32 @@ class DoseLogRepositoryTest {
 
             assertThat(repository.getById("sched1")).isNotNull()
         }
+
+    @Test
+    fun `PRN receipt survives a replacement backup import`() =
+        runTest {
+            val backup = db.backupDao().snapshot()
+            assertThat(repository.recordPrn(prnLog(), deliveryId = "watch-action")).isTrue()
+            db.backupDao().replaceAll(backup)
+
+            assertThat(repository.recordPrn(prnLog(), deliveryId = "watch-action")).isFalse()
+            assertThat(repository.getById("prn1")).isNull()
+            assertThat(db.medicationVariantDao().getById("v1")?.currentStock).isEqualTo(10.0)
+        }
+
+    @Test
+    fun `failed PRN transaction leaves no receipt and can be retried`() =
+        runTest {
+            val failed =
+                runCatching {
+                    repository.recordPrn(prnLog().copy(medicationId = "missing"), deliveryId = "watch-action")
+                }
+            assertThat(failed.isFailure).isTrue()
+            assertThat(db.watchActionReceiptDao().contains("watch-action")).isFalse()
+            assertThat(db.medicationVariantDao().getById("v1")?.currentStock).isEqualTo(10.0)
+
+            assertThat(repository.recordPrn(prnLog(), deliveryId = "watch-action")).isTrue()
+            assertThat(db.watchActionReceiptDao().contains("watch-action")).isTrue()
+            assertThat(db.medicationVariantDao().getById("v1")?.currentStock).isEqualTo(8.0)
+        }
 }

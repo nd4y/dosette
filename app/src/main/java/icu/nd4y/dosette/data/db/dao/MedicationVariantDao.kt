@@ -18,6 +18,21 @@ interface MedicationVariantDao {
     @Upsert
     suspend fun upsert(variant: MedicationVariantEntity)
 
+    /** Merge editor fields with live inventory in one transaction so a concurrent refill is preserved. */
+    @Transaction
+    suspend fun upsertFromEditor(
+        variant: MedicationVariantEntity,
+        updateStock: Boolean,
+    ) {
+        val current = getById(variant.id)
+        upsert(
+            variant.copy(
+                currentStock = if (updateStock) variant.currentStock else current?.currentStock ?: variant.currentStock,
+                lastRefillAt = current?.lastRefillAt ?: variant.lastRefillAt,
+            ),
+        )
+    }
+
     /** Atomic, floors at zero; no-op when tracking is disabled. */
     @Query(
         "UPDATE medication_variants SET currentStock = MAX(0, currentStock - :units) " +

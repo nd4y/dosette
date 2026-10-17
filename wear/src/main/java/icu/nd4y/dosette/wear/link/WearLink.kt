@@ -13,11 +13,14 @@ import icu.nd4y.dosette.link.LinkPaths
 import icu.nd4y.dosette.link.WatchAction
 import icu.nd4y.dosette.link.WatchJson
 import icu.nd4y.dosette.link.WatchSnapshot
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -87,8 +90,21 @@ class GmsWearLink
             filterType: Int,
         ): Flow<List<String>> =
             callbackFlow {
+                val refreshMutex = Mutex()
+                var hasRead = false
+
                 suspend fun refresh() {
-                    trySend(readAll(uri, filterType))
+                    // Concurrent reads can otherwise deliver an older queue
+                    // after its acknowledgement and resurrect an in-flight tap.
+                    refreshMutex.withLock {
+                        val payloads = readAll(uri, filterType)
+                        if (payloads != null) {
+                            hasRead = true
+                            trySend(payloads)
+                        } else if (!hasRead) {
+                            trySend(emptyList())
+                        }
+                    }
                 }
                 val listener = DataClient.OnDataChangedListener { launch { refresh() } }
                 runCatching { dataClient.addListener(listener, uri, filterType).await() }
@@ -100,22 +116,22 @@ class GmsWearLink
         private suspend fun readAll(
             uri: Uri,
             filterType: Int,
-        ): List<String> =
+        ): List<String>? =
             runCatching {
                 val buffer = dataClient.getDataItems(uri, filterType).await()
                 try {
-                    buffer.map { item ->
-                        DataMapItem
-                            .fromDataItem(item)
-                            .dataMap
-                            .getString(LinkPaths.KEY_JSON)
-                            .orEmpty()
+                    buffer.mapNotNull { item ->
+                        runCatching {
+                            DataMapItem.fromDataItem(item).dataMap.getString(LinkPaths.KEY_JSON)
+                        }.getOrNull()
                     }
                 } finally {
                     buffer.release()
                 }
-            }.onFailure { Log.w(TAG, "read failed", it) }
-                .getOrDefault(emptyList())
+            }.onFailure {
+                if (it is CancellationException) throw it
+                Log.w(TAG, "read failed", it)
+            }.getOrNull()
 
         private companion object {
             const val TAG = "WearLink"
