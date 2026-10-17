@@ -100,7 +100,7 @@ class ReminderEngine
                             NagEvent.Snooze(SnoozeTarget.ForMinutes(world.settings.snoozeMin))
                         }
                     }
-                applyEvent(world, key, event)
+                watchActions.applyLocal(key, clock.instant()) { applyEvent(world, key, event) }
                 syncGeofences(world)
                 rescheduleLocked(world)
             }
@@ -118,10 +118,11 @@ class ReminderEngine
         ): Unit =
             mutex.withLock {
                 val world = loadWorld()
-                watchActions.applyOnce(deliveryId) {
+                val intentAt = actedAt.coerceAtMost(clock.instant())
+                watchActions.applyOnce(deliveryId, key, intentAt) {
                     val event =
                         when (action) {
-                            UserDoseAction.TAKE -> NagEvent.Take(actedAt.coerceAtMost(clock.instant()))
+                            UserDoseAction.TAKE -> NagEvent.Take(intentAt)
                             UserDoseAction.SKIP -> NagEvent.Skip
                             UserDoseAction.SNOOZE -> NagEvent.Snooze(SnoozeTarget.ForMinutes(world.settings.snoozeMin))
                         }
@@ -138,7 +139,7 @@ class ReminderEngine
         ): Unit =
             mutex.withLock {
                 val world = loadWorld()
-                applyEvent(world, key, NagEvent.Snooze(target))
+                watchActions.applyLocal(key, clock.instant()) { applyEvent(world, key, NagEvent.Snooze(target)) }
                 syncGeofences(world)
                 rescheduleLocked(world)
             }
@@ -154,7 +155,7 @@ class ReminderEngine
         ): Unit =
             mutex.withLock {
                 val world = loadWorld()
-                applyEvent(world, key, NagEvent.Take(actedAt))
+                watchActions.applyLocal(key, clock.instant()) { applyEvent(world, key, NagEvent.Take(actedAt)) }
                 syncGeofences(world)
                 rescheduleLocked(world)
             }
@@ -169,25 +170,27 @@ class ReminderEngine
         suspend fun undoDose(key: OccurrenceKey): Unit =
             mutex.withLock {
                 val log = doseLogRepository.getScheduled(key) ?: return
-                medicationRepository.restoreStockOf(log)
-                doseLogRepository.delete(log.id)
-                // Beyond the sweep window no pass would ever finalize the
-                // dose again, so it is quietly missed right here.
-                val today = clock.instant().atZone(clock.zone).toLocalDate()
-                if (key.date.isBefore(today.minusDays(MISSED_SWEEP_DAYS))) {
-                    val med = medicationRepository.getDetails(key.medicationId)
-                    val occurrence = med?.let { occurrenceFor(it, key) }
-                    if (med != null && occurrence != null) {
-                        val at = occurrence.instantAt(clock.zone)
-                        doseLogRepository.recordScheduledIfAbsent(
-                            occurrence.toScheduledLog(
-                                med,
-                                at,
-                                DoseStatus.MISSED,
-                                actedAt = null,
-                                updatedAt = clock.instant(),
-                            ),
-                        )
+                watchActions.applyLocal(key, clock.instant()) {
+                    medicationRepository.restoreStockOf(log)
+                    doseLogRepository.delete(log.id)
+                    // Beyond the sweep window no pass would ever finalize the
+                    // dose again, so it is quietly missed right here.
+                    val today = clock.instant().atZone(clock.zone).toLocalDate()
+                    if (key.date.isBefore(today.minusDays(MISSED_SWEEP_DAYS))) {
+                        val med = medicationRepository.getDetails(key.medicationId)
+                        val occurrence = med?.let { occurrenceFor(it, key) }
+                        if (med != null && occurrence != null) {
+                            val at = occurrence.instantAt(clock.zone)
+                            doseLogRepository.recordScheduledIfAbsent(
+                                occurrence.toScheduledLog(
+                                    med,
+                                    at,
+                                    DoseStatus.MISSED,
+                                    actedAt = null,
+                                    updatedAt = clock.instant(),
+                                ),
+                            )
+                        }
                     }
                 }
                 processDueLocked()
@@ -718,7 +721,13 @@ internal fun medicationTitle(med: MedicationDetails): String {
 }
 
 internal fun formatUnits(value: Double): String =
-    if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+    if (value ==
+        value.toLong().toDouble()
+    ) {
+        value.toLong().toString()
+    } else {
+        value.toString()
+    }
 
 /** Only alarms that end in a notification deserve the alarm-clock treatment (and its icon). */
 private val AlarmReason.wakesUser: Boolean

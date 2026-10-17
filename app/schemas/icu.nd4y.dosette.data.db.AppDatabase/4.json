@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "44234d923fe375f36c83a8d1f3dda547",
+    "identityHash": "19635403d17508c40a980a31d8ca8971",
     "entities": [
       {
         "tableName": "profiles",
@@ -756,11 +756,35 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "dose_action_cursors",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`occurrenceKey` TEXT NOT NULL, `actedAt` INTEGER NOT NULL, PRIMARY KEY(`occurrenceKey`))",
+        "fields": [
+          {
+            "fieldPath": "occurrenceKey",
+            "columnName": "occurrenceKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actedAt",
+            "columnName": "actedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "occurrenceKey"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '44234d923fe375f36c83a8d1f3dda547')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '19635403d17508c40a980a31d8ca8971')"
     ]
   }
 }

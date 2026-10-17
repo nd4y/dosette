@@ -33,7 +33,7 @@ For example, v0.13.2 produces 13020 and 13021, above the historical v0.13.1 code
 ## Build and verification
 
 - CI runs format/static checks, unit/screenshot tests, domain coverage and Android lint, then builds minified APKs and AABs with debug signing for inspection.
-- The **Release** workflow can run manually with a version input. It produces signed preview artifacts and R8 mappings as an Actions artifact without creating a GitHub Release or submitting to Play. The workflow must first exist on the default branch for manual dispatch to be available.
+- The **Release** workflow can run manually with a version input. It produces signed preview artifacts and R8 mappings as an Actions artifact without creating a GitHub Release or submitting to Play. The Actions UI may expose dispatch only from the default-branch workflow. This preparation branch was successfully dispatched with gh workflow run release.yml --ref fix/play-release-readiness --field version=v0.14.0; the resulting run still uses the selected branch and its gates.
 - A vX.Y.Z tag runs the same checks, signs with the existing repository secrets and creates a GitHub Release with both APKs, both AABs and SHA-256 files.
 - Existing secrets remain KEYSTORE_B64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD. They are never printed; the temporary keystore is removed even on failure.
 - A versioned Gradle invocation requires complete release signing configuration. An unversioned local release build is a debug-signed smoke build and must not be distributed.

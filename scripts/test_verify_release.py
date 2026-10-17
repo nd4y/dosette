@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import zipfile
 
-from verify_release import bundle_identity, check_native_libraries, proto_fields, version_codes
+from verify_release import bundle_identity, check_native_libraries, proto_fields, require_phone_capability, version_codes
 
 
 class ReleaseVersionTests(unittest.TestCase):
@@ -22,6 +22,40 @@ class ReleaseVersionTests(unittest.TestCase):
                 version_codes(value)
         self.assertLessEqual(version_codes("20999.99.99")[1], 2_100_000_000)
 
+
+class PhoneCapabilityTests(unittest.TestCase):
+    def test_accepts_capability_from_actual_aapt2_format(self):
+        require_phone_capability(
+            '    type array id=03 entryCount=1\n'
+            '      resource 0x7f030000 array/android_wear_capabilities\n'
+            '        () (array) size=1\n'
+            '          ["dosette_phone"]\n'
+            '    type attr id=04 entryCount=384\n'
+        )
+
+    def test_rejects_shrunk_resource_even_if_name_appears_in_a_string(self):
+        with self.assertRaisesRegex(ValueError, "lost android_wear_capabilities"):
+            require_phone_capability(
+                '    resource 0x7f120001 string/message\n'
+                '      () "array/android_wear_capabilities dosette_phone"\n'
+            )
+
+    def test_rejects_empty_or_wrong_capability(self):
+        for value in ('[]', '["another_app"]', '["dosette_phone_debug"]'):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "does not advertise"):
+                require_phone_capability(
+                    '    resource 0x7f030000 array/android_wear_capabilities\n'
+                    f'      () (array) size=1\n        {value}\n'
+                )
+
+    def test_cannot_take_value_from_a_neighboring_array(self):
+        with self.assertRaisesRegex(ValueError, "does not advertise"):
+            require_phone_capability(
+                '    resource 0x7f030000 array/android_wear_capabilities\n'
+                '      () (array) size=0\n        []\n'
+                '    resource 0x7f030001 array/unrelated\n'
+                '      () (array) size=1\n        ["dosette_phone"]\n'
+            )
 
 class NativeLibraryTests(unittest.TestCase):
     def package(self, libraries):

@@ -129,10 +129,16 @@ class MigrationTest {
             assertThat(cursor.getString(0)).isEqualTo("Test")
         }
         db.execSQL("INSERT INTO watch_action_receipts (id) VALUES ('watch-action')")
+        db.execSQL("INSERT INTO dose_action_cursors (occurrenceKey, actedAt) VALUES ('m1|2026-08-29|11:00', 1000)")
         db.execSQL("DELETE FROM profiles")
         db.query("SELECT id FROM watch_action_receipts").use { cursor ->
             assertThat(cursor.moveToFirst()).isTrue()
             assertThat(cursor.getString(0)).isEqualTo("watch-action")
+        }
+        db.query("SELECT occurrenceKey, actedAt FROM dose_action_cursors").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(0)).isEqualTo("m1|2026-08-29|11:00")
+            assertThat(cursor.getLong(1)).isEqualTo(1000)
         }
     }
 }

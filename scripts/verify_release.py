@@ -22,7 +22,7 @@ RELEASE_CERTIFICATE = "678b5ad85a8cdea2b74654aef067f8266aa699e3caf44ca2e6b616c5b
 
 def run(*args):
     return subprocess.check_output(
-        [str(part) for arg in args for part in (arg if isinstance(arg, tuple) else (arg,))], text=True, stderr=subprocess.STDOUT
+        [str(part) for arg in args for part in (arg if isinstance(arg, tuple) else (arg,))], text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT
     )
 
 
@@ -133,6 +133,18 @@ def jar_certificate(path):
     return hashlib.sha256(der).hexdigest()
 
 
+def require_phone_capability(resources):
+    # Play services looks up this resource by name; no code reference protects
+    # it from R8/resource shrinking. Also require the advertised value, rather
+    # than merely accepting an empty array with the expected resource name.
+    block = re.search(
+        r"(?ms)^[ \t]*resource 0x[0-9a-fA-F]+ array/android_wear_capabilities[ \t]*\r?\n"
+        r"(.*?)(?=^[ \t]*(?:resource 0x|type )|\Z)",
+        resources,
+    )
+    require(block is not None, "Phone APK lost android_wear_capabilities during resource shrinking")
+    require('"dosette_phone"' in block[1], "Phone APK does not advertise the dosette_phone capability")
+
 def check_native_libraries(path):
     with zipfile.ZipFile(path) as archive:
         libraries = {}
@@ -180,6 +192,8 @@ def main():
         require(apk.is_file() and bundle.is_file(), f"Build {module} release APK and AAB first")
         require(bundle_identity(bundle) == (PACKAGE, code, expected_name), f"{module}: APK/AAB identity mismatch")
         badging = run(aapt2, "dump", "badging", apk)
+        if module == "app":
+            require_phone_capability(run(aapt2, "dump", "resources", apk))
         require(f"name='{PACKAGE}'" in badging.splitlines()[0], f"Wrong package in {module}")
         require(f"versionCode='{code}'" in badging.splitlines()[0], f"Wrong versionCode in {module}")
         require(f"versionName='{expected_name}'" in badging.splitlines()[0], f"Wrong versionName in {module}")

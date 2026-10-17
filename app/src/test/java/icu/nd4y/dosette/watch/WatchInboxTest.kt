@@ -16,6 +16,7 @@ import icu.nd4y.dosette.link.WatchAction
 import icu.nd4y.dosette.link.WatchActionKind
 import icu.nd4y.dosette.link.WatchJson
 import icu.nd4y.dosette.reminders.PrnIntakes
+import icu.nd4y.dosette.reminders.UserDoseAction
 import icu.nd4y.dosette.testing.FakeWatchLink
 import icu.nd4y.dosette.testing.TestEngine
 import kotlinx.coroutines.flow.first
@@ -47,7 +48,8 @@ class WatchInboxTest {
         link = FakeWatchLink()
         val prnIntakes =
             PrnIntakes(
-                prnRecorder = PrnRecorder(harness.medicationRepository, harness.doseLogRepository, harness.clock),
+                prnRecorder =
+                    PrnRecorder(harness.medicationRepository, harness.doseLogRepository, harness.clock, harness.db),
                 medicationRepository = harness.medicationRepository,
                 doseLogRepository = harness.doseLogRepository,
                 settingsRepository = harness.settingsRepository,
@@ -288,5 +290,79 @@ class WatchInboxTest {
 
             assertThat(firstUntil).isNotNull()
             assertThat(harness.reminderStateRepository.get(key)?.snoozedUntil).isEqualTo(firstUntil)
+        }
+
+    @Test
+    fun `older distinct take arriving after newer skip cannot overwrite it`() =
+        runTest {
+            val skip =
+                WatchAction(
+                    "newer-skip",
+                    WatchActionKind.SKIP,
+                    doseId = key.encode(),
+                    actedAt = testInstant.toEpochMilli(),
+                )
+            inbox.receive(listOf(item(skip)))
+            val older = item(take("older-take", testInstant.minusSeconds(60).toEpochMilli()))
+
+            inbox.receive(listOf(older))
+            inbox.receive(listOf(older))
+
+            assertThat(harness.doseLogRepository.getScheduled(key)?.status).isEqualTo(DoseStatus.SKIPPED)
+            assertThat(harness.medicationRepository.getVariant("v1")?.currentStock).isEqualTo(10.0)
+            assertThat(link.acknowledged).contains("wear://watch/dosette/action/older-take")
+        }
+
+    @Test
+    fun `older first-delivery take cannot revive a dose undone on the phone`() =
+        runTest {
+            harness.engine.onUserAction(key, UserDoseAction.TAKE)
+            harness.clock.advance(Duration.ofMinutes(1))
+            harness.engine.undoDose(key)
+
+            inbox.receive(listOf(item(take("late-first-delivery", testInstant.plusSeconds(30).toEpochMilli()))))
+
+            assertThat(harness.doseLogRepository.getScheduled(key)).isNull()
+            assertThat(harness.medicationRepository.getVariant("v1")?.currentStock).isEqualTo(10.0)
+        }
+
+    @Test
+    fun `newer delayed take wins despite earlier skip being delivered just now`() =
+        runTest {
+            val skip =
+                WatchAction(
+                    "older-skip",
+                    WatchActionKind.SKIP,
+                    doseId = key.encode(),
+                    actedAt = testInstant.minusSeconds(60).toEpochMilli(),
+                )
+            inbox.receive(listOf(item(skip)))
+            val tappedAt = testInstant.minusSeconds(30)
+
+            inbox.receive(listOf(item(take("newer-take", tappedAt.toEpochMilli()))))
+
+            val log = harness.doseLogRepository.getScheduled(key)
+            assertThat(log?.status).isEqualTo(DoseStatus.TAKEN)
+            assertThat(log?.actedAt).isEqualTo(tappedAt)
+            assertThat(harness.medicationRepository.getVariant("v1")?.currentStock).isEqualTo(9.0)
+        }
+
+    @Test
+    fun `phone correction uses intent time rather than historical intake time`() =
+        runTest {
+            harness.engine.takeAt(key, testInstant.minusSeconds(120))
+            val olderSkip =
+                WatchAction(
+                    "late-skip",
+                    WatchActionKind.SKIP,
+                    doseId = key.encode(),
+                    actedAt = testInstant.minusSeconds(60).toEpochMilli(),
+                )
+
+            inbox.receive(listOf(item(olderSkip)))
+
+            val log = harness.doseLogRepository.getScheduled(key)
+            assertThat(log?.status).isEqualTo(DoseStatus.TAKEN)
+            assertThat(log?.actedAt).isEqualTo(testInstant.minusSeconds(120))
         }
 }

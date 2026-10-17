@@ -7,6 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import icu.nd4y.dosette.data.db.AppDatabase
 import icu.nd4y.dosette.data.db.dao.BackupDao
 import icu.nd4y.dosette.data.db.dao.BackupEntities
+import icu.nd4y.dosette.data.db.entity.DoseActionCursorEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleWithTimes
 import icu.nd4y.dosette.data.db.timeEntities
 import icu.nd4y.dosette.data.db.toDomain
@@ -14,6 +15,9 @@ import icu.nd4y.dosette.data.db.toEntity
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.backup.BackupSnapshot
+import icu.nd4y.dosette.domain.model.DoseKind
+import icu.nd4y.dosette.domain.model.DoseStatus
+import icu.nd4y.dosette.domain.model.OccurrenceKey
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.notifications.ReminderNotifier
 import kotlinx.coroutines.flow.first
@@ -102,7 +106,8 @@ class BackupManager
                             appointments = data.appointments.map { it.toEntity() },
                         ),
                     )
-                    // A failed settings write rolls the database replacement back too.
+                    markImportedIntents(data)
+                    // A failed settings write rolls the database replacement and cursors back too.
                     settingsRepository.replaceAll(data.settings)
                 }
                 // Ghost reminders must not survive a successful data swap.
@@ -110,6 +115,18 @@ class BackupManager
             }
             engine.reschedule()
             return data.settings
+        }
+
+        /** Import is a fresh local decision, separate from each restored log's historical update time. */
+        private suspend fun markImportedIntents(data: BackupData) {
+            val receipts = database.watchActionReceiptDao()
+            val importedAt = clock.millis()
+            val marks = data.doseLogs.filter { it.kind == DoseKind.SCHEDULED && it.status != DoseStatus.MISSED }
+            for (log in marks) {
+                val key = OccurrenceKey(log.medicationId, log.date, requireNotNull(log.time)).encode()
+                val latest = receipts.latestActionAt(key) ?: Long.MIN_VALUE
+                receipts.upsertCursor(DoseActionCursorEntity(key, maxOf(latest, importedAt)))
+            }
         }
 
         private suspend fun collect(): BackupData {
