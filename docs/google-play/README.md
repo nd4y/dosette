@@ -83,7 +83,7 @@ Data inventory for that review:
 
 ## Listing and privacy hosting
 
-Draft English/Russian text is in [store-listing.md](store-listing.md). Needed assets: 512x512 Play icon, 1024x500 feature graphic, current phone screenshots and a dedicated Wear screenshot set. Use fictitious medication/profile data. Wear screenshots should be square, show only the real interface, and contain no device frame, transparency or circular mask. Check [current asset requirements](https://support.google.com/googleplay/android-developer/answer/9866151?hl=en).
+Draft English/Russian text is in [store-listing.md](store-listing.md). Prepared assets and their provenance are in [assets/README.md](assets/README.md): a 512x512 Play icon, localized 1024x500 feature graphics and a dedicated Wear screenshot set. Refresh screenshots from the final accepted build where needed. Use fictitious medication/profile data. Wear screenshots should be square, show only the real interface, and contain no device frame, transparency or circular mask. Check [current asset requirements](https://support.google.com/googleplay/android-developer/answer/9866151?hl=en).
 
 The policy is a static HTML file with no analytics or third-party assets. It can be served on an existing public HTTPS site. With GitHub Pages, configure the approved branch /docs directory and verify the resulting URL; the expected path would be /dosette/google-play/privacy-policy.html. Do not enter that URL into Console until it actually serves the reviewed page. No Pages configuration or deployment is performed by this change.
 

@@ -180,7 +180,13 @@ class ReminderEngine
                     if (med != null && occurrence != null) {
                         val at = occurrence.instantAt(clock.zone)
                         doseLogRepository.recordScheduledIfAbsent(
-                            buildLog(med, occurrence, at, DoseStatus.MISSED, actedAt = null),
+                            occurrence.toScheduledLog(
+                                med,
+                                at,
+                                DoseStatus.MISSED,
+                                actedAt = null,
+                                updatedAt = clock.instant(),
+                            ),
                         )
                     }
                 }
@@ -316,7 +322,13 @@ class ReminderEngine
                         // Quiet finalization whether or not this version alerts:
                         // an unmarked dose must not stay pending forever.
                         doseLogRepository.recordScheduledIfAbsent(
-                            buildLog(med, occurrence, instant, DoseStatus.MISSED, actedAt = null),
+                            occurrence.toScheduledLog(
+                                med,
+                                instant,
+                                DoseStatus.MISSED,
+                                actedAt = null,
+                                updatedAt = clock.instant(),
+                            ),
                         )
                     } else if (archivedOn == null && occurrence.scheduleId in alerting) {
                         applyEvent(
