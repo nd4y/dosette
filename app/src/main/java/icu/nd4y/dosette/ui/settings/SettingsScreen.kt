@@ -72,6 +72,7 @@ import icu.nd4y.dosette.ui.designsystem.ScreenHeader
 fun SettingsScreen(
     contentPadding: PaddingValues,
     onBack: () -> Unit,
+    onOpenWatch: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -190,6 +191,7 @@ fun SettingsScreen(
         batteryExempt = batteryExempt,
         contentPadding = contentPadding,
         onBack = onBack,
+        onOpenWatch = onOpenWatch,
         onNagInterval = viewModel::setNagInterval,
         onNagMaxCount = viewModel::setNagMaxCount,
         onSnooze = viewModel::setSnooze,
@@ -250,6 +252,7 @@ fun SettingsContent(
     notificationsEnabled: Boolean,
     onOpenNotificationSettings: () -> Unit,
     onRequestExemption: () -> Unit,
+    onOpenWatch: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -363,6 +366,11 @@ fun SettingsContent(
             backgroundLocationGranted = backgroundLocationGranted,
             onRequestBackgroundLocation = onRequestBackgroundLocation,
         )
+
+        SettingsCard(title = stringResource(R.string.watch_install_title)) {
+            Text(stringResource(R.string.watch_install_settings_hint), style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = onOpenWatch) { Text(stringResource(R.string.watch_install_open)) }
+        }
 
         if (!notificationsEnabled) {
             WarningBanner(

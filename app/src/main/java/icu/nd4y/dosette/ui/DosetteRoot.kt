@@ -49,11 +49,13 @@ import icu.nd4y.dosette.ui.navigation.MoreKey
 import icu.nd4y.dosette.ui.navigation.ProfilesKey
 import icu.nd4y.dosette.ui.navigation.SettingsKey
 import icu.nd4y.dosette.ui.navigation.StatsKey
+import icu.nd4y.dosette.ui.navigation.WatchInstallKey
 import icu.nd4y.dosette.ui.profiles.ProfilesScreen
 import icu.nd4y.dosette.ui.settings.SettingsScreen
 import icu.nd4y.dosette.ui.stats.StatsScreen
 import icu.nd4y.dosette.ui.theme.DosetteTheme
 import icu.nd4y.dosette.ui.today.TodayScreen
+import icu.nd4y.dosette.ui.watchinstall.WatchInstallScreen
 
 private enum class DosetteTab(
     @StringRes val label: Int,
@@ -233,6 +235,13 @@ private fun TabContent(
                         }
                         entry<SettingsKey> {
                             SettingsScreen(
+                                contentPadding = padding,
+                                onBack = { moreBackStack.removeLastOrNull() },
+                                onOpenWatch = { moreBackStack.push(WatchInstallKey) },
+                            )
+                        }
+                        entry<WatchInstallKey> {
+                            WatchInstallScreen(
                                 contentPadding = padding,
                                 onBack = { moreBackStack.removeLastOrNull() },
                             )

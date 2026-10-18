@@ -219,6 +219,13 @@ def main():
         abis = check_native_libraries(apk)
         require(abis == check_native_libraries(bundle), f"{module}: APK/AAB native ABIs differ")
         print(f"{module}: package={PACKAGE}, version={expected_name}, code={code}, native ABIs={abis or 'none'}")
+    wear_payload = (ROOT / "wear/build/outputs/apk/release/wear-release.apk").read_bytes()
+    for path, member in (
+        (ROOT / "app/build/outputs/apk/release/app-release.apk", "assets/dosette-wear.apk"),
+        (ROOT / "app/build/outputs/bundle/release/app-release.aab", "base/assets/dosette-wear.apk"),
+    ):
+        with zipfile.ZipFile(path) as archive:
+            require(archive.read(member) == wear_payload, f"{path.name}: embedded Wear APK is stale or different")
     require(len(certificates) == 1, "Phone/Wear APKs and AABs must all share one signing certificate")
     print(f"Verified four artifacts; signing certificate SHA-256: {certificates.pop()}")
 

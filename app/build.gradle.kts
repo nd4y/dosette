@@ -130,6 +130,9 @@ dependencies {
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(project(":link"))
+    implementation(project(":adb"))
+    implementation(libs.bcpkix)
+    implementation(libs.apksig)
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
 
@@ -146,4 +149,30 @@ dependencies {
     testImplementation(libs.roborazzi.junit.rule)
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+// Build the payload with the same version and signing configuration as the phone.
+abstract class StageWearApk : DefaultTask() {
+    @get:InputFile
+    abstract val apk: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun stage() {
+        val directory = outputDirectory.get().asFile.apply { mkdirs() }
+        apk.get().asFile.copyTo(directory.resolve("dosette-wear.apk"), overwrite = true)
+    }
+}
+
+androidComponents.onVariants { variant ->
+    val name = variant.name
+    val capitalized = name.replaceFirstChar { it.uppercaseChar() }
+    val stage =
+        tasks.register<StageWearApk>("stage${capitalized}WearApk") {
+            dependsOn(":wear:assemble$capitalized")
+            apk.set(rootProject.layout.projectDirectory.file("wear/build/outputs/apk/$name/wear-$name.apk"))
+        }
+    variant.sources.assets?.addGeneratedSourceDirectory(stage, StageWearApk::outputDirectory)
 }

@@ -31,7 +31,15 @@ playServicesWearable = "20.0.1"
 androidxTestCore = "1.7.0"
 androidxHilt = "1.4.0"
 
+bouncycastle = "1.86"
+annotation = "1.9.1"
+
 [libraries]
+bcprov = { group = "org.bouncycastle", name = "bcprov-jdk15to18", version.ref = "bouncycastle" }
+bctls = { group = "org.bouncycastle", name = "bctls-jdk15to18", version.ref = "bouncycastle" }
+bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk15to18", version.ref = "bouncycastle" }
+apksig = { group = "com.android.tools.build", name = "apksig", version.ref = "agp" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "annotation" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }

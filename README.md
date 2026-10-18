@@ -47,6 +47,11 @@ exact-alarm access and the battery-optimization exemption when the app asks duri
 
 ### Watch app
 
+From the phone, open **More > Settings > Watch > Install or update**. The
+[step-by-step ADB wizard](docs/watch-adb-install.md) pairs with the watch, checks
+APK signatures and updates without clearing app data. Android 10+ is required
+for this phone-side installer. Enable wireless debugging on the watch manually.
+
 Every release also carries `dosette-wear-vX.Y.Z.apk` for a Wear OS 3+ watch (Pixel Watch 3 is the
 reference device). It is a companion: it needs the phone app on the paired phone and has no data of
 its own. Install it over adb - on the watch enable developer options (Settings → System → About →
@@ -115,9 +120,10 @@ is teal `#00696B`; with dynamic color enabled the palette follows the device wal
 
 ## Building
 
-- Modules: `:app` (phone), `:wear` (watch), `:link` (the wire format they share).
+- Modules: `:app` (phone), `:wear` (watch), `:link` (the wire format they share),
+  `:adb` (vendored pure Java wireless-debugging transport).
 - JDK 21, Android SDK 37. Local builds: `./gradlew :app:assembleDebug :wear:assembleDebug`.
-- Checks: `./gradlew spotlessCheck :app:detekt :wear:detekt :app:lint :wear:lint :app:testDebugUnitTest :wear:testDebugUnitTest`.
+- Checks: `./gradlew spotlessCheck :app:detekt :wear:detekt :app:lint :wear:lint :app:testDebugUnitTest :wear:testDebugUnitTest :adb:testDebugUnitTest :adb:lint`.
 - Screenshot suites: `./gradlew :app:recordRoborazziDebug --tests "icu.nd4y.dosette.ui.ScreenshotTests"`
   and `./gradlew :wear:recordRoborazziDebug` - PNGs land in `app/src/test/screenshots` and
   `wear/src/test/screenshots`.
