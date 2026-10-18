@@ -47,6 +47,19 @@ interface BackupDao {
     @Query("SELECT * FROM appointments ORDER BY date, timeMinutes")
     suspend fun appointments(): List<AppointmentEntity>
 
+    /** A consistent view even if a medication, profile or dose changes while the export runs. */
+    @Transaction
+    suspend fun snapshot(): BackupEntities =
+        BackupEntities(
+            profiles = profiles(),
+            medications = medications(),
+            variants = variants(),
+            schedules = schedules(),
+            scheduleTimes = scheduleTimes(),
+            doseLogs = doseLogs(),
+            appointments = appointments(),
+        )
+
     @Query("DELETE FROM profiles")
     suspend fun wipeProfiles()
 

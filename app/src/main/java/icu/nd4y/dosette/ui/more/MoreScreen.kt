@@ -22,6 +22,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -74,6 +77,9 @@ fun MoreContent(
     onOpenBackup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showAbout by rememberSaveable { mutableStateOf(false) }
+    if (showAbout) PrivacyDialog(onDismiss = { showAbout = false })
+
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier =
@@ -144,8 +150,8 @@ fun MoreContent(
                 icon = InfoIcon,
                 title = stringResource(R.string.more_about),
                 subtitle = "Dosette ${BuildConfig.VERSION_NAME}",
-                enabled = false,
-                onClick = {},
+                enabled = true,
+                onClick = { showAbout = true },
             )
         }
     }
@@ -269,8 +275,6 @@ private fun MoreRow(
                     )
                 }
             }
-            // A disabled row is not automatically an unfinished feature:
-            // the About row is disabled and gets neither badge nor chevron.
             when {
                 comingSoon -> {
                     Text(

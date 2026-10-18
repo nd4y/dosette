@@ -10,15 +10,18 @@ import icu.nd4y.dosette.link.WatchDoseStatus
 import icu.nd4y.dosette.link.WatchPrn
 import icu.nd4y.dosette.link.WatchSnapshot
 import icu.nd4y.dosette.wear.link.WearLink
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -92,9 +95,20 @@ class TodayViewModel
     ) : ViewModel() {
         private val reachable = MutableStateFlow<Boolean?>(null)
 
+        // Keep the date and due labels current while visible, even when the
+        // phone is offline and no Data Layer event arrives across midnight.
+        private val ticks =
+            flow {
+                while (true) {
+                    emit(clock.instant())
+                    reachable.value = link.phoneReachable()
+                    delay(CLOCK_TICK_MS)
+                }
+            }
+
         val uiState: StateFlow<WatchUiState> =
-            combine(link.snapshot, link.pendingActions, reachable) { snapshot, pending, phone ->
-                build(snapshot, pending, phone)
+            combine(link.snapshot, link.pendingActions, reachable, ticks) { snapshot, pending, phone, now ->
+                build(snapshot, pending, phone, now)
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), WatchUiState())
 
         // Confirmations show for a moment each; a buffer keeps quick taps from being dropped.
@@ -143,9 +157,10 @@ class TodayViewModel
             snapshot: WatchSnapshot?,
             pending: List<WatchAction>,
             phone: Boolean?,
+            instant: Instant,
         ): WatchUiState {
             if (snapshot == null) return WatchUiState(loaded = true, phoneReachable = phone)
-            val now = clock.instant().atZone(clock.zone)
+            val now = instant.atZone(clock.zone)
             val today = now.toLocalDate()
             val date = runCatching { LocalDate.parse(snapshot.date) }.getOrDefault(today)
             // The latest tap per dose wins, as it will on the phone.
@@ -184,6 +199,7 @@ class TodayViewModel
 
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L
+            const val CLOCK_TICK_MS = 30_000L
         }
     }
 

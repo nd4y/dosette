@@ -80,6 +80,23 @@ class MedicationVariantDaoTest {
         }
 
     @Test
+    fun `editor merge preserves inventory changed after its draft was built`() =
+        runTest {
+            val draft = variantEntity(currentStock = 10.0)
+            val dao = db.medicationVariantDao()
+            dao.upsert(draft)
+            dao.refill("v1", 5.0, testInstant)
+            dao.decrement("v1", 2.0)
+
+            dao.upsertFromEditor(draft.copy(strengthValue = 250.0), updateStock = false)
+
+            val updated = dao.getById("v1")
+            assertThat(updated?.currentStock).isEqualTo(13.0)
+            assertThat(updated?.lastRefillAt).isEqualTo(testInstant)
+            assertThat(updated?.strengthValue).isEqualTo(250.0)
+        }
+
+    @Test
     fun `deleting the medication cascades to variants`() =
         runTest {
             db.medicationVariantDao().upsert(variantEntity(id = "v1"))

@@ -45,7 +45,7 @@ class AlarmScheduler
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             val triggerAtMillis = maxOf(at.toEpochMilli(), System.currentTimeMillis() + MIN_LEAD_MILLIS)
             rememberForDirectBoot(triggerAtMillis, alarmClock)
-            // On API 31-32 the exact-alarm special access is revocable and
+            // On Android 12+ exact-alarm special access is revocable and
             // exact alarms then throw SecurityException from every engine
             // pass — degrade to an inexact alarm so the chain stays alive
             // (ExactAlarmPermissionReceiver re-arms exactly on re-grant).

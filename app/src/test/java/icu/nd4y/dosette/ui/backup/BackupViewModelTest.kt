@@ -15,6 +15,7 @@ import icu.nd4y.dosette.data.db.profileEntity
 import icu.nd4y.dosette.data.db.testInstant
 import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.AppSettings
+import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.data.settings.ThemeMode
 import icu.nd4y.dosette.domain.backup.BackupSnapshot
 import icu.nd4y.dosette.domain.model.Appointment
@@ -64,6 +65,7 @@ class BackupViewModelTest {
             BackupManager(
                 context = context,
                 backupDao = harness.db.backupDao(),
+                database = harness.db,
                 settingsRepository = harness.settingsRepository,
                 engine = harness.engine,
                 notifier = harness.notifier,
@@ -118,7 +120,69 @@ class BackupViewModelTest {
             assertThat(harness.notifier.cancelAllCalls).isEqualTo(1)
             // The previous data was snapshotted before the swap (clock: 11:00 Moscow).
             val autoBackups = File(context.filesDir, BackupManager.AUTO_BACKUP_DIR).listFiles().orEmpty()
-            assertThat(autoBackups.map { it.name }).containsExactly("pre-import-20260829-110000.yaml")
+            assertThat(autoBackups).hasLength(1)
+            assertThat(autoBackups.single().name).startsWith("pre-import-20260829-110000-")
+            assertThat(autoBackups.single().name).endsWith(".yaml")
+        }
+
+    @Test
+    fun `failed settings write rolls back imported database and leaves a recovery backup`() =
+        runTest {
+            registerFile(validBackupYaml.toByteArray(Charsets.UTF_8))
+            val failingSettings =
+                object : SettingsRepository by harness.settingsRepository {
+                    override suspend fun replaceAll(settings: AppSettings): Unit =
+                        throw java.io.IOException("settings storage unavailable")
+                }
+            val manager =
+                BackupManager(
+                    context = context,
+                    backupDao = harness.db.backupDao(),
+                    database = harness.db,
+                    settingsRepository = failingSettings,
+                    engine = harness.engine,
+                    notifier = harness.notifier,
+                    clock = harness.clock,
+                )
+
+            val failure = runCatching { manager.importFrom(uri, null) }.exceptionOrNull()
+
+            assertThat(failure).isInstanceOf(java.io.IOException::class.java)
+            assertThat(harness.profileRepository.getAll().map { it.id }).containsExactly("p1")
+            assertThat(harness.medicationRepository.getAll()).isEmpty()
+            assertThat(harness.notifier.cancelAllCalls).isEqualTo(0)
+            val backup = File(context.filesDir, BackupManager.AUTO_BACKUP_DIR).listFiles().orEmpty().single()
+            assertThat(
+                BackupMapper
+                    .fromSnapshot(BackupCodec.decode(backup.readText()))
+                    .profiles
+                    .single()
+                    .id,
+            ).isEqualTo("p1")
+        }
+
+    @Test
+    fun `successive imports at the same instant preserve both recovery snapshots`() =
+        runTest {
+            registerFile(validBackupYaml.toByteArray(Charsets.UTF_8))
+
+            repeat(2) {
+                viewModel.runAndAwait { requestImport(uri) }
+                viewModel.runAndAwait { confirmImport() }
+                assertThat(state.result).isEqualTo(BackupResult.IMPORTED)
+            }
+
+            val autoBackups = File(context.filesDir, BackupManager.AUTO_BACKUP_DIR).listFiles().orEmpty()
+            assertThat(autoBackups).hasLength(2)
+            val savedProfileIds =
+                autoBackups.map { file ->
+                    BackupMapper
+                        .fromSnapshot(BackupCodec.decode(file.readText()))
+                        .profiles
+                        .single()
+                        .id
+                }
+            assertThat(savedProfileIds).containsExactly("p1", "p9")
         }
 
     @Test

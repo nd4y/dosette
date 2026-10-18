@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * API 31-32 only: the user re-granted the revocable "Alarms & reminders"
+ * Android 12+: the user granted the revocable "Alarms & reminders"
  * special access. The chain has been running on inexact fallback alarms
  * (see [AlarmScheduler]) — re-arm it exactly.
  */

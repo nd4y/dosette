@@ -155,5 +155,5 @@ private fun Schedule.matchesCycle(date: LocalDate): Boolean {
         off != null &&
         on >= 1 &&
         off >= 0 &&
-        ChronoUnit.DAYS.between(anchor, date).mod((on + off).toLong()) < on
+        ChronoUnit.DAYS.between(anchor, date).mod(on.toLong() + off.toLong()) < on
 }

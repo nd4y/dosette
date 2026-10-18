@@ -25,12 +25,6 @@ kover {
     }
 }
 
-// Release builds pass -Pdosette.version=vX.Y.Z (the git tag); local builds fall back to a dev version.
-val releaseVersion: String? =
-    (findProperty("dosette.version") as String?)?.removePrefix("v")?.also {
-        require(Regex("""\d+\.\d+\.\d+""").matches(it)) { "dosette.version must be X.Y.Z, got $it" }
-    }
-
 android {
     namespace = "icu.nd4y.dosette"
     compileSdk = 37
@@ -39,18 +33,8 @@ android {
         applicationId = "icu.nd4y.dosette"
         minSdk = 26
         targetSdk = 36
-        // Monotonic scheme required by Obtainium: major*10000 + minor*100 + patch.
-        versionCode =
-            releaseVersion
-                ?.split('.')
-                ?.map(String::toInt)
-                ?.let { (major, minor, patch) ->
-                    // Two digits each, or v1.0.100 would collide with v1.1.0.
-                    require(minor in 0..99 && patch in 0..99) { "minor and patch must be 0..99, got $releaseVersion" }
-                    major * 10_000 + minor * 100 + patch
-                }
-                ?: 1
-        versionName = releaseVersion ?: "0.0.0-dev"
+        versionCode = rootProject.extra["dosette.phoneVersionCode"] as Int
+        versionName = rootProject.extra["dosette.versionName"] as String
     }
 
     signingConfigs {
@@ -73,9 +57,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // The release key exists only in CI; local release builds use the debug key.
+            // Untagged local smoke builds use debug signing; versioned builds require the release key.
             signingConfig =
-                if (System.getenv("DOSETTE_KEYSTORE") != null) {
+                if (rootProject.extra["dosette.hasReleaseSigning"] as Boolean) {
                     signingConfigs.getByName("release")
                 } else {
                     signingConfigs.getByName("debug")
@@ -146,6 +130,9 @@ dependencies {
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(project(":link"))
+    implementation(project(":adb"))
+    implementation(libs.bcpkix)
+    implementation(libs.apksig)
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
 
@@ -162,4 +149,30 @@ dependencies {
     testImplementation(libs.roborazzi.junit.rule)
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+// Build the payload with the same version and signing configuration as the phone.
+abstract class StageWearApk : DefaultTask() {
+    @get:InputFile
+    abstract val apk: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun stage() {
+        val directory = outputDirectory.get().asFile.apply { mkdirs() }
+        apk.get().asFile.copyTo(directory.resolve("dosette-wear.apk"), overwrite = true)
+    }
+}
+
+androidComponents.onVariants { variant ->
+    val name = variant.name
+    val capitalized = name.replaceFirstChar { it.uppercaseChar() }
+    val stage =
+        tasks.register<StageWearApk>("stage${capitalized}WearApk") {
+            dependsOn(":wear:assemble$capitalized")
+            apk.set(rootProject.layout.projectDirectory.file("wear/build/outputs/apk/$name/wear-$name.apk"))
+        }
+    variant.sources.assets?.addGeneratedSourceDirectory(stage, StageWearApk::outputDirectory)
 }

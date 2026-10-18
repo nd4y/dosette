@@ -233,7 +233,7 @@
     <string name="place_clear">Clear</string>
     <string name="place_permission_rationale">Location permission is needed to read coordinates and the Wi-Fi name</string>
     <string name="place_background_hint">Allow location \u0022all the time\u0022 in system settings so arriving can wake reminders even in the background</string>
-    <string name="place_background_missing">Location is not allowed 0022all the time0022: arriving will not wake reminders</string>
+    <string name="place_background_missing">Location is not allowed all the time: arriving will not wake reminders</string>
     <string name="place_background_action">Allow</string>
     <string name="settings_title">Settings</string>
     <string name="settings_reminders_section">Reminders</string>
@@ -348,4 +348,18 @@
     <string name="action_next">Next</string>
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>
+    <string name="onboarding_exact_alarms_title">Alarms and reminders</string>
+    <string name="onboarding_exact_alarms_text">Allow precise reminders at your scheduled dose times. Without this access, reminders may arrive late.</string>
+    <string name="privacy_title">Privacy and safety</string>
+    <string name="privacy_local">Dosette by nd4y stores profiles, medications, doses, stock and appointments on your device. There are no accounts, ads, analytics or developer-operated servers. Updated 18 October 2026.</string>
+    <string name="privacy_watch">The Wear OS companion receives your day, medication names and intake history and sends your actions to the paired phone using Google Play services. Data Layer transport can use Bluetooth, Wi-Fi or Google cloud services. The watch keeps the last received day and pending actions. The optional watch installer connects directly over your Wi-Fi using ADB after you enable debugging and enter the watch pairing code. It transfers the Dosette APK and checks device and installed-app metadata. Pairing codes are not saved or logged. Client credentials are encrypted on the phone and excluded from backups and device transfer. Disable debugging on the watch when finished.</string>
+    <string name="privacy_location">Optional saved places use location and Wi-Fi names to resume a snoozed reminder when you arrive, including while Dosette is closed. Coordinates and Wi-Fi names stay on your phone. Google Play services provides location and geofencing. Clear places in Settings and revoke location access to stop this feature.</string>
+    <string name="privacy_backup">Android cloud backup is disabled for app data. Device-to-device transfer is allowed. Exported backups go to the document provider you select, which may be a cloud provider. Password encryption is optional. Automatic pre-import backups stay inside the app; the last five are kept.</string>
+    <string name="privacy_delete">Delete a profile to remove its medication history. Clear app storage to remove all phone data and local backups. Also clear the companion storage on the watch; exported files must be deleted separately from the chosen provider.</string>
+    <string name="privacy_contact">Project and support: github.com/nd4y/dosette. For privacy questions, open an issue without personal or health details. Never include medication histories or backup files in public issues.</string>
+    <string name="health_disclaimer">Dosette is a reminder and personal log, not a medical device. It does not diagnose, treat, cure or prevent any medical condition and does not provide medical advice. Consult a qualified healthcare professional for medical advice, diagnosis or treatment. Follow your prescribed schedule; do not change a dose based on the app. Notifications can be delayed by device settings.</string>
+    <string name="place_disclosure_title">Location for saved places</string>
+    <string name="place_disclosure">Dosette uses your location and Wi-Fi name to save a place and resume medication reminders when you arrive, even when the app is closed or not in use. Saved coordinates and Wi-Fi names stay on your phone; they are not sent to the developer or used for ads. This feature is optional. You can clear a place and revoke location access in Settings. Continue to choose location access.</string>
+    <string name="place_background_disclosure">Dosette uses location in the background, even when the app is closed, only to resume reminders snoozed until home or work. Google Play services checks arrival at your saved places. This feature is optional. To enable it, open Permissions, Location and choose Allow all the time. Cancel to keep using timed reminders without background location.</string>
+    <string name="place_disclosure_continue">Continue</string>
 </resources>

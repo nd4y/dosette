@@ -58,6 +58,9 @@ fun TodayScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             item(key = "header") { Header(state, spec) }
+            if (state.stale && state.date != null) {
+                item(key = "stale") { Hint(stringResource(R.string.stale_data, state.date.toString()), spec) }
+            }
             if (state.planned > 0) {
                 item(key = "progress") { ProgressLine(state.taken, state.planned, spec) }
             }

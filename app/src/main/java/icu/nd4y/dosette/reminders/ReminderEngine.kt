@@ -6,6 +6,7 @@ import icu.nd4y.dosette.data.repository.MedicationDetails
 import icu.nd4y.dosette.data.repository.MedicationRepository
 import icu.nd4y.dosette.data.repository.ProfileRepository
 import icu.nd4y.dosette.data.repository.ReminderStateRepository
+import icu.nd4y.dosette.data.repository.WatchActionRepository
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.alarm.AlarmObligations
 import icu.nd4y.dosette.domain.alarm.AlarmPlanner
@@ -66,6 +67,7 @@ class ReminderEngine
         private val alarmScheduler: AlarmScheduler,
         private val placeMonitor: PlaceMonitor,
         private val mirrorRefresher: MirrorRefresher,
+        private val watchActions: WatchActionRepository,
         private val clock: Clock,
     ) {
         private val mutex = Mutex()
@@ -98,7 +100,34 @@ class ReminderEngine
                             NagEvent.Snooze(SnoozeTarget.ForMinutes(world.settings.snoozeMin))
                         }
                     }
-                applyEvent(world, key, event)
+                watchActions.applyLocal(key, clock.instant()) { applyEvent(world, key, event) }
+                syncGeofences(world)
+                rescheduleLocked(world)
+            }
+
+        /**
+         * A queued watch tap is applied once, even after undo or a failed ack.
+         * Lock the engine before opening the transaction, as other engine
+         * entry points do. Alarm/UI reconciliation is retried after commit.
+         */
+        suspend fun onWatchAction(
+            key: OccurrenceKey,
+            action: UserDoseAction,
+            actedAt: Instant,
+            deliveryId: String,
+        ): Unit =
+            mutex.withLock {
+                val world = loadWorld()
+                val intentAt = actedAt.coerceAtMost(clock.instant())
+                watchActions.applyOnce(deliveryId, key, intentAt) {
+                    val event =
+                        when (action) {
+                            UserDoseAction.TAKE -> NagEvent.Take(intentAt)
+                            UserDoseAction.SKIP -> NagEvent.Skip
+                            UserDoseAction.SNOOZE -> NagEvent.Snooze(SnoozeTarget.ForMinutes(world.settings.snoozeMin))
+                        }
+                    applyEvent(world, key, event)
+                }
                 syncGeofences(world)
                 rescheduleLocked(world)
             }
@@ -110,7 +139,7 @@ class ReminderEngine
         ): Unit =
             mutex.withLock {
                 val world = loadWorld()
-                applyEvent(world, key, NagEvent.Snooze(target))
+                watchActions.applyLocal(key, clock.instant()) { applyEvent(world, key, NagEvent.Snooze(target)) }
                 syncGeofences(world)
                 rescheduleLocked(world)
             }
@@ -126,7 +155,7 @@ class ReminderEngine
         ): Unit =
             mutex.withLock {
                 val world = loadWorld()
-                applyEvent(world, key, NagEvent.Take(actedAt))
+                watchActions.applyLocal(key, clock.instant()) { applyEvent(world, key, NagEvent.Take(actedAt)) }
                 syncGeofences(world)
                 rescheduleLocked(world)
             }
@@ -141,19 +170,27 @@ class ReminderEngine
         suspend fun undoDose(key: OccurrenceKey): Unit =
             mutex.withLock {
                 val log = doseLogRepository.getScheduled(key) ?: return
-                medicationRepository.restoreStockOf(log)
-                doseLogRepository.delete(log.id)
-                // Beyond the sweep window no pass would ever finalize the
-                // dose again, so it is quietly missed right here.
-                val today = clock.instant().atZone(clock.zone).toLocalDate()
-                if (key.date.isBefore(today.minusDays(MISSED_SWEEP_DAYS))) {
-                    val med = medicationRepository.getDetails(key.medicationId)
-                    val occurrence = med?.let { occurrenceFor(it, key) }
-                    if (med != null && occurrence != null) {
-                        val at = occurrence.instantAt(clock.zone)
-                        doseLogRepository.recordScheduledIfAbsent(
-                            buildLog(med, occurrence, at, DoseStatus.MISSED, actedAt = null),
-                        )
+                watchActions.applyLocal(key, clock.instant()) {
+                    medicationRepository.restoreStockOf(log)
+                    doseLogRepository.delete(log.id)
+                    // Beyond the sweep window no pass would ever finalize the
+                    // dose again, so it is quietly missed right here.
+                    val today = clock.instant().atZone(clock.zone).toLocalDate()
+                    if (key.date.isBefore(today.minusDays(MISSED_SWEEP_DAYS))) {
+                        val med = medicationRepository.getDetails(key.medicationId)
+                        val occurrence = med?.let { occurrenceFor(it, key) }
+                        if (med != null && occurrence != null) {
+                            val at = occurrence.instantAt(clock.zone)
+                            doseLogRepository.recordScheduledIfAbsent(
+                                occurrence.toScheduledLog(
+                                    med,
+                                    at,
+                                    DoseStatus.MISSED,
+                                    actedAt = null,
+                                    updatedAt = clock.instant(),
+                                ),
+                            )
+                        }
                     }
                 }
                 processDueLocked()
@@ -288,7 +325,13 @@ class ReminderEngine
                         // Quiet finalization whether or not this version alerts:
                         // an unmarked dose must not stay pending forever.
                         doseLogRepository.recordScheduledIfAbsent(
-                            buildLog(med, occurrence, instant, DoseStatus.MISSED, actedAt = null),
+                            occurrence.toScheduledLog(
+                                med,
+                                instant,
+                                DoseStatus.MISSED,
+                                actedAt = null,
+                                updatedAt = clock.instant(),
+                            ),
                         )
                     } else if (archivedOn == null && occurrence.scheduleId in alerting) {
                         applyEvent(
@@ -487,7 +530,7 @@ class ReminderEngine
             // A stated intake time (a late mark) wins over the moment of the action.
             val actedAt = if (status == DoseStatus.MISSED) null else effect.actedAt ?: clock.instant()
             doseLogRepository.finalizeScheduled(
-                buildLog(med, occurrence, scheduledAt, status, actedAt),
+                occurrence.toScheduledLog(med, scheduledAt, status, actedAt, clock.instant()),
             )
         }
 
@@ -512,39 +555,6 @@ class ReminderEngine
             ) {
                 notifier.postLowStock(med.medication.id, medicationTitle(med), formatUnits(change.after))
             }
-        }
-
-        private fun buildLog(
-            med: MedicationDetails,
-            occurrence: Occurrence,
-            scheduledAt: Instant,
-            status: DoseStatus,
-            actedAt: Instant?,
-        ): DoseLog {
-            val key = occurrence.key
-            val amount = occurrence.amount
-            val variant = if (status == DoseStatus.TAKEN) med.defaultVariant else null
-            val consumed =
-                variant?.let {
-                    InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
-                }
-            return DoseLog(
-                id = UUID.randomUUID().toString(),
-                profileId = med.medication.profileId,
-                medicationId = med.medication.id,
-                scheduleId = occurrence.scheduleId,
-                kind = DoseKind.SCHEDULED,
-                date = key.date,
-                time = key.time,
-                scheduledAt = scheduledAt,
-                status = status,
-                actedAt = actedAt,
-                amount = amount,
-                variantId = variant?.id,
-                consumedUnits = consumed,
-                note = null,
-                updatedAt = clock.instant(),
-            )
         }
 
         private suspend fun rescheduleLocked(world: World) {
@@ -654,6 +664,38 @@ class ReminderEngine
         }
     }
 
+/** Builds the persisted scheduled intake; the engine supplies its transaction time. */
+private fun Occurrence.toScheduledLog(
+    med: MedicationDetails,
+    scheduledAt: Instant,
+    status: DoseStatus,
+    actedAt: Instant?,
+    updatedAt: Instant,
+): DoseLog {
+    val variant = if (status == DoseStatus.TAKEN) med.defaultVariant else null
+    val consumed =
+        variant?.let {
+            InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
+        }
+    return DoseLog(
+        id = UUID.randomUUID().toString(),
+        profileId = med.medication.profileId,
+        medicationId = med.medication.id,
+        scheduleId = scheduleId,
+        kind = DoseKind.SCHEDULED,
+        date = key.date,
+        time = key.time,
+        scheduledAt = scheduledAt,
+        status = status,
+        actedAt = actedAt,
+        amount = amount,
+        variantId = variant?.id,
+        consumedUnits = consumed,
+        note = null,
+        updatedAt = updatedAt,
+    )
+}
+
 /** Returns the stock a taken dose's log consumed (no-op for other logs). */
 private suspend fun MedicationRepository.restoreStockOf(log: DoseLog) {
     if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
@@ -679,7 +721,13 @@ internal fun medicationTitle(med: MedicationDetails): String {
 }
 
 internal fun formatUnits(value: Double): String =
-    if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+    if (value ==
+        value.toLong().toDouble()
+    ) {
+        value.toLong().toString()
+    } else {
+        value.toString()
+    }
 
 /** Only alarms that end in a notification deserve the alarm-clock treatment (and its icon). */
 private val AlarmReason.wakesUser: Boolean

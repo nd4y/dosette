@@ -3,6 +3,7 @@ package icu.nd4y.dosette.link
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import java.time.LocalDate
 
 /**
  * Wearable Data Layer paths the phone and the watch agree on. Every item
@@ -102,16 +103,38 @@ object WatchJson {
 
     fun encode(action: WatchAction): String = json.encodeToString(WatchAction.serializer(), action)
 
-    fun decodeSnapshot(text: String): WatchSnapshot? = decode(WatchSnapshot.serializer(), text)
+    fun decodeSnapshot(text: String): WatchSnapshot? =
+        decode(WatchSnapshot.serializer(), text)?.takeIf { snapshot ->
+            snapshot.schema == 1 &&
+                runCatching { LocalDate.parse(snapshot.date) }.isSuccess &&
+                snapshot.doses.all { dose ->
+                    dose.id.isNotBlank() && dose.timeMinutes in 0 until MINUTES_PER_DAY &&
+                        (dose.actedTimeMinutes == null || dose.actedTimeMinutes in 0 until MINUTES_PER_DAY)
+                } &&
+                snapshot.doses.distinctBy { it.id }.size == snapshot.doses.size &&
+                snapshot.prn.all { it.medicationId.isNotBlank() } &&
+                snapshot.prn.distinctBy { it.medicationId }.size == snapshot.prn.size
+        }
 
-    fun decodeAction(text: String): WatchAction? = decode(WatchAction.serializer(), text)
+    fun decodeAction(text: String): WatchAction? =
+        decode(WatchAction.serializer(), text)?.takeIf { action ->
+            ACTION_ID.matches(action.id) && action.actedAt >= 0 &&
+                when (action.kind) {
+                    WatchActionKind.TAKE_PRN -> !action.medicationId.isNullOrBlank() && action.doseId == null
+                    else -> !action.doseId.isNullOrBlank() && action.medicationId == null
+                }
+        }
+
+    private const val MINUTES_PER_DAY = 24 * 60
+    private const val MAX_PAYLOAD_CHARS = 100_000
+    private val ACTION_ID = Regex("[A-Za-z0-9_-]{1,128}")
 
     private fun <T> decode(
         serializer: kotlinx.serialization.KSerializer<T>,
         text: String,
     ): T? =
         try {
-            json.decodeFromString(serializer, text)
+            if (text.length > MAX_PAYLOAD_CHARS) null else json.decodeFromString(serializer, text)
         } catch (_: SerializationException) {
             null
         } catch (_: IllegalArgumentException) {

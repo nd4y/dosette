@@ -60,6 +60,17 @@ class InventoryPolicyTest {
     }
 
     @Test
+    fun `large cycle lengths do not produce a negative consumption rate`() {
+        val schedule =
+            fixture(
+                type = ScheduleType.CYCLE,
+                cycleDaysOn = Int.MAX_VALUE,
+                cycleDaysOff = Int.MAX_VALUE,
+            )
+        assertThat(InventoryPolicy.dailyConsumption(schedule)).isWithin(1e-9).of(0.5)
+    }
+
+    @Test
     fun `prn consumes nothing on schedule`() {
         assertThat(InventoryPolicy.dailyConsumption(fixture(type = ScheduleType.AS_NEEDED))).isEqualTo(0.0)
     }

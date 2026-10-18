@@ -24,6 +24,9 @@ data object MoreKey : NavKey
 data object SettingsKey : NavKey
 
 @Serializable
+data object WatchInstallKey : NavKey
+
+@Serializable
 data object ProfilesKey : NavKey
 
 @Serializable

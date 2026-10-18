@@ -1,29 +1,38 @@
 # Dosette
 
-Offline medication tracker for Android. Material 3 Expressive, no accounts, no network — your data stays on the device.
+Medication tracker for Android with a Wear OS companion. Material 3 Expressive, no Dosette account or developer backend. Phone records stay local; optional watch sync uses Google Play services and exports go to a destination you choose.
 
 ## Features
 
-- **Medications with flexible schedules**: fixed times, weekdays, every-N-days, cycles (X on / Y off), as-needed — or no schedule at all, for a medication kept in the cabinet for one-time doses only.
-- **Persistent reminders**: the notification cannot be dismissed for good — swiping it away silently re-posts it in place, and the alert repeats on a configurable interval until the dose is marked taken or skipped (or, if you prefer, a fixed number of times). Snooze for a chosen duration or **until you get home / to work** (geofence + Wi-Fi recognition, configured in Settings → Places; the geofence needs location "all the time", which Settings asks for and flags while missing, and a place snooze wakes on its own after 12 hours at most), with a configurable missed-dose grace window.
-- **Package variants with per-variant stock**: a 150 mg dose can be taken as one 150 mg capsule or two 75 mg ones — each package form keeps its own stock pool and is decremented correctly.
-- **History and adherence**: a calendar with per-day status dots (statuses editable retroactively — a missed or skipped dose can be marked taken just now, on time or at a picked time; an accidental mark can be undone, as-needed intakes via an undo snackbar), 30-day adherence stats with per-medication breakdown and a no-miss streak.
-- **One-time doses**: a dose for a specific day and time can be added right from the calendar — it gets reminders, stock decrement and statistics like any scheduled intake, and can be deleted as a whole.
+- **Medications with flexible schedules**: fixed times, weekdays, every-N-days, cycles (X on / Y off), as-needed - or no schedule at all, for a medication kept in the cabinet for one-time doses only.
+- **Persistent reminders**: the notification cannot be dismissed for good - swiping it away silently re-posts it in place, and the alert repeats on a configurable interval until the dose is marked taken or skipped (or, if you prefer, a fixed number of times). Snooze for a chosen duration or **until you get home / to work** (geofence + Wi-Fi recognition, configured in Settings → Places; the geofence needs location "all the time", which Settings asks for and flags while missing, and a place snooze wakes on its own after 12 hours at most), with a configurable missed-dose grace window.
+- **Package variants with per-variant stock**: a 150 mg dose can be taken as one 150 mg capsule or two 75 mg ones - each package form keeps its own stock pool and is decremented correctly.
+- **History and adherence**: a calendar with per-day status dots (statuses editable retroactively - a missed or skipped dose can be marked taken just now, on time or at a picked time; an accidental mark can be undone, as-needed intakes via an undo snackbar), 30-day adherence stats with per-medication breakdown and a no-miss streak.
+- **One-time doses**: a dose for a specific day and time can be added right from the calendar - it gets reminders, stock decrement and statistics like any scheduled intake, and can be deleted as a whole.
 - **Stock tracking** with low-stock notifications and refill amounts.
-- **Multiple profiles** — family members in one app, reminders fire for everyone.
+- **Multiple profiles** - family members in one app, reminders fire for everyone.
 - **Doctor appointments** with reminders (1 day / 2 h / 30 min before).
-- **Full backup as versioned YAML** — export/import through any documents provider (local file, Google Drive), optionally **password-encrypted** (PBKDF2 + AES-256-GCM, `.yaml.enc`). Import validates the file, previews the contents and auto-saves the current data first. Everything the app stores (the medication database, settings, configured places) is excluded from Android's cloud backup — data leaves the device only as your own (optionally encrypted) export; direct device-to-device transfer keeps everything.
+- **Full backup as versioned YAML** - export/import through any documents provider (local file, Google Drive), optionally **password-encrypted** (PBKDF2 + AES-256-GCM, `.yaml.enc`). Import validates the file, previews the contents and auto-saves the current data first. Everything the app stores (the medication database, settings, configured places) is excluded from Android's cloud backup - data leaves the device only as your own (optionally encrypted) export; direct device-to-device transfer keeps everything.
 - **Home-screen widget**: the day ring, upcoming doses and one-tap take right from the launcher.
   Resizable: two cells wide it is a next-dose card, wider it lists the next slot's doses, and from
   about 240 dp of height the whole day; the layout is budgeted by the exact cell size, so a taller
   widget lists more. Follows Material You dynamic color and updates on the same alarms as the
   reminders.
 - **Wear OS companion** (built for the Pixel Watch): dose reminders are mirrored to the paired watch
-  with Take / Skip / Snooze on the wrist, and the watch app lists the day — yesterday's leftovers,
-  today's doses with their marks, as-needed medications — so a dose can be marked from the watch
+  with Take / Skip / Snooze on the wrist, and the watch app lists the day - yesterday's leftovers,
+  today's doses with their marks, as-needed medications - so a dose can be marked from the watch
   whenever the phone is out of reach. Taps are queued on the watch and applied by the phone once it
   is back, stamped with the time of the tap rather than the time of delivery.
 - English and Russian UI, light and dark themes, Material You dynamic color.
+
+## Google Play preparation
+
+Phone and Wear OS App Bundles, publication gates and store drafts are documented in
+[the Google Play checklist](docs/google-play/README.md). Google Play publication is pending;
+the current public distribution is GitHub Releases and Obtainium.
+
+Dosette is not a medical device and does not diagnose, treat, cure, or prevent any medical
+condition. Consult a healthcare professional for medical advice, diagnosis, or treatment.
 
 ## Install
 
@@ -34,13 +43,18 @@ Grab the APK from [Releases](https://github.com/nd4y/dosette/releases), or add t
 2. App source URL: `https://github.com/nd4y/dosette`.
 
 Requires Android 8.0+. For reminders to arrive on time, allow notifications and grant the
-battery-optimization exemption when the app asks during onboarding.
+exact-alarm access and the battery-optimization exemption when the app asks during onboarding. If exact-alarm access is denied, reminders fall back to inexact scheduling and may arrive late.
 
 ### Watch app
 
+From the phone, open **More > Settings > Watch > Install or update**. The
+[step-by-step ADB wizard](docs/watch-adb-install.md) pairs with the watch, checks
+APK signatures and updates without clearing app data. Android 10+ is required
+for this phone-side installer. Enable wireless debugging on the watch manually.
+
 Every release also carries `dosette-wear-vX.Y.Z.apk` for a Wear OS 3+ watch (Pixel Watch 3 is the
 reference device). It is a companion: it needs the phone app on the paired phone and has no data of
-its own. Install it over adb — on the watch enable developer options (Settings → System → About →
+its own. Install it over adb - on the watch enable developer options (Settings → System → About →
 tap the build number seven times), then *Developer options → ADB debugging* and *Wireless debugging*,
 pair and install:
 
@@ -51,7 +65,7 @@ adb -s <watch-ip>:<port> install -r dosette-wear-vX.Y.Z.apk
 ```
 
 Both APKs share the package name and the signing key (the Data Layer links them by that), so keep
-them apart: in Obtainium set the app's *Filter APKs by regular expression* to `^dosette-v` — without it Obtainium asks
+them apart: in Obtainium set the app's *Filter APKs by regular expression* to `^dosette-v` - without it Obtainium asks
 which of the two APKs to install on every update. Notifications are mirrored to the watch as long as
 the Pixel Watch app allows them for Dosette (they are, by default).
 
@@ -62,13 +76,13 @@ The backup is a single YAML file, schema version 2 (version 1 files import uncha
 (`2026-08-29`), times are `HH:mm`, timestamps are ISO-8601 instants. Import is strict: unknown keys,
 unknown enum values, dangling references and out-of-range values (a zero interval, a negative grace)
 are rejected before anything is written. The schedule and variant ids inside dose logs are history,
-not references — the app deletes replaced same-day versions and dropped package variants while their
-logs stay — so an own export always imports. The previous data is kept as an automatic backup inside
+not references - the app deletes replaced same-day versions and dropped package variants while their
+logs stay - so an own export always imports. The previous data is kept as an automatic backup inside
 the app (last 5).
 
 With a password the same YAML is sealed as `MAGIC | salt(16) | nonce(12) | AES-256-GCM(payload)`
 with a key derived via PBKDF2-HMAC-SHA256 (600k iterations); the file gets the `.yaml.enc`
-extension. The password is not stored anywhere — losing it makes the file unreadable.
+extension. The password is not stored anywhere - losing it makes the file unreadable.
 
 ## Design
 
@@ -77,13 +91,13 @@ is teal `#00696B`; with dynamic color enabled the palette follows the device wal
 
 ## Architecture notes
 
-- Fully offline by design: no network permission is ever requested.
+- The phone works offline and has no developer backend or direct network client. Optional watch synchronization uses Google Play services, which can relay data through Google servers; a user-selected document provider may also store exported backups in the cloud.
 - Reminders are driven by a single chained exact alarm plus reconciliation on app start and reboot:
   `AlarmManager.setAlarmClock()` by default, `setExactAndAllowWhileIdle()` when the status-bar alarm
   icon is turned off in Settings and for the nightly housekeeping tick (so the icon only ever means a
-  real reminder is pending); on Android 12/12L with the exact-alarm access revoked the chain degrades
+  real reminder is pending); on Android 12+ with exact-alarm access denied or revoked the chain degrades
   to an inexact alarm instead of dying. There is deliberately **no WorkManager of our own and no
-  foreground service** (Glance brings its own worker for widget updates) — do not add them: a missed
+  foreground service** (Glance brings its own worker for widget updates) - do not add them: a missed
   daily job in Doze means a missed reminder.
 - Direct boot: the database is credential-encrypted and unreadable until the first unlock, and
   `BOOT_COMPLETED` only arrives after it. The scheduler therefore mirrors the next alarm instant into
@@ -97,25 +111,26 @@ is teal `#00696B`; with dynamic color enabled the palette follows the device wal
   backup), so changing a time or a dose never shifts the days.
 - Backup import/export goes through the Storage Access Framework, so Google Drive works with zero
   Google API code.
-- The watch link is the Wearable Data Layer of Google Play services, over Bluetooth — still no
-  internet. After every engine pass the phone puts the day (the same picture the widget renders) into
+- The watch link is the Wearable Data Layer of Google Play services, over Bluetooth or an end-to-end-encrypted Google cloud relay when Bluetooth is unavailable. After every engine pass the phone puts the day (the same picture the widget renders) into
   one data item; the watch keeps the last copy, so the list is readable with the phone out of reach.
   Each tap on the watch is its own data item, applied by the phone's listener service and deleted as
   the acknowledgement; whatever a reboot or a locked phone left behind is drained at start-up. Dose
   reminders are deliberately **not** `ongoing` notifications: Wear OS never bridges those, and since
-  Android 14 the flag stops no swipe anyway — the delete intent is what re-posts the reminder.
+  Android 14 the flag stops no swipe anyway - the delete intent is what re-posts the reminder.
 
 ## Building
 
-- Modules: `:app` (phone), `:wear` (watch), `:link` (the wire format they share).
+- Modules: `:app` (phone), `:wear` (watch), `:link` (the wire format they share),
+  `:adb` (vendored pure Java wireless-debugging transport).
 - JDK 21, Android SDK 37. Local builds: `./gradlew :app:assembleDebug :wear:assembleDebug`.
-- Checks: `./gradlew spotlessCheck :app:detekt :wear:detekt :app:lint :wear:lint :app:testDebugUnitTest :wear:testDebugUnitTest`.
+- Checks: `./gradlew spotlessCheck :app:detekt :wear:detekt :app:lint :wear:lint :app:testDebugUnitTest :wear:testDebugUnitTest :adb:testDebugUnitTest :adb:lint`.
 - Screenshot suites: `./gradlew :app:recordRoborazziDebug --tests "icu.nd4y.dosette.ui.ScreenshotTests"`
-  and `./gradlew :wear:recordRoborazziDebug` — PNGs land in `app/src/test/screenshots` and
+  and `./gradlew :wear:recordRoborazziDebug` - PNGs land in `app/src/test/screenshots` and
   `wear/src/test/screenshots`.
-- Release APKs are built and signed only by the GitHub Actions release workflow on `v*` tags
-  (`versionCode = major*10000 + minor*100 + patch`; one universal phone APK and one watch APK per
-  release).
+- Distributable APKs and AABs are built and signed by the GitHub Actions release workflow on vX.Y.Z tags.
+  The shared version base is major*10000 + minor*100 + patch; phone versionCode = base*10,
+  watch versionCode = base*10+1. Both APKs and signed AABs are produced. A manual Release
+  workflow run creates signed preview artifacts without publishing a GitHub release or submitting to Play.
 
 ## License
 

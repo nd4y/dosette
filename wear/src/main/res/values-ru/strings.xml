@@ -8,6 +8,7 @@
     <string name="empty_today">На сегодня приёмов нет</string>
     <string name="no_phone_data">Откройте Dosette на телефоне — день синхронизируется оттуда</string>
     <string name="phone_unreachable">Телефон не подключён: отметки встанут в очередь</string>
+    <string name="stale_data">Данные за %1$s. Откройте Dosette на телефоне для обновления.</string>
     <string name="dose_gone">Этого приёма уже нет в списке</string>
 
     <string name="planned_at">Приём в %1$s</string>

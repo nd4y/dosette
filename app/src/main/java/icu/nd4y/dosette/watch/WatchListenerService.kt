@@ -41,11 +41,9 @@ class WatchListenerService : WearableListenerService() {
                     PendingWatchAction(
                         uri = event.dataItem.uri.toString(),
                         json =
-                            DataMapItem
-                                .fromDataItem(event.dataItem)
-                                .dataMap
-                                .getString(LinkPaths.KEY_JSON)
-                                .orEmpty(),
+                            runCatching {
+                                DataMapItem.fromDataItem(event.dataItem).dataMap.getString(LinkPaths.KEY_JSON)
+                            }.getOrNull().orEmpty(),
                     )
                 }
         if (actions.isEmpty()) return

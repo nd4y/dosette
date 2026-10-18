@@ -128,6 +128,95 @@ class MedEditViewModelTest {
         }
 
     @Test
+    fun `saving an unrelated edit preserves stock consumed while the wizard was open`() =
+        runTest {
+            seedScheduled(start = today)
+            val vm = viewModel("m1")
+            harness.medicationRepository.decrementStock("v1", 2.0)
+            vm.update { it.copy(name = "New name") }
+
+            vm.saveThroughWizard()
+
+            assertThat(harness.medicationRepository.getVariant("v1")?.currentStock).isEqualTo(8.0)
+            assertThat(
+                harness.medicationRepository
+                    .getDetails("m1")
+                    ?.medication
+                    ?.name,
+            ).isEqualTo("New name")
+        }
+
+    @Test
+    fun `saving an edit preserves a concurrent refill and its timestamp`() =
+        runTest {
+            seedScheduled(start = today)
+            val vm = viewModel("m1")
+            harness.medicationRepository.refill("v1", 30.0, testInstant)
+
+            vm.saveThroughWizard()
+
+            val variant = harness.medicationRepository.getVariant("v1")
+            assertThat(variant?.currentStock).isEqualTo(40.0)
+            assertThat(variant?.lastRefillAt).isEqualTo(testInstant)
+        }
+
+    @Test
+    fun `explicit stock correction in the wizard still replaces the live quantity`() =
+        runTest {
+            seedScheduled(start = today)
+            val vm = viewModel("m1")
+            harness.medicationRepository.decrementStock("v1", 2.0)
+            vm.update { state -> state.copy(variants = state.variants.map { it.copy(stockText = "4,5") }) }
+
+            vm.saveThroughWizard()
+
+            assertThat(harness.medicationRepository.getVariant("v1")?.currentStock).isEqualTo(4.5)
+        }
+
+    @Test
+    fun `turning tracking off preserves stock consumed while editing`() =
+        runTest {
+            seedScheduled(start = today)
+            val vm = viewModel("m1")
+            harness.medicationRepository.decrementStock("v1", 2.0)
+            vm.update { it.copy(trackStock = false) }
+
+            vm.saveThroughWizard()
+
+            val variant = harness.medicationRepository.getVariant("v1")
+            assertThat(variant?.currentStock).isEqualTo(8.0)
+            assertThat(variant?.trackingEnabled).isFalse()
+        }
+
+    @Test
+    fun `decimal commas in dose stock and strength save as finite amounts`() =
+        runTest {
+            val vm = viewModel(null)
+            vm.update {
+                it.copy(
+                    name = "Test",
+                    strengthText = "2,5",
+                    times = listOf(TimeSlotDraft(java.time.LocalTime.NOON, "0,5")),
+                    trackStock = true,
+                    variants = listOf(VariantDraft(stockText = "3,5", thresholdText = "1,5", refillText = "2,5")),
+                )
+            }
+
+            vm.saveThroughWizard()
+
+            val saved = harness.medicationRepository.getAllActive().single()
+            assertThat(saved.medication.strengthValue).isEqualTo(2.5)
+            assertThat(saved.variants.single().currentStock).isEqualTo(3.5)
+            assertThat(
+                saved.schedules
+                    .single()
+                    .times
+                    .single()
+                    .doseAmount,
+            ).isEqualTo(0.5)
+        }
+
+    @Test
     fun `an unchanged regimen is left alone on save`() =
         runTest {
             seedScheduled(start = LocalDate.parse("2026-05-01"))

@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import icu.nd4y.dosette.data.db.AppDatabase
 import icu.nd4y.dosette.data.db.dao.DoseLogDao
 import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
+import icu.nd4y.dosette.data.db.entity.WatchActionReceiptEntity
 import icu.nd4y.dosette.data.db.toDomain
 import icu.nd4y.dosette.data.db.toEntity
 import icu.nd4y.dosette.data.db.toMinutes
@@ -42,7 +43,11 @@ interface DoseLogRepository {
      */
     suspend fun finalizeScheduled(log: DoseLog)
 
-    suspend fun recordPrn(log: DoseLog)
+    /** Returns false for a retry. A delivery receipt survives undo and backup import. */
+    suspend fun recordPrn(
+        log: DoseLog,
+        deliveryId: String? = null,
+    ): Boolean
 
     /** Undo of [recordPrn]: deletes the log and returns the consumed stock. */
     suspend fun undoPrn(logId: String)
@@ -100,12 +105,22 @@ class DoseLogRepositoryImpl
         // Log and stock move together: process death between the two writes
         // would leave a recorded intake without the decrement (or a returned
         // stock with the log still present, ready for a second undo).
-        override suspend fun recordPrn(log: DoseLog) =
+        override suspend fun recordPrn(
+            log: DoseLog,
+            deliveryId: String?,
+        ): Boolean =
             db.withTransaction {
-                doseLogDao.insert(log.toEntity())
-                if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
-                    variantDao.decrement(log.variantId, log.consumedUnits)
+                val receipts = db.watchActionReceiptDao()
+                if (deliveryId != null && receipts.contains(deliveryId)) return@withTransaction false
+                val isNew = doseLogDao.getById(log.id) == null
+                if (isNew) {
+                    doseLogDao.insert(log.toEntity())
+                    if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
+                        variantDao.decrement(log.variantId, log.consumedUnits)
+                    }
                 }
+                if (deliveryId != null) receipts.insert(WatchActionReceiptEntity(deliveryId))
+                isNew
             }
 
         override suspend fun undoPrn(logId: String) =

@@ -9,6 +9,7 @@ import icu.nd4y.dosette.data.repository.DoseLogRepositoryImpl
 import icu.nd4y.dosette.data.repository.MedicationRepositoryImpl
 import icu.nd4y.dosette.data.repository.ProfileRepositoryImpl
 import icu.nd4y.dosette.data.repository.ReminderStateRepositoryImpl
+import icu.nd4y.dosette.data.repository.WatchActionRepository
 import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.reminders.AlarmScheduler
 import icu.nd4y.dosette.reminders.ReminderEngine
@@ -51,6 +52,7 @@ class TestEngine(
             alarmScheduler = AlarmScheduler(ApplicationProvider.getApplicationContext()),
             placeMonitor = placeMonitor,
             mirrorRefresher = mirrorRefresher,
+            watchActions = WatchActionRepository(db),
             clock = clock,
         )
 

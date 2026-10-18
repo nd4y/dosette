@@ -67,11 +67,9 @@ class GmsWatchLink
                         PendingWatchAction(
                             uri = item.uri.toString(),
                             json =
-                                DataMapItem
-                                    .fromDataItem(item)
-                                    .dataMap
-                                    .getString(LinkPaths.KEY_JSON)
-                                    .orEmpty(),
+                                runCatching {
+                                    DataMapItem.fromDataItem(item).dataMap.getString(LinkPaths.KEY_JSON)
+                                }.getOrNull().orEmpty(),
                         )
                     }
                 } finally {

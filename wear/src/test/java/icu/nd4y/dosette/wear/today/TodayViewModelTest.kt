@@ -10,7 +10,12 @@ import icu.nd4y.dosette.link.WatchPrn
 import icu.nd4y.dosette.link.WatchSnapshot
 import icu.nd4y.dosette.wear.testing.FakeWearLink
 import icu.nd4y.dosette.wear.testing.MainDispatcherRule
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -177,5 +182,34 @@ class TodayViewModelTest {
 
             assertThat(state.stale).isTrue()
             assertThat(state.doses.all { it.due }).isTrue()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `offline snapshot becomes stale at midnight without a phone update`() =
+        runTest {
+            var current = now
+            val mutableClock =
+                object : Clock() {
+                    override fun instant(): Instant = current
+
+                    override fun getZone(): ZoneId = this@TodayViewModelTest.zone
+
+                    override fun withZone(zone: ZoneId): Clock = Clock.fixed(current, zone)
+                }
+            link.snapshots.value = snapshot
+            val model = TodayViewModel(link, mutableClock)
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { model.uiState.collect {} }
+            runCurrent()
+            assertThat(model.uiState.value.hasSnapshot).isTrue()
+            assertThat(model.uiState.value.stale).isFalse()
+
+            current = now.plusSeconds(24 * 60 * 60)
+            link.reachable = false
+            advanceTimeBy(30_000)
+            runCurrent()
+
+            assertThat(model.uiState.value.stale).isTrue()
+            assertThat(model.uiState.value.phoneReachable).isFalse()
         }
 }

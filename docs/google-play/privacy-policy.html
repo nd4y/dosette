@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Dosette Privacy Policy / Политика конфиденциальности</title>
+  <style>
+    body { margin: 0 auto; padding: 2rem 1.25rem; max-width: 48rem; font: 1rem/1.65 system-ui, sans-serif; }
+    h1,h2,h3 { line-height: 1.25; }
+    h2 { margin-top: 2rem; }
+    a { color: #007b80; overflow-wrap: anywhere; }
+    @media (prefers-color-scheme: dark) { a { color: #72d5d6; } }
+    nav { display: flex; gap: 1.5rem; }
+    section + section { border-top: 1px solid #888; margin-top: 3rem; padding-top: 1rem; }
+  </style>
+</head>
+<body>
+<nav aria-label="Language"><a href="#english">English</a><a href="#russian" lang="ru">Русский</a></nav>
+<main>
+<section id="english" lang="en">
+<h1>Dosette Privacy Policy</h1>
+<p>Last updated: 18 October 2026. This policy covers the Dosette Android application and its Wear OS companion, package <code>icu.nd4y.dosette</code>, maintained in the <a href="https://github.com/nd4y/dosette">Dosette open-source project</a>.</p>
+<h2>Data stored by the app</h2>
+<p>Dosette stores the profiles, medications, schedules, dose history, stock, appointments and settings you enter in private storage on your phone. The developer does not operate a Dosette account system, data server, advertising service or analytics service. A limited list of upcoming reminder times is stored in device-protected storage so reminders can be scheduled before the first unlock after a restart.</p>
+<h2>Phone and watch synchronization</h2>
+<p>The Wear OS companion receives a snapshot of doses and medication information from the paired phone and stores pending actions such as taking, skipping or snoozing a dose. The last received snapshot can remain on the watch while it is disconnected.</p>
+<p>Synchronization uses the Wearable Data Layer in Google Play services. It can use Bluetooth or Google servers as a relay when Bluetooth is unavailable. Google documents cloud Data Layer transfers as end-to-end encrypted. The developer cannot read that relay traffic. The app does not promise Bluetooth-only operation. Google Play services also has its own <a href="https://policies.google.com/privacy">privacy policy</a>.</p>
+<h2>Optional watch installation over ADB</h2>
+<p>The optional watch installer connects directly over your Wi-Fi using ADB after you enable debugging and enter the watch pairing code. It transfers the Dosette APK and checks device and installed-app metadata. Pairing codes are not saved or logged. Client credentials are encrypted on the phone and excluded from backups and device transfer. Disable debugging on the watch when finished. No developer server receives this traffic.</p>
+<h2>Optional location access</h2>
+<p>If you use Places, Dosette accesses location to resume snoozed medication reminders when you arrive at a configured home or work location, including when the app is closed or not in use. Saved place labels, coordinates, radii and optional Wi-Fi names are kept on the phone. Geofences and location checks use Google Play services. Dosette does not build a route history or send your location to a developer server.</p>
+<p>You may decline or revoke location permission in Android settings and remove configured places. Timed reminders remain available. Location and Wi-Fi availability, permissions and device settings affect arrival detection.</p>
+<h2>Backups and exports</h2>
+<p>Dosette exports data only when you request it, to a destination you choose through Android's document picker. A selected cloud storage provider receives the file and applies its own policies. Plain YAML exports contain readable personal information. You may protect an export with a password using encryption; the password is not saved by Dosette.</p>
+<p>Before import, Dosette keeps a local copy of the current data and retains the last five automatic copies in private app storage. The app excludes its records and settings from Android cloud backup. Android device-to-device transfer may copy them to your new device.</p>
+<h2>Notifications, retention and deletion</h2>
+<p>Medication information may appear in notifications and on the home-screen widget. Choose suitable lock-screen and watch notification settings for your privacy. Data remains until you remove it or clear the app's storage. Deleting an individual record does not automatically delete earlier exported or automatic backup copies.</p>
+<p>To remove all local app data, clear Dosette storage or uninstall Dosette on both the phone and watch. Clear or remove both copies so remaining phone data cannot synchronize back to the watch. Delete exported files separately from your chosen storage provider, including any trash or retained versions. There is no Dosette account or developer-hosted copy to delete.</p>
+<h2>Contact and changes</h2>
+<p>For general questions about this policy, use <a href="https://github.com/nd4y/dosette/issues">Dosette project issues</a>. GitHub issues are public: do not include medication details, medical records, backup files or other private information. GitHub processes information you submit according to its own privacy policy. Changes to this policy will be reflected here with an updated date.</p>
+<h2>Health information</h2>
+<p>Dosette is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. Consult a healthcare professional for medical advice, diagnosis, or treatment.</p>
+</section>
+<section id="russian" lang="ru">
+<h1>Политика конфиденциальности Dosette</h1>
+<p>Обновлено: 18 октября 2026 года. Политика относится к приложению Dosette для Android и его приложению для Wear OS с пакетом <code>icu.nd4y.dosette</code>. Исходный код доступен в <a href="https://github.com/nd4y/dosette">проекте Dosette</a>.</p>
+<h2>Хранение данных</h2>
+<p>Профили, лекарства, расписания, история приёмов, остатки, визиты и настройки сохраняются в закрытом хранилище приложения на телефоне. Разработчик не использует аккаунты Dosette, сервер для пользовательских данных, рекламные или аналитические сервисы. Ограниченный список времени ближайших напоминаний хранится в защищённом хранилище устройства, доступном до первой разблокировки после перезагрузки.</p>
+<h2>Синхронизация с часами</h2>
+<p>Часы получают с телефона снимок приёмов и сведения о лекарствах, хранят последнюю полученную копию и очередь действий: принять, пропустить или отложить напоминание. Данные могут оставаться на часах при отсутствии связи.</p>
+<p>Передача использует Wearable Data Layer сервисов Google Play. Соединение может работать через Bluetooth или через серверы Google, если Bluetooth недоступен. По документации Google облачная передача Data Layer защищена сквозным шифрованием. Разработчик не может прочитать передаваемые через этот канал данные. Работа только через Bluetooth не гарантируется. К сервисам Google Play также применяется <a href="https://policies.google.com/privacy">политика конфиденциальности Google</a>.</p>
+<h2>Необязательная установка на часы через ADB</h2>
+<p>Необязательный мастер установки подключается к часам напрямую по Wi-Fi через ADB после включения отладки и ввода кода сопряжения. Он передаёт APK Dosette и проверяет сведения об устройстве и установленном приложении. Код сопряжения не сохраняется и не записывается в журналы. Учётные данные подключения зашифрованы на телефоне и исключены из резервных копий и переноса между устройствами. После установки выключите отладку на часах. Сервер разработчика в передаче не участвует.</p>
+<h2>Необязательный доступ к местоположению</h2>
+<p>Функция «Места» использует местоположение, чтобы возобновить отложенные напоминания по прибытии домой или на работу, в том числе когда приложение закрыто или не используется. Названия мест, координаты, радиусы и необязательные имена сетей Wi-Fi хранятся на телефоне. Для геозон и определения местоположения используются сервисы Google Play. Dosette не сохраняет историю маршрутов и не отправляет координаты на сервер разработчика.</p>
+<p>Вы можете не предоставлять доступ, отозвать разрешение в настройках Android или удалить места. Напоминания по времени продолжат работать. Определение прибытия зависит от доступности местоположения и Wi-Fi, разрешений и настроек устройства.</p>
+<h2>Резервные копии</h2>
+<p>Экспорт выполняется по вашему запросу в выбранное через системный диалог место. При выборе облачного хранилища файл получает соответствующий сервис, действующий по собственной политике. Незашифрованный YAML содержит читаемые персональные данные. Копию можно зашифровать паролем; Dosette не сохраняет этот пароль.</p>
+<p>Перед импортом приложение сохраняет текущие данные в локальную копию. Последние пять автоматических копий остаются в закрытом хранилище приложения. Данные и настройки исключены из облачной резервной копии Android, но могут переноситься при прямом переносе между устройствами.</p>
+<h2>Уведомления и удаление</h2>
+<p>Сведения о лекарствах могут отображаться в уведомлениях и виджете. Настройте показ уведомлений на заблокированном экране и часах с учётом конфиденциальности. Записи хранятся до их удаления или очистки данных приложения. Удаление отдельной записи не удаляет её из ранее созданных резервных копий.</p>
+<p>Для полного удаления локальных данных очистите хранилище Dosette или удалите приложение и на телефоне, и на часах. Обе копии нужно удалить, чтобы оставшиеся данные телефона не попали на часы повторно. Экспортированные файлы, корзину и сохранённые версии удалите отдельно в выбранном хранилище. Аккаунта Dosette и копии на сервере разработчика нет.</p>
+<h2>Связь и изменения политики</h2>
+<p>Общие вопросы можно задать через <a href="https://github.com/nd4y/dosette/issues">обсуждения ошибок проекта Dosette</a>. Эти обращения публичны: не прикладывайте медицинские сведения, резервные копии и другие личные данные. К информации, которую вы передаёте GitHub, применяется политика GitHub. Изменения этой политики публикуются здесь с новой датой.</p>
+<h2>Медицинская информация</h2>
+<p>Dosette не является медицинским изделием и не предназначен для диагностики, лечения, излечения или предотвращения заболеваний. За медицинскими рекомендациями, диагностикой и лечением обращайтесь к медицинскому специалисту.</p>
+</section>
+</main>
+</body>
+</html>

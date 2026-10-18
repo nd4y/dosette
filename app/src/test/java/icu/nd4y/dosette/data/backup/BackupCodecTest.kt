@@ -351,6 +351,83 @@ class BackupCodecTest {
     }
 
     @Test
+    fun `a dose log cannot be imported into another family profile`() {
+        val broken =
+            fullData.copy(
+                doseLogs = fullData.doseLogs.map { if (it.id == "d1") it.copy(profileId = "p2") else it },
+            )
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(BackupMapper.toSnapshot(broken, instant))
+        }
+    }
+
+    @Test
+    fun `duplicate scheduled occurrence facts are rejected even with different ids`() {
+        val duplicate = fullData.doseLogs.first().copy(id = "another-log", status = DoseStatus.SKIPPED)
+        val broken = fullData.copy(doseLogs = fullData.doseLogs + duplicate)
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(BackupMapper.toSnapshot(broken, instant))
+        }
+    }
+
+    @Test
+    fun `duplicate time ids and duplicate dose times are rejected before writing`() {
+        val original = fullData.schedules.first()
+        val first = original.times.first()
+        val badSchedules =
+            listOf(
+                original.copy(times = original.times + first.copy(time = LocalTime.NOON)),
+                original.copy(times = original.times + first.copy(id = "new-time-id")),
+            )
+        badSchedules.forEach { bad ->
+            assertThrows(BackupFormatException::class.java) {
+                BackupMapper.fromSnapshot(BackupMapper.toSnapshot(fullData.copy(schedules = listOf(bad)), instant))
+            }
+        }
+    }
+
+    @Test
+    fun `nonpositive schema and time rollover are rejected`() {
+        val snapshot = BackupMapper.toSnapshot(fullData, instant)
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(snapshot.copy(schemaVersion = 0))
+        }
+        assertThrows(BackupFormatException::class.java) {
+            parseTime("24:00", "test.time")
+        }
+    }
+
+    @Test
+    fun `infinite dose and invalid as-needed default amounts are rejected`() {
+        val original = fullData.schedules.first()
+        val badSchedules =
+            listOf(
+                original.copy(times = original.times.map { it.copy(doseAmount = Double.POSITIVE_INFINITY) }),
+                fullData.schedules.last().copy(defaultDoseAmount = -1.0),
+                fullData.schedules.last().copy(defaultDoseAmount = Double.NaN),
+            )
+        badSchedules.forEach { bad ->
+            assertThrows(BackupFormatException::class.java) {
+                BackupMapper.fromSnapshot(BackupMapper.toSnapshot(fullData.copy(schedules = listOf(bad)), instant))
+            }
+        }
+    }
+
+    @Test
+    fun `invalid stock values and historical consumption are rejected`() {
+        val invalidValues = listOf(-1.0, Double.NaN, Double.POSITIVE_INFINITY)
+        invalidValues.forEach { value ->
+            val invalidStock = fullData.copy(variants = fullData.variants.map { it.copy(currentStock = value) })
+            val invalidLog = fullData.copy(doseLogs = fullData.doseLogs.map { it.copy(consumedUnits = value) })
+            listOf(invalidStock, invalidLog).forEach { broken ->
+                assertThrows(BackupFormatException::class.java) {
+                    BackupMapper.fromSnapshot(BackupMapper.toSnapshot(broken, instant))
+                }
+            }
+        }
+    }
+
+    @Test
     fun `duplicate schedule ids are rejected with a readable error`() {
         val broken = fullData.copy(schedules = fullData.schedules + fullData.schedules.first())
         val yaml = BackupCodec.encode(BackupMapper.toSnapshot(broken, instant))

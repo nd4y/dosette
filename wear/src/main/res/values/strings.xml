@@ -10,6 +10,7 @@
     <string name="empty_today">No doses today</string>
     <string name="no_phone_data">Open Dosette on the phone once — the day syncs from there</string>
     <string name="phone_unreachable">Phone not connected: taps wait in a queue</string>
+    <string name="stale_data">Data from %1$s. Open Dosette on the phone to update.</string>
     <string name="dose_gone">This dose is no longer on the list</string>
 
     <string name="planned_at">Planned for %1$s</string>

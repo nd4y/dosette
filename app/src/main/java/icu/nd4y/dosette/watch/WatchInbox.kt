@@ -1,15 +1,20 @@
 package icu.nd4y.dosette.watch
 
+import android.net.Uri
 import android.util.Log
 import icu.nd4y.dosette.domain.model.OccurrenceKey
+import icu.nd4y.dosette.link.LinkPaths
 import icu.nd4y.dosette.link.WatchAction
 import icu.nd4y.dosette.link.WatchActionKind
 import icu.nd4y.dosette.link.WatchJson
 import icu.nd4y.dosette.reminders.PrnIntakes
 import icu.nd4y.dosette.reminders.ReminderEngine
 import icu.nd4y.dosette.reminders.UserDoseAction
-import java.time.Clock
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,47 +31,62 @@ class WatchInbox
         private val engine: ReminderEngine,
         private val prnIntakes: PrnIntakes,
         private val link: WatchLink,
-        private val clock: Clock,
     ) {
+        private val mutex = Mutex()
+
         /** Applies the items in tap order. A malformed item is acknowledged too, or it would be retried forever. */
-        suspend fun receive(items: List<PendingWatchAction>) {
-            val decoded = items.map { it to WatchJson.decodeAction(it.json) }
-            for ((item, action) in decoded.sortedBy { (_, action) -> action?.actedAt ?: Long.MAX_VALUE }) {
-                val applied =
-                    action == null ||
-                        runCatching { apply(action) }
-                            .onFailure { Log.e(TAG, "watch action ${action.kind} failed", it) }
-                            .isSuccess
-                // A failed apply keeps the item for the next drain.
-                if (applied) link.acknowledge(item.uri)
+        suspend fun receive(items: List<PendingWatchAction>): Unit =
+            mutex.withLock {
+                val decoded = items.map { it to decode(it) }
+                for ((item, action) in decoded.sortedBy { (_, action) -> action?.actedAt ?: Long.MAX_VALUE }) {
+                    val applied =
+                        action == null ||
+                            runCatching { apply(action, item.uri) }
+                                .onFailure {
+                                    if (it is CancellationException) throw it
+                                    Log.e(TAG, "watch action ${action.kind} failed", it)
+                                }.isSuccess
+                    // A failed apply keeps the item for the next drain.
+                    if (applied) link.acknowledge(item.uri)
+                }
             }
-        }
+
+        private fun decode(item: PendingWatchAction): WatchAction? =
+            WatchJson.decodeAction(item.json)?.takeIf {
+                Uri.parse(item.uri).path == LinkPaths.actionPath(it.id)
+            }
 
         /** Everything still queued — after a start or a reboot, when a delivery may have found the database locked. */
         suspend fun drain() {
             receive(link.pendingActions())
         }
 
-        private suspend fun apply(action: WatchAction) {
+        private suspend fun apply(
+            action: WatchAction,
+            sourceUri: String,
+        ) {
             // An unknown or missing key is nothing to apply, not an error.
             val key = doseKey(action)
+            val deliveryId = "watch-" + UUID.nameUUIDFromBytes(sourceUri.toByteArray(Charsets.UTF_8))
             when (action.kind) {
-                WatchActionKind.TAKE -> {
-                    // Never in the future: the two clocks are not the same clock.
-                    val actedAt = Instant.ofEpochMilli(action.actedAt).coerceAtMost(clock.instant())
-                    if (key != null) engine.takeAt(key, actedAt)
-                }
-
-                WatchActionKind.SKIP -> {
-                    if (key != null) engine.onUserAction(key, UserDoseAction.SKIP)
-                }
-
-                WatchActionKind.SNOOZE -> {
-                    if (key != null) engine.onUserAction(key, UserDoseAction.SNOOZE)
+                WatchActionKind.TAKE, WatchActionKind.SKIP, WatchActionKind.SNOOZE -> {
+                    val userAction =
+                        when (action.kind) {
+                            WatchActionKind.TAKE -> UserDoseAction.TAKE
+                            WatchActionKind.SKIP -> UserDoseAction.SKIP
+                            else -> UserDoseAction.SNOOZE
+                        }
+                    if (key != null) {
+                        engine.onWatchAction(key, userAction, Instant.ofEpochMilli(action.actedAt), deliveryId)
+                    }
                 }
 
                 WatchActionKind.TAKE_PRN -> {
-                    action.medicationId?.let { prnIntakes.take(it) }
+                    action.medicationId?.let {
+                        // Persist delivery identity with the log and stock change,
+                        // even if acknowledgement fails after the transaction.
+                        prnIntakes.take(it, Instant.ofEpochMilli(action.actedAt), deliveryId, deliveryId = deliveryId)
+                    }
                 }
             }
         }

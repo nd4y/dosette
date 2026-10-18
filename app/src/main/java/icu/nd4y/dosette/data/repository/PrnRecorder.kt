@@ -1,11 +1,14 @@
 package icu.nd4y.dosette.data.repository
 
+import androidx.room.withTransaction
+import icu.nd4y.dosette.data.db.AppDatabase
 import icu.nd4y.dosette.domain.inventory.InventoryPolicy
 import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
 import icu.nd4y.dosette.domain.model.ScheduleType
 import java.time.Clock
+import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,40 +31,49 @@ class PrnRecorder
         private val medicationRepository: MedicationRepository,
         private val doseLogRepository: DoseLogRepository,
         private val clock: Clock,
+        private val db: AppDatabase,
     ) {
         /** @return the recorded intake, or null when the medication has no open PRN schedule. */
-        suspend fun record(medicationId: String): PrnIntake? {
-            val med = medicationRepository.getDetails(medicationId)
-            val schedule =
-                med?.schedules?.firstOrNull { it.endDate == null && it.type == ScheduleType.AS_NEEDED }
-            if (med == null || schedule == null) return null
-            val variant = med.defaultVariant
-            val amount = schedule.defaultDoseAmount
-            val consumed =
-                variant?.let {
-                    InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
-                }
-            val now = clock.instant()
-            val logId = UUID.randomUUID().toString()
-            doseLogRepository.recordPrn(
-                DoseLog(
-                    id = logId,
-                    profileId = med.medication.profileId,
-                    medicationId = med.medication.id,
-                    scheduleId = schedule.id,
-                    kind = DoseKind.PRN,
-                    date = now.atZone(clock.zone).toLocalDate(),
-                    time = null,
-                    scheduledAt = null,
-                    status = DoseStatus.TAKEN,
-                    actedAt = now,
-                    amount = amount,
-                    variantId = variant?.id,
-                    consumedUnits = consumed,
-                    note = null,
-                    updatedAt = now,
-                ),
-            )
-            return PrnIntake(logId = logId, medicationName = med.medication.name)
-        }
+        suspend fun record(
+            medicationId: String,
+            actedAt: Instant = clock.instant(),
+            logId: String = UUID.randomUUID().toString(),
+            deliveryId: String? = null,
+        ): PrnIntake? =
+            db.withTransaction {
+                val now = clock.instant()
+                val intakeAt = actedAt.coerceAtMost(now)
+                val date = intakeAt.atZone(clock.zone).toLocalDate()
+                val med = medicationRepository.getDetails(medicationId)
+                val schedule = med?.schedulesActiveOn(date)?.firstOrNull { it.type == ScheduleType.AS_NEEDED }
+                if (med == null || schedule == null) return@withTransaction null
+                val variant = med.defaultVariant
+                val amount = schedule.defaultDoseAmount
+                val consumed =
+                    variant?.let {
+                        InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
+                    }
+                val recorded =
+                    doseLogRepository.recordPrn(
+                        DoseLog(
+                            id = logId,
+                            profileId = med.medication.profileId,
+                            medicationId = med.medication.id,
+                            scheduleId = schedule.id,
+                            kind = DoseKind.PRN,
+                            date = date,
+                            time = null,
+                            scheduledAt = null,
+                            status = DoseStatus.TAKEN,
+                            actedAt = intakeAt,
+                            amount = amount,
+                            variantId = variant?.id,
+                            consumedUnits = consumed,
+                            note = null,
+                            updatedAt = now,
+                        ),
+                        deliveryId = deliveryId,
+                    )
+                if (recorded) PrnIntake(logId = logId, medicationName = med.medication.name) else null
+            }
     }

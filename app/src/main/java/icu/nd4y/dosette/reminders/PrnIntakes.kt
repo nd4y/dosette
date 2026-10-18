@@ -8,6 +8,8 @@ import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.inventory.InventoryPolicy
 import icu.nd4y.dosette.reminders.notifications.ReminderNotifier
 import kotlinx.coroutines.flow.first
+import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,11 +30,21 @@ class PrnIntakes
         private val notifier: ReminderNotifier,
         private val mirrorRefresher: MirrorRefresher,
     ) {
-        suspend fun take(medicationId: String): PrnIntake? {
+        suspend fun take(
+            medicationId: String,
+            actedAt: Instant? = null,
+            logId: String = UUID.randomUUID().toString(),
+            deliveryId: String? = null,
+        ): PrnIntake? {
             val med = medicationRepository.getDetails(medicationId) ?: return null
             val variant = med.defaultVariant?.takeIf { it.trackingEnabled }
             val before = variant?.let { medicationRepository.getVariant(it.id)?.currentStock }
-            val intake = prnRecorder.record(medicationId)
+            val intake =
+                if (actedAt == null) {
+                    prnRecorder.record(medicationId, logId = logId, deliveryId = deliveryId)
+                } else {
+                    prnRecorder.record(medicationId, actedAt, logId, deliveryId)
+                }
             if (intake != null) {
                 if (variant != null && before != null) {
                     val after = medicationRepository.getVariant(variant.id)?.currentStock ?: before
@@ -43,8 +55,10 @@ class PrnIntakes
                         notifier.postLowStock(med.medication.id, medicationTitle(med), formatUnits(after))
                     }
                 }
-                mirrorRefresher.refresh()
             }
+            // A previous delivery may have committed, then failed while
+            // publishing its snapshot. Retrying still refreshes the watch.
+            if (intake != null || deliveryId != null) mirrorRefresher.refresh()
             return intake
         }
 

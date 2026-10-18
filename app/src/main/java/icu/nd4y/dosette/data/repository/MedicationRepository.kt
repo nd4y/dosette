@@ -69,6 +69,12 @@ interface MedicationRepository {
 
     suspend fun upsertVariant(variant: MedicationVariant)
 
+    /** Save editor fields while preserving inventory the user did not explicitly change. */
+    suspend fun upsertVariantFromEditor(
+        variant: MedicationVariant,
+        updateStock: Boolean,
+    )
+
     suspend fun getVariant(variantId: String): MedicationVariant?
 
     suspend fun deleteVariant(variantId: String)
@@ -167,6 +173,11 @@ class MedicationRepositoryImpl
         ) = scheduleDao.closeSchedule(scheduleId, closeOn)
 
         override suspend fun upsertVariant(variant: MedicationVariant) = variantDao.upsert(variant.toEntity())
+
+        override suspend fun upsertVariantFromEditor(
+            variant: MedicationVariant,
+            updateStock: Boolean,
+        ) = variantDao.upsertFromEditor(variant.toEntity(), updateStock)
 
         override suspend fun getVariant(variantId: String): MedicationVariant? =
             variantDao.getById(variantId)?.toDomain()

@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "dosette"
-include(":app", ":link", ":wear")
+include(":app", ":link", ":wear", ":adb")

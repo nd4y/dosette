@@ -38,6 +38,11 @@ class SettingsViewModel
                 AppSettings(),
             )
 
+        /** Refresh alarms and waiting geofences after returning from system permission settings. */
+        fun onPermissionsChanged() {
+            viewModelScope.launch { engine.reschedule() }
+        }
+
         fun setNagInterval(value: Int) {
             viewModelScope.launch {
                 settingsRepository.setNagIntervalMin(value)
@@ -93,6 +98,7 @@ class SettingsViewModel
             viewModelScope.launch {
                 val current = settingsRepository.settings.first().places[id] ?: PlaceConfig()
                 settingsRepository.setPlace(id, current.copy(latitude = latitude, longitude = longitude))
+                engine.reschedule()
             }
         }
 
@@ -110,6 +116,7 @@ class SettingsViewModel
             viewModelScope.launch {
                 val current = settingsRepository.settings.first().places[id] ?: PlaceConfig()
                 settingsRepository.setPlace(id, current.copy(wifiSsid = ssid))
+                engine.reschedule()
             }
         }
 

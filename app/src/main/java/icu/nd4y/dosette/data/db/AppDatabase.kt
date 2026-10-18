@@ -13,7 +13,9 @@ import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
 import icu.nd4y.dosette.data.db.dao.ProfileDao
 import icu.nd4y.dosette.data.db.dao.ReminderStateDao
 import icu.nd4y.dosette.data.db.dao.ScheduleDao
+import icu.nd4y.dosette.data.db.dao.WatchActionReceiptDao
 import icu.nd4y.dosette.data.db.entity.AppointmentEntity
+import icu.nd4y.dosette.data.db.entity.DoseActionCursorEntity
 import icu.nd4y.dosette.data.db.entity.DoseLogEntity
 import icu.nd4y.dosette.data.db.entity.MedicationEntity
 import icu.nd4y.dosette.data.db.entity.MedicationVariantEntity
@@ -21,6 +23,7 @@ import icu.nd4y.dosette.data.db.entity.ProfileEntity
 import icu.nd4y.dosette.data.db.entity.ReminderStateEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleTimeEntity
+import icu.nd4y.dosette.data.db.entity.WatchActionReceiptEntity
 
 @Database(
     entities = [
@@ -32,6 +35,8 @@ import icu.nd4y.dosette.data.db.entity.ScheduleTimeEntity
         MedicationVariantEntity::class,
         AppointmentEntity::class,
         ReminderStateEntity::class,
+        WatchActionReceiptEntity::class,
+        DoseActionCursorEntity::class,
     ],
     version = AppDatabase.VERSION,
     exportSchema = true,
@@ -54,9 +59,23 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun backupDao(): BackupDao
 
+    abstract fun watchActionReceiptDao(): WatchActionReceiptDao
+
     companion object {
-        const val VERSION = 3
+        const val VERSION = 4
         const val NAME = "dosette.db"
+
+        /** v4: transport receipts have no profile FK, so undo/import cannot resurrect a watch tap. */
+        val MIGRATION_3_4 =
+            object : Migration(3, 4) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("CREATE TABLE IF NOT EXISTS watch_action_receipts (id TEXT NOT NULL PRIMARY KEY)")
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS dose_action_cursors " +
+                            "(occurrenceKey TEXT NOT NULL PRIMARY KEY, actedAt INTEGER NOT NULL)",
+                    )
+                }
+            }
 
         /** v2: place-snooze columns on reminder_states; graceAnchor backfills from scheduledAt. */
         val MIGRATION_1_2 =
