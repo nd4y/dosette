@@ -55,7 +55,7 @@ for this phone-side installer. Enable wireless debugging on the watch manually.
 Every release also carries `dosette-wear-vX.Y.Z.apk` for a Wear OS 3+ watch (Pixel Watch 3 is the
 reference device). It is a companion: it needs the phone app on the paired phone and has no data of
 its own. Install it over adb - on the watch enable developer options (Settings → System → About →
-tap the build number seven times), then *Developer options → ADB debugging* and *Wireless debugging*,
+tap the build number seven times), then _Developer options → ADB debugging_ and _Wireless debugging_,
 pair and install:
 
 ```bash
@@ -65,7 +65,7 @@ adb -s <watch-ip>:<port> install -r dosette-wear-vX.Y.Z.apk
 ```
 
 Both APKs share the package name and the signing key (the Data Layer links them by that), so keep
-them apart: in Obtainium set the app's *Filter APKs by regular expression* to `^dosette-v` - without it Obtainium asks
+them apart: in Obtainium set the app's _Filter APKs by regular expression_ to `^dosette-v` - without it Obtainium asks
 which of the two APKs to install on every update. Notifications are mirrored to the watch as long as
 the Pixel Watch app allows them for Dosette (they are, by default).
 
@@ -135,3 +135,7 @@ is teal `#00696B`; with dynamic color enabled the palette follows the device wal
 ## License
 
 [MIT](LICENSE)
+
+## Development standard
+
+This repository adopts version 0.4.0 of the shared development standard. Read the [English guide](docs/en/development-standard.md) or [Russian guide](docs/ru/development-standard.md). The local toolkit checks staged secrets, changed-file formatting and bilingual documentation before merge. Existing product CI remains in place. Adoption is in progress; product acceptance and legacy-document translation are recorded separately in .repo-policy.json.
