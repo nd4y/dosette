@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_slot_title">%1$s · Лекарств: %2$d</string>
+    <string name="notification_open_doses">Выбрать лекарства</string>
+    <string name="med_repeat_title">Повторы напоминаний</string>
+    <string name="med_repeat_hint">Повторять до ответа в пределах окна напоминания. Отложенный приём не беспокоит до выбранного срока. Общий лимит повторов сохраняется.</string>
+    <string name="med_repeat_global">Как в общих настройках</string>
+    <string name="med_repeat_off">Не повторять</string>
+    <string name="med_repeat_minutes">Раз в %1$d мин</string>
+    <string name="tile_preview_open">Открыть</string>
+</resources>

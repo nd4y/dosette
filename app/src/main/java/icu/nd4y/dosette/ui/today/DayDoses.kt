@@ -20,7 +20,7 @@ fun slotSections(doses: List<TodayDose>): List<List<TodayDose>> {
     val sections = mutableListOf<MutableList<TodayDose>>()
     doses.forEach { dose ->
         val last = sections.lastOrNull()
-        if (last == null || last.last().slot != dose.slot) {
+        if (last == null || last.last().slot != dose.slot || last.last().date != dose.date) {
             sections.add(mutableListOf(dose))
         } else {
             last.add(dose)

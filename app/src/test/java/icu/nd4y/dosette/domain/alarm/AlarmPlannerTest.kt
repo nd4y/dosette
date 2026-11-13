@@ -70,7 +70,7 @@ class AlarmPlannerTest {
         val plan = AlarmPlanner.nextAlarm(now, zone, AlarmObligations(emptyList(), emptyList(), emptyList()), settings)
 
         assertThat(plan.reason).isEqualTo(AlarmReason.HOUSEKEEPING)
-        assertThat(plan.at.atZone(zone).toLocalTime()).isEqualTo(LocalTime.of(0, 5))
+        assertThat(plan.at.atZone(zone).toLocalTime()).isEqualTo(LocalTime.MIDNIGHT)
         assertThat(plan.at.atZone(zone).toLocalDate()).isEqualTo(LocalDate.parse("2026-08-30"))
     }
 
@@ -231,5 +231,33 @@ class AlarmPlannerTest {
 
         assertThat(plan.reason).isEqualTo(AlarmReason.SNOOZE)
         assertThat(plan.at).isEqualTo(ceiling)
+    }
+
+    @Test
+    fun `medication override schedules a one minute repeat without changing other medicines`() {
+        val active = state(lastAlertAt = now)
+        val obligations =
+            AlarmObligations(
+                emptyList(),
+                listOf(active),
+                emptyList(),
+                mapOf("m1" to settings.copy(nagIntervalMin = 1)),
+            )
+        val plan = AlarmPlanner.nextAlarm(now, zone, obligations, settings)
+        assertThat(plan.reason).isEqualTo(AlarmReason.NAG)
+        assertThat(plan.at).isEqualTo(now.plusSeconds(60))
+        val inherited = AlarmPlanner.nextAlarm(now, zone, obligations.copy(medicationSettings = emptyMap()), settings)
+        assertThat(inherited.at).isEqualTo(now.plusSeconds(600))
+        val disabled =
+            AlarmPlanner.nextAlarm(
+                now,
+                zone,
+                obligations.copy(
+                    medicationSettings =
+                        mapOf("m1" to settings.copy(nagIntervalMin = 0)),
+                ),
+                settings,
+            )
+        assertThat(disabled.reason).isEqualTo(AlarmReason.GRACE)
     }
 }

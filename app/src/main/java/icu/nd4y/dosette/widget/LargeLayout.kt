@@ -72,7 +72,15 @@ object LargeLayout {
     ): LargePlan {
         val costs = Costs(fontScale)
         val slots = slotSections(doses)
-        val actedSlots = slots.count { slot -> slot.none { it.status == DoseUiStatus.PENDING } }
+        val actedSlots =
+            slots.count { slot ->
+                slot.none {
+                    (
+                        it.status == DoseUiStatus.PENDING ||
+                            it.status == DoseUiStatus.MISSED
+                    )
+                }
+            }
         var plan = layout(heightDp, carryover, slots, collapseFirst = 0, costs)
         var collapseFirst = 0
         while (plan.hidden > 0 && collapseFirst < actedSlots) {
@@ -94,7 +102,7 @@ object LargeLayout {
         if (carryover.isNotEmpty()) cursor.placeSection(LargeEntry.CarryoverHeader, carryover, collapsed = false)
         var foldsLeft = collapseFirst
         slots.forEach { slot ->
-            val acted = slot.none { it.status == DoseUiStatus.PENDING }
+            val acted = slot.none { (it.status == DoseUiStatus.PENDING || it.status == DoseUiStatus.MISSED) }
             val collapsed = acted && foldsLeft > 0
             if (collapsed) foldsLeft--
             cursor.placeSection(LargeEntry.SlotHeader(slot, collapsed), slot, collapsed)
@@ -132,7 +140,8 @@ object LargeLayout {
 
         val prnRow: Int = PRN_FIXED + max(PRN_BUTTON, text(PRN_TEXT))
 
-        fun row(dose: TodayDose): Int = if (dose.status == DoseUiStatus.PENDING) pendingRow else actedRow
+        fun row(dose: TodayDose): Int =
+            if ((dose.status == DoseUiStatus.PENDING || dose.status == DoseUiStatus.MISSED)) pendingRow else actedRow
 
         private fun text(dp: Int): Int = (dp * fontScale).roundToInt()
     }

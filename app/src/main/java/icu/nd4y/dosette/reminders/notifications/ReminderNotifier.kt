@@ -36,6 +36,16 @@ interface ReminderNotifier {
         alert: Boolean,
     )
 
+    fun stageReminder(
+        payload: ReminderPayload,
+        alert: Boolean,
+    ) = postReminder(payload, alert)
+
+    fun syncReminders(
+        payloads: List<ReminderPayload>,
+        alertKeys: Set<OccurrenceKey>,
+    ) = Unit
+
     fun cancelReminder(key: OccurrenceKey)
 
     fun postMissedNotice(
@@ -144,7 +154,20 @@ class AndroidReminderNotifier
             notifyIfAllowed(id, notification)
         }
 
+        override fun stageReminder(
+            payload: ReminderPayload,
+            alert: Boolean,
+        ) = Unit
+
+        override fun syncReminders(
+            payloads: List<ReminderPayload>,
+            alertKeys: Set<OccurrenceKey>,
+        ) {
+            GroupedReminders(context, localized, manager, ::postReminder).sync(payloads, alertKeys)
+        }
+
         override fun cancelReminder(key: OccurrenceKey) {
+            manager.cancel(NotificationIds.missedNotice(key))
             manager.cancel(NotificationIds.reminder(key))
         }
 
@@ -161,7 +184,11 @@ class AndroidReminderNotifier
                     .setCategory(NotificationCompat.CATEGORY_STATUS)
                     .setAutoCancel(true)
                     .setContentIntent(contentIntent(NotificationIds.missedNotice(key)))
-                    .build()
+                    .addAction(
+                        R.drawable.ic_widget_check,
+                        localized.getString(R.string.action_take),
+                        actionIntent(key, NotificationActionReceiver.ACTION_TAKE, NotificationIds.missedNotice(key), 1),
+                    ).build()
             notifyIfAllowed(NotificationIds.missedNotice(key), notification)
         }
 

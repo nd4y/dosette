@@ -7,11 +7,13 @@ external download or installation permission on the phone is needed.
 1. Put the phone and Wear OS 3+ watch on the same reachable Wi-Fi network.
    Keep the watch charging. Enable developer options, ADB debugging and wireless
    debugging on the watch. The wizard explains the steps.
-2. Open **Pair new device** on the watch and enter its numeric IPv4 address,
-   pairing port and six-digit code. Keep the pairing window open. Pairing this
+2. Open **Pair new device** on the watch and enter its six-digit
+   pairing code. Dosette discovers the IPv4 address and pairing port automatically;
+   select the watch if several devices advertise ADB. Keep the pairing window open. Pairing this
    computer does not authorize the phone app's separate ADB identity.
-3. Return to the watch's main wireless debugging page and enter its **connection**
-   port. This is usually different from the pairing port and can change.
+3. Return to the watch's main wireless debugging page and check its **connection**
+   port, which is discovered separately. This is usually different from the pairing
+   port and can change. If mDNS is blocked, use the manual-address fallback.
 4. Review the verified certificate and installed/included versions, then confirm
    Install or Update. The wizard rechecks the target and installed APK immediately
    before installing, and verifies the installed APK again afterward.

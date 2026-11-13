@@ -32,4 +32,6 @@ data class MedicationEntity(
     val defaultVariantId: String?,
     val archivedAt: Instant?,
     val createdAt: Instant,
+    /** null follows global reminders; 0 disables repeats for this medication. */
+    val nagIntervalMin: Int? = null,
 )

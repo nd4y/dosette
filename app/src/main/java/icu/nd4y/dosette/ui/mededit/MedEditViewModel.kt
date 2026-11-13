@@ -54,6 +54,7 @@ data class MedEditUiState(
     val strengthText: String = "",
     val strengthUnit: String = "",
     val instructions: String = "",
+    val nagIntervalMin: Int? = null,
     val colorSeed: Int = 0,
     // Schedule. null = no regular schedule: the medication stays in the
     // cabinet for one-time doses added from the calendar.
@@ -229,6 +230,7 @@ class MedEditViewModel
                         strengthValue = strengthValue,
                         strengthUnit = state.strengthUnit.trim().ifEmpty { null },
                         instructions = state.instructions.trim().ifEmpty { null },
+                        nagIntervalMin = state.nagIntervalMin,
                         colorSeed = state.colorSeed,
                         iconKey = state.form.name.lowercase(),
                         defaultVariantId = variants.firstOrNull()?.id,
@@ -267,6 +269,7 @@ class MedEditViewModel
                     strengthValue = strengthValue,
                     strengthUnit = state.strengthUnit.trim().ifEmpty { null },
                     instructions = state.instructions.trim().ifEmpty { null },
+                    nagIntervalMin = state.nagIntervalMin,
                     colorSeed = state.colorSeed,
                     iconKey = state.form.name.lowercase(),
                     defaultVariantId = variants.firstOrNull()?.id,

@@ -59,6 +59,15 @@ private class MutableClock(
 }
 
 private class FakeNotifier : ReminderNotifier {
+    val snapshots = mutableListOf<List<ReminderPayload>>()
+
+    override fun syncReminders(
+        payloads: List<ReminderPayload>,
+        alertKeys: Set<OccurrenceKey>,
+    ) {
+        snapshots += payloads
+    }
+
     val reminders = mutableListOf<Pair<ReminderPayload, Boolean>>()
     val cancelled = mutableListOf<OccurrenceKey>()
     val missedNotices = mutableListOf<OccurrenceKey>()
@@ -714,5 +723,59 @@ class ReminderEngineTest {
             engine.undoDose(oldKey)
 
             assertThat(doseLogRepository.getScheduled(oldKey)?.status).isEqualTo(DoseStatus.MISSED)
+        }
+
+    @Test fun `medicine repeat override re-alerts after two minutes and zero disables repeats`() =
+        runTest {
+            val med = requireNotNull(medicationRepository.getDetails("m1")).medication
+            medicationRepository.upsert(med.copy(nagIntervalMin = 2))
+            engine.processDueEvents()
+            clock.advance(Duration.ofMinutes(2))
+            engine.processDueEvents()
+            assertThat(notifier.reminders.count { it.second }).isEqualTo(2)
+            medicationRepository.upsert(med.copy(nagIntervalMin = 0))
+            clock.advance(Duration.ofMinutes(2))
+            engine.processDueEvents()
+            assertThat(notifier.reminders.count { it.second }).isEqualTo(2)
+        }
+
+    @Test fun `two simultaneous medicines synchronize remaining doses after each app action`() =
+        runTest {
+            db.medicationDao().upsert(medicationEntity(id = "m2"))
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s2", medicationId = "m2", startDate = key.date),
+                listOf(scheduleTimeEntity(id = "t2", scheduleId = "s2", timeMinutes = 8 * 60)),
+            )
+            engine.processDueEvents()
+            assertThat(notifier.snapshots.last().map { it.key.medicationId }).containsExactly("m1", "m2")
+            engine.onUserAction(key, UserDoseAction.TAKE)
+            assertThat(notifier.snapshots.last().map { it.key.medicationId }).containsExactly("m2")
+            engine.onUserAction(key.copy(medicationId = "m2"), UserDoseAction.TAKE)
+            assertThat(notifier.snapshots.last()).isEmpty()
+        }
+
+    @Test fun `one minute repeat is not shortened by the schedule slack on another engine pass`() =
+        runTest {
+            val med = requireNotNull(medicationRepository.getDetails("m1")).medication
+            medicationRepository.upsert(med.copy(nagIntervalMin = 1))
+            engine.processDueEvents()
+            clock.advance(Duration.ofSeconds(30))
+            engine.processDueEvents()
+            assertThat(notifier.reminders.count { it.second }).isEqualTo(1)
+            clock.advance(Duration.ofSeconds(30))
+            engine.processDueEvents()
+            assertThat(notifier.reminders.count { it.second }).isEqualTo(2)
+        }
+
+    @Test
+    fun `group swipe restores current snapshot without running audible nag ticks`() =
+        runTest {
+            engine.processDueEvents()
+            val posted = notifier.reminders.size
+            clock.advance(Duration.ofMinutes(15))
+            engine.onDismissed(null)
+            assertThat(notifier.reminders).hasSize(posted)
+            assertThat(notifier.snapshots.last().map { it.key }).containsExactly(key)
+            assertThat(stateRepository.get(key)).isNotNull()
         }
 }

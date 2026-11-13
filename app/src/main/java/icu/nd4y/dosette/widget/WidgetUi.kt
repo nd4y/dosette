@@ -139,6 +139,13 @@ private fun TightCompactContent(
                     ),
             )
         }
+        if (next.date != state.date) {
+            Text(
+                text = nextDoseLabel(state, next),
+                maxLines = 1,
+                style = TextStyle(color = GlanceTheme.colors.primary, fontSize = 10.sp),
+            )
+        }
         Spacer(GlanceModifier.defaultWeight())
         TakeButton(next, height = 28.dp, fontSize = 11.sp)
     }
@@ -163,14 +170,17 @@ private fun TakeButton(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
-            provider = ImageProvider(R.drawable.ic_widget_check),
+            provider = ImageProvider(if (dose.preview) R.drawable.ic_widget_open else R.drawable.ic_widget_check),
             contentDescription = null,
             modifier = GlanceModifier.size(14.dp),
             colorFilter = ColorFilter.tint(GlanceTheme.colors.onPrimary),
         )
         Spacer(GlanceModifier.width(6.dp))
         Text(
-            text = LocalContext.current.getString(R.string.action_take),
+            text =
+                LocalContext.current.getString(
+                    if (dose.preview) R.string.tile_preview_open else R.string.action_take,
+                ),
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onPrimary,
@@ -208,6 +218,8 @@ internal fun MediumContent(state: WidgetState) {
                 val slotTitle =
                     if (first.date < state.date) {
                         context.getString(R.string.day_yesterday)
+                    } else if (first.preview) {
+                        context.getString(R.string.day_tomorrow)
                     } else {
                         slotLabel(first.slot)
                     }
@@ -284,7 +296,7 @@ internal fun LargeContent(state: WidgetState) {
                 LocalSize.current.height.value
                     .toInt(),
                 state.carryover,
-                state.doses,
+                state.doses + state.upcoming,
                 fontScale(),
             )
         // One Column per section and padding instead of spacer children:
@@ -293,7 +305,7 @@ internal fun LargeContent(state: WidgetState) {
         // full day on a 4x4 widget.
         plan.sections().forEach { section ->
             Column {
-                section.forEach { entry -> LargeEntryView(entry) }
+                section.forEach { entry -> LargeEntryView(entry, state.date) }
             }
         }
 
@@ -312,7 +324,10 @@ internal fun LargeContent(state: WidgetState) {
 }
 
 @Composable
-private fun LargeEntryView(entry: LargeEntry) {
+private fun LargeEntryView(
+    entry: LargeEntry,
+    date: java.time.LocalDate,
+) {
     when (entry) {
         LargeEntry.CarryoverHeader -> {
             // A dose snoozed across midnight outranks everything below.
@@ -335,8 +350,8 @@ private fun LargeEntryView(entry: LargeEntry) {
 
         is LargeEntry.DoseRow -> {
             Box(modifier = GlanceModifier.padding(top = 4.dp)) {
-                if (entry.dose.status == DoseUiStatus.PENDING) {
-                    PendingRow(entry.dose, compactButton = false)
+                if (entry.dose.status == DoseUiStatus.PENDING || entry.dose.status == DoseUiStatus.MISSED) {
+                    PendingRow(entry.dose, compactButton = false, showTime = entry.dose.date < date)
                 } else {
                     ActedRow(entry.dose)
                 }
@@ -390,7 +405,13 @@ private fun SlotHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "${slotLabel(doses.first().slot)} · ${doses.minOf { it.time }.format(TimeFormat)}",
+            text = "${if (doses.first().preview) {
+                LocalContext.current.getString(
+                    R.string.day_tomorrow,
+                )
+            } else {
+                slotLabel(doses.first().slot)
+            }} · ${doses.minOf { it.time }.format(TimeFormat)}",
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurface,
@@ -415,6 +436,7 @@ private fun SlotHeader(
 private fun PendingRow(
     dose: TodayDose,
     compactButton: Boolean,
+    showTime: Boolean = false,
 ) {
     val context = LocalContext.current
     Row(
@@ -440,7 +462,7 @@ private fun PendingRow(
                     ),
             )
             Text(
-                text = doseSubtitle(dose),
+                text = (if (showTime) dose.time.format(TimeFormat) + " · " else "") + doseSubtitle(dose),
                 maxLines = 1,
                 style =
                     TextStyle(
@@ -461,8 +483,14 @@ private fun PendingRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
-                    provider = ImageProvider(R.drawable.ic_widget_check),
-                    contentDescription = context.getString(R.string.action_take),
+                    provider =
+                        ImageProvider(
+                            if (dose.preview) R.drawable.ic_widget_open else R.drawable.ic_widget_check,
+                        ),
+                    contentDescription =
+                        context.getString(
+                            if (dose.preview) R.string.tile_preview_open else R.string.action_take,
+                        ),
                     modifier = GlanceModifier.size(14.dp),
                     colorFilter = ColorFilter.tint(GlanceTheme.colors.onPrimary),
                 )
@@ -479,7 +507,7 @@ private fun PendingRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = context.getString(R.string.action_take),
+                    text = context.getString(if (dose.preview) R.string.tile_preview_open else R.string.action_take),
                     style =
                         TextStyle(
                             color = GlanceTheme.colors.onPrimary,
@@ -681,7 +709,11 @@ private fun formIcon(form: MedicationForm): Int =
     }
 
 private fun takeAction(dose: TodayDose) =
-    actionRunCallback<TakeDoseAction>(actionParametersOf(doseKeyParam to dose.key.encode()))
+    if (dose.preview) {
+        actionStartActivity<icu.nd4y.dosette.MainActivity>()
+    } else {
+        actionRunCallback<TakeDoseAction>(actionParametersOf(doseKeyParam to dose.key.encode()))
+    }
 
 @Composable
 private fun doseSubtitle(dose: TodayDose): String {
@@ -713,7 +745,8 @@ private fun nextDoseLabel(
     val context = LocalContext.current
     val minutes = state.minutesToNext
     return when {
-        next.date < state.date -> context.getString(R.string.widget_due_now)
+        next.date < state.date -> context.getString(R.string.day_yesterday)
+        next.date > state.date -> context.getString(R.string.day_tomorrow)
         minutes == null -> ""
         minutes <= 0 -> context.getString(R.string.widget_due_now)
         minutes < MINUTES_PER_HOUR -> context.getString(R.string.widget_in_minutes, minutes)

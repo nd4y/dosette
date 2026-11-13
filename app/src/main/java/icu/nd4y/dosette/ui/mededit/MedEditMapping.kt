@@ -31,6 +31,7 @@ fun prefillFrom(details: MedicationDetails): MedEditUiState {
         strengthText = strengthText,
         strengthUnit = med.strengthUnit.orEmpty(),
         instructions = med.instructions.orEmpty(),
+        nagIntervalMin = med.nagIntervalMin,
         colorSeed = med.colorSeed,
         scheduleType = schedule?.type,
         weekdays = schedule?.weekdays ?: emptySet(),

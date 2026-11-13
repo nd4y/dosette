@@ -52,6 +52,7 @@ fun MedicationEntity.toDomain(): Medication =
         colorSeed = colorSeed,
         iconKey = iconKey,
         defaultVariantId = defaultVariantId,
+        nagIntervalMin = nagIntervalMin,
         archivedAt = archivedAt,
         createdAt = createdAt,
     )
@@ -68,6 +69,7 @@ fun Medication.toEntity(): MedicationEntity =
         colorSeed = colorSeed,
         iconKey = iconKey,
         defaultVariantId = defaultVariantId,
+        nagIntervalMin = nagIntervalMin,
         archivedAt = archivedAt,
         createdAt = createdAt,
     )

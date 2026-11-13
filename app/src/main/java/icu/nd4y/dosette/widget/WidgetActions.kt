@@ -39,10 +39,13 @@ internal class TakeDoseAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters,
     ) {
-        val encoded = parameters[doseKeyParam] ?: return
-        val key = runCatching { OccurrenceKey.decode(encoded) }.getOrNull() ?: return
-        // The engine refreshes the widget at the end of its pass.
-        widgetEntryPoint(context).engine().onUserAction(key, UserDoseAction.TAKE)
+        val key =
+            parameters[doseKeyParam]?.let { encoded ->
+                runCatching { OccurrenceKey.decode(encoded) }.getOrNull()
+            }
+        if (key != null && !key.date.isAfter(java.time.LocalDate.now())) {
+            widgetEntryPoint(context).engine().onUserAction(key, UserDoseAction.TAKE)
+        }
     }
 }
 
