@@ -8,6 +8,7 @@ import androidx.wear.protolayout.ModifiersBuilders.Modifiers
 import androidx.wear.protolayout.TimelineBuilders.Timeline
 import androidx.wear.protolayout.material3.MaterialScope
 import androidx.wear.protolayout.material3.Typography.BODY_LARGE
+import androidx.wear.protolayout.material3.Typography.BODY_SMALL
 import androidx.wear.protolayout.material3.primaryLayout
 import androidx.wear.protolayout.material3.text
 import androidx.wear.protolayout.types.layoutString
@@ -75,8 +76,12 @@ class DoseTileService : Material3TileService() {
                         ).build(),
                 ).build()
         val content = Column.Builder().setModifiers(Modifiers.Builder().setClickable(click).build())
-        lines.forEach { content.addContent(text(it.layoutString, typography = BODY_LARGE)) }
-        if (!reachable && model.hasData) content.addContent(text(getString(R.string.tile_offline).layoutString))
+        lines.forEach { content.addContent(text(it.layoutString, typography = BODY_LARGE, maxLines = 3)) }
+        if (!reachable && model.hasData) {
+            content.addContent(
+                text(getString(R.string.tile_offline).layoutString, typography = BODY_SMALL, maxLines = 2),
+            )
+        }
         return tile(
             freshness = 1.minutes,
             timeline =
