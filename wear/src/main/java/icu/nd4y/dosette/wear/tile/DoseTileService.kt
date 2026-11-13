@@ -59,22 +59,7 @@ class DoseTileService : Material3TileService() {
                     listOf(getString(R.string.tile_done))
                 }
             }
-        val click =
-            Clickable
-                .Builder()
-                .setId("open_dosette")
-                .setOnClick(
-                    LaunchAction
-                        .Builder()
-                        .setAndroidActivity(
-                            AndroidActivity
-                                .Builder()
-                                .setPackageName(
-                                    packageName,
-                                ).setClassName(MainActivity::class.java.name)
-                                .build(),
-                        ).build(),
-                ).build()
+        val click = openAction()
         val content = Column.Builder().setModifiers(Modifiers.Builder().setClickable(click).build())
         lines.forEach { content.addContent(text(it.layoutString, typography = BODY_LARGE, maxLines = 3)) }
         if (!reachable && model.hasData) {
@@ -93,4 +78,21 @@ class DoseTileService : Material3TileService() {
                 ),
         )
     }
+
+    private fun openAction(): Clickable =
+        Clickable
+            .Builder()
+            .setId("open_dosette")
+            .setOnClick(
+                LaunchAction
+                    .Builder()
+                    .setAndroidActivity(
+                        AndroidActivity
+                            .Builder()
+                            .setPackageName(
+                                packageName,
+                            ).setClassName(MainActivity::class.java.name)
+                            .build(),
+                    ).build(),
+            ).build()
 }
