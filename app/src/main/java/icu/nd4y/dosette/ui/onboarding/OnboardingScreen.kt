@@ -123,6 +123,10 @@ fun OnboardingScreen(
             batteryExempt = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
         },
         onStart = viewModel::finish,
+        soundSetup = {
+            icu.nd4y.dosette.ui.common
+                .ReminderSoundSetup()
+        },
         modifier = modifier,
     )
 }
@@ -137,6 +141,7 @@ fun OnboardingContent(
     modifier: Modifier = Modifier,
     exactAlarmsAllowed: Boolean = true,
     onRequestExactAlarms: () -> Unit = {},
+    soundSetup: @Composable () -> Unit = {},
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -206,6 +211,7 @@ fun OnboardingContent(
             grantedLabel = stringResource(R.string.onboarding_granted),
             onRequest = onRequestNotifications,
         )
+        soundSetup()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             PermissionCard(
                 granted = exactAlarmsAllowed,

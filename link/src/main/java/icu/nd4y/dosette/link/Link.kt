@@ -50,6 +50,7 @@ data class WatchDose(
     val carryover: Boolean = false,
     /** A reminder is ringing for it right now — the only time a snooze means anything. */
     val reminderActive: Boolean = false,
+    val cabinetId: String? = null,
 )
 
 /** An as-needed medication the watch can record an intake for. */
@@ -57,12 +58,13 @@ data class WatchDose(
 data class WatchPrn(
     val medicationId: String,
     val title: String,
+    val cabinetId: String? = null,
 )
 
 /** The day as the phone sees it for the active profile: the same picture as the widget. */
 @Serializable
 data class WatchSnapshot(
-    /** Bumped when a field changes meaning; the watch ignores fields it does not know. */
+    /** Default 1 also decodes old documents that omit this field. The phone emits [CURRENT_SCHEMA]. */
     val schema: Int = 1,
     /** ISO date the list is for. */
     val date: String,
@@ -70,7 +72,12 @@ data class WatchSnapshot(
     val profileName: String? = null,
     val doses: List<WatchDose> = emptyList(),
     val prn: List<WatchPrn> = emptyList(),
-)
+) {
+    companion object {
+        /** Cabinet-aware snapshots must not be displayed by clients that cannot echo their stock source. */
+        const val CURRENT_SCHEMA = 2
+    }
+}
 
 @Serializable
 enum class WatchActionKind { TAKE, SKIP, SNOOZE, TAKE_PRN }
@@ -87,6 +94,7 @@ data class WatchAction(
     val medicationId: String? = null,
     /** Epoch millis of the tap: a delivery hours late must not pretend the dose was taken just now. */
     val actedAt: Long,
+    val cabinetId: String? = null,
 )
 
 /** The one JSON configuration both apps use; malformed input decodes to null, never throws. */
@@ -105,7 +113,7 @@ object WatchJson {
 
     fun decodeSnapshot(text: String): WatchSnapshot? =
         decode(WatchSnapshot.serializer(), text)?.takeIf { snapshot ->
-            snapshot.schema == 1 &&
+            snapshot.schema in 1..WatchSnapshot.CURRENT_SCHEMA &&
                 runCatching { LocalDate.parse(snapshot.date) }.isSuccess &&
                 snapshot.doses.all { dose ->
                     dose.id.isNotBlank() && dose.timeMinutes in 0 until MINUTES_PER_DAY &&

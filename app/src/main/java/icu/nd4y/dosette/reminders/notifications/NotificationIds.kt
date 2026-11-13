@@ -4,6 +4,8 @@ import icu.nd4y.dosette.domain.model.OccurrenceKey
 
 object NotificationIds {
     /** The one generic notice for an alarm that rang before the first unlock. */
+    val SOUND_TEST: Int = "dosette-sound-test".hashCode()
+
     val LOCKED_NOTICE: Int = "locked".hashCode()
 
     fun reminder(key: OccurrenceKey): Int = key.encode().hashCode()

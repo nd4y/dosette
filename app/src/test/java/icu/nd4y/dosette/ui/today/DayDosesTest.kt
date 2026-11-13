@@ -76,6 +76,37 @@ class DayDosesTest {
         )
 
     @Test
+    fun `history keeps its source when selected cabinet differs including unnamed default`() {
+        val variant =
+            icu.nd4y.dosette.domain.model.MedicationVariant(
+                "v1",
+                "m1",
+                null,
+                500.0,
+                "mg",
+                0,
+                true,
+                10.0,
+                null,
+                null,
+                null,
+                "travel",
+                "Travel",
+            )
+        val med = details(old).copy(variants = listOf(variant))
+        val taken = takenLog(LocalTime.of(8, 0)).copy(cabinetId = "main:p1")
+        val doses = buildDayDoses(editDay, listOf(med), listOf(taken), zone)
+        val row = doses.first { it.time == taken.time }
+        assertThat(row.cabinetId).isEqualTo("main:p1")
+        assertThat(row.cabinetName).isNull()
+        val missed =
+            buildDayDoses(editDay, listOf(med), listOf(taken.copy(status = DoseStatus.MISSED)), zone)
+                .first { it.time == taken.time }
+        assertThat(missed.cabinetId).isEqualTo("travel")
+        assertThat(missed.cabinetName).isEqualTo("Travel")
+    }
+
+    @Test
     fun `a slot added after its time is not a dose of the day`() {
         val doses = buildDayDoses(editDay, listOf(details(old, edited)), emptyList(), zone)
 

@@ -80,6 +80,12 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            all {
+                // Robolectric's native runtime shares ZIP/JNI state between sandboxes.
+                // A fresh JVM per class prevents font-loader collisions from poisoning SQLite tests.
+                it.forkEvery = 1
+                it.maxParallelForks = 1
+            }
         }
     }
 

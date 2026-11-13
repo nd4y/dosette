@@ -55,6 +55,11 @@ class MedEditViewModelTest {
             medicationRepository = harness.medicationRepository,
             settingsRepository = harness.settingsRepository,
             engine = harness.engine,
+            cabinetRepository =
+                icu.nd4y.dosette.data.repository.CabinetRepository(
+                    harness.db.cabinetDao(),
+                    harness.clock,
+                ),
             clock = harness.clock,
         ).also { created ->
             underTest = created
@@ -243,5 +248,41 @@ class MedEditViewModelTest {
             assertThat(saved.medication.nagIntervalMin).isEqualTo(2)
             assertThat(prefillFrom(saved).nagIntervalMin).isEqualTo(2)
             assertThat(saved.schedules).hasSize(1)
+        }
+
+    @Test
+    fun `new medication keeps the cabinet shown in its stock draft after selection changes`() =
+        runTest {
+            harness.db.cabinetDao().ensure("p1")
+            harness.db.cabinetDao().upsert(
+                icu.nd4y.dosette.data.db.entity
+                    .CabinetEntity("travel", "p1", "Travel", 1, testInstant),
+            )
+            harness.db.cabinetDao().select("p1", "travel")
+            val model = viewModel(null)
+            model.uiState.first { it.stockCabinetId == "travel" }
+            assertThat(model.uiState.value.stockCabinetName).isEqualTo("Travel")
+            model.update {
+                it.copy(
+                    name = "Synthetic",
+                    scheduleType = null,
+                    trackStock = true,
+                    variants = listOf(VariantDraft(id = "new-variant", stockText = "6")),
+                )
+            }
+            harness.db.cabinetDao().select("p1", "main:p1")
+            model.saveThroughWizard()
+            assertThat(
+                harness.db
+                    .medicationVariantDao()
+                    .getAt("new-variant", "travel")
+                    ?.currentStock,
+            ).isEqualTo(6.0)
+            assertThat(
+                harness.db
+                    .medicationVariantDao()
+                    .getAt("new-variant", "main:p1")
+                    ?.currentStock,
+            ).isEqualTo(0.0)
         }
 }

@@ -1,6 +1,8 @@
 package icu.nd4y.dosette.reminders.notifications
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.net.Uri
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
 import icu.nd4y.dosette.R
@@ -21,7 +23,18 @@ object Channels {
         manager.deleteNotificationChannel(LEGACY_DOSE_SILENT)
         manager.createNotificationChannelsCompat(
             listOf(
-                channel(context, DOSE_ALERTS, R.string.channel_dose_alerts, NotificationManagerCompat.IMPORTANCE_HIGH),
+                manager.getNotificationChannelCompat(DOSE_ALERTS) ?: NotificationChannelCompat
+                    .Builder(DOSE_ALERTS, NotificationManagerCompat.IMPORTANCE_HIGH)
+                    .setName(context.getString(R.string.channel_dose_alerts))
+                    .setSound(
+                        Uri.parse("android.resource://${context.packageName}/raw/dose_chime"),
+                        AudioAttributes
+                            .Builder()
+                            .setUsage(
+                                AudioAttributes.USAGE_NOTIFICATION,
+                            ).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build(),
+                    ).build(),
                 channel(
                     context,
                     APPOINTMENTS,

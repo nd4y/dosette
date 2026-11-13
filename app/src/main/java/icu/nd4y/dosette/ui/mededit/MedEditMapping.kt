@@ -26,6 +26,8 @@ fun prefillFrom(details: MedicationDetails): MedEditUiState {
     val strengthText = med.strengthValue?.let(::formatAmount).orEmpty()
     return MedEditUiState(
         editing = true,
+        stockCabinetName = details.defaultVariant?.cabinetName,
+        stockCabinetId = details.defaultVariant?.cabinetId,
         name = med.name,
         form = med.form,
         strengthText = strengthText,

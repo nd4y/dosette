@@ -84,6 +84,20 @@ class MedDetailViewModel
             viewModelScope.launch { medicationRepository.setStock(variantId, units) }
         }
 
+        fun refillFrom(
+            variant: icu.nd4y.dosette.domain.model.MedicationVariant,
+            units: Double,
+        ) {
+            viewModelScope.launch { medicationRepository.refill(variant.id, units, clock.instant(), variant.cabinetId) }
+        }
+
+        fun setStockFrom(
+            variant: icu.nd4y.dosette.domain.model.MedicationVariant,
+            units: Double,
+        ) {
+            viewModelScope.launch { medicationRepository.setStock(variant.id, units, variant.cabinetId) }
+        }
+
         fun archive() {
             viewModelScope.launch {
                 medicationRepository.archive(medicationId, clock.instant())

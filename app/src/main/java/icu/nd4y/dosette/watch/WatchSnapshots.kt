@@ -20,12 +20,20 @@ fun buildWatchSnapshot(
     profileName: String?,
 ): WatchSnapshot =
     WatchSnapshot(
+        schema = WatchSnapshot.CURRENT_SCHEMA,
         date = state.date.toString(),
         profileName = profileName,
         doses =
             state.carryover.map { it.toWire(carryover = true, activeReminders) } +
                 state.doses.map { it.toWire(carryover = false, activeReminders) },
-        prn = state.prn.map { WatchPrn(it.medicationId, listOfNotNull(it.name, it.strengthText).joinToString(" ")) },
+        prn =
+            state.prn.map {
+                WatchPrn(
+                    it.medicationId,
+                    listOfNotNull(it.name, it.strengthText, it.cabinetName).joinToString(" "),
+                    it.cabinetId,
+                )
+            },
     )
 
 private fun TodayDose.toWire(
@@ -34,7 +42,7 @@ private fun TodayDose.toWire(
 ): WatchDose =
     WatchDose(
         id = key.encode(),
-        title = listOfNotNull(name, strengthText).joinToString(" "),
+        title = listOfNotNull(name, strengthText, cabinetName).joinToString(" "),
         amount = amountText,
         timeMinutes = time.toSecondOfDay() / SECONDS_PER_MINUTE,
         status =
@@ -47,6 +55,7 @@ private fun TodayDose.toWire(
         actedTimeMinutes = actedTime?.let { it.toSecondOfDay() / SECONDS_PER_MINUTE },
         carryover = carryover,
         reminderActive = key in activeReminders,
+        cabinetId = cabinetId,
     )
 
 private const val SECONDS_PER_MINUTE = 60

@@ -69,6 +69,9 @@ data class MedEditUiState(
     val trackStock: Boolean = false,
     val variants: List<VariantDraft> = listOf(VariantDraft()),
     val saved: Boolean = false,
+    val cabinetConflict: Boolean = false,
+    val stockCabinetName: String? = null,
+    val stockCabinetId: String? = null,
 ) {
     val stepIndex: Int get() = visibleSteps.indexOf(step)
     val stepCount: Int get() = visibleSteps.size
@@ -142,6 +145,7 @@ class MedEditViewModel
         private val medicationRepository: MedicationRepository,
         private val settingsRepository: SettingsRepository,
         private val engine: ReminderEngine,
+        private val cabinetRepository: icu.nd4y.dosette.data.repository.CabinetRepository,
         private val clock: Clock,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(MedEditUiState(colorSeed = (0 until MedPalette.size).random()))
@@ -157,6 +161,12 @@ class MedEditViewModel
                         original = details
                         _uiState.value = prefillFrom(details)
                     }
+                }
+            } else {
+                viewModelScope.launch {
+                    val profileId = settingsRepository.settings.first().activeProfileId ?: return@launch
+                    val cabinet = cabinetRepository.observe(profileId).first().selected
+                    _uiState.value = _uiState.value.copy(stockCabinetId = cabinet?.id, stockCabinetName = cabinet?.name)
                 }
             }
         }
@@ -257,11 +267,18 @@ class MedEditViewModel
         ) {
             val now = clock.instant()
             val today = now.atZone(clock.zone).toLocalDate()
-            val current = medicationRepository.getDetails(original.medication.id) ?: return
+            val current =
+                medicationRepository.getDetails(original.medication.id, original.defaultVariant?.cabinetId) ?: return
             val med = current.medication
             val strengthValue = state.strengthText.decimalOrNull()
             val variants = buildVariantsForEdit(state, current, strengthValue)
 
+            val removed = current.variants.filter { old -> variants.none { it.id == old.id } }
+            val source = current.defaultVariant?.cabinetId ?: "main:${med.profileId}"
+            if (removed.any { medicationRepository.hasOtherCabinetStock(it.id, source) }) {
+                _uiState.value = state.copy(cabinetConflict = true)
+                return
+            }
             medicationRepository.upsert(
                 med.copy(
                     name = state.name.trim(),
@@ -353,6 +370,8 @@ class MedEditViewModel
                         lowStockThreshold = keep?.lowStockThreshold,
                         defaultRefillAmount = keep?.defaultRefillAmount,
                         lastRefillAt = keep?.lastRefillAt,
+                        cabinetId = keep?.cabinetId,
+                        cabinetName = keep?.cabinetName,
                     ),
                 )
             }
@@ -372,6 +391,8 @@ class MedEditViewModel
                     lowStockThreshold = draft.thresholdText.decimalOrNull(),
                     defaultRefillAmount = draft.refillText.decimalOrNull(),
                     lastRefillAt = prior?.lastRefillAt,
+                    cabinetId = prior?.cabinetId ?: original.defaultVariant?.cabinetId,
+                    cabinetName = prior?.cabinetName ?: original.defaultVariant?.cabinetName,
                 )
             }
         }
@@ -396,6 +417,8 @@ class MedEditViewModel
                         lowStockThreshold = null,
                         defaultRefillAmount = null,
                         lastRefillAt = null,
+                        cabinetId = state.stockCabinetId,
+                        cabinetName = state.stockCabinetName,
                     ),
                 )
             }
@@ -412,6 +435,8 @@ class MedEditViewModel
                     lowStockThreshold = draft.thresholdText.decimalOrNull(),
                     defaultRefillAmount = draft.refillText.decimalOrNull(),
                     lastRefillAt = null,
+                    cabinetId = state.stockCabinetId,
+                    cabinetName = state.stockCabinetName,
                 )
             }
         }

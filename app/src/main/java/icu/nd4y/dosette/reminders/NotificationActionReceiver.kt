@@ -37,11 +37,29 @@ class NotificationActionReceiver : BroadcastReceiver() {
             try {
                 runCatching {
                     when (action) {
-                        ACTION_REFRESH -> engine.onDismissed(null)
-                        ACTION_TAKE -> engine.onUserAction(requireNotNull(key), UserDoseAction.TAKE)
-                        ACTION_SKIP -> engine.onUserAction(requireNotNull(key), UserDoseAction.SKIP)
-                        ACTION_SNOOZE -> engine.onUserAction(requireNotNull(key), UserDoseAction.SNOOZE)
-                        ACTION_DISMISSED -> engine.onDismissed(requireNotNull(key))
+                        ACTION_REFRESH -> {
+                            engine.onDismissed(null)
+                        }
+
+                        ACTION_TAKE -> {
+                            engine.onUserAction(
+                                requireNotNull(key),
+                                UserDoseAction.TAKE,
+                                intent.getStringExtra(EXTRA_CABINET_ID),
+                            )
+                        }
+
+                        ACTION_SKIP -> {
+                            engine.onUserAction(requireNotNull(key), UserDoseAction.SKIP)
+                        }
+
+                        ACTION_SNOOZE -> {
+                            engine.onUserAction(requireNotNull(key), UserDoseAction.SNOOZE)
+                        }
+
+                        ACTION_DISMISSED -> {
+                            engine.onDismissed(requireNotNull(key))
+                        }
                     }
                 }.onFailure { Log.e("NotificationAction", "engine pass failed", it) }
             } finally {
@@ -56,6 +74,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val ACTION_SKIP = "icu.nd4y.dosette.action.SKIP"
         const val ACTION_SNOOZE = "icu.nd4y.dosette.action.SNOOZE"
         const val ACTION_DISMISSED = "icu.nd4y.dosette.action.DISMISSED"
+        const val EXTRA_CABINET_ID = "cabinet_id"
         const val EXTRA_OCCURRENCE_KEY = "occurrence_key"
     }
 }

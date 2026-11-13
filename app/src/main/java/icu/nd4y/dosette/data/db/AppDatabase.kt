@@ -7,6 +7,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import icu.nd4y.dosette.data.db.dao.AppointmentDao
 import icu.nd4y.dosette.data.db.dao.BackupDao
+import icu.nd4y.dosette.data.db.dao.CabinetDao
 import icu.nd4y.dosette.data.db.dao.DoseLogDao
 import icu.nd4y.dosette.data.db.dao.MedicationDao
 import icu.nd4y.dosette.data.db.dao.MedicationVariantDao
@@ -15,10 +16,14 @@ import icu.nd4y.dosette.data.db.dao.ReminderStateDao
 import icu.nd4y.dosette.data.db.dao.ScheduleDao
 import icu.nd4y.dosette.data.db.dao.WatchActionReceiptDao
 import icu.nd4y.dosette.data.db.entity.AppointmentEntity
+import icu.nd4y.dosette.data.db.entity.CabinetEntity
+import icu.nd4y.dosette.data.db.entity.CabinetSelectionEntity
+import icu.nd4y.dosette.data.db.entity.CabinetStockEntity
 import icu.nd4y.dosette.data.db.entity.DoseActionCursorEntity
 import icu.nd4y.dosette.data.db.entity.DoseLogEntity
 import icu.nd4y.dosette.data.db.entity.MedicationEntity
 import icu.nd4y.dosette.data.db.entity.MedicationVariantEntity
+import icu.nd4y.dosette.data.db.entity.MedicationVariantRecord
 import icu.nd4y.dosette.data.db.entity.ProfileEntity
 import icu.nd4y.dosette.data.db.entity.ReminderStateEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleEntity
@@ -32,17 +37,23 @@ import icu.nd4y.dosette.data.db.entity.WatchActionReceiptEntity
         ScheduleEntity::class,
         ScheduleTimeEntity::class,
         DoseLogEntity::class,
-        MedicationVariantEntity::class,
+        MedicationVariantRecord::class,
+        CabinetEntity::class,
+        CabinetStockEntity::class,
+        CabinetSelectionEntity::class,
         AppointmentEntity::class,
         ReminderStateEntity::class,
         WatchActionReceiptEntity::class,
         DoseActionCursorEntity::class,
     ],
+    views = [MedicationVariantEntity::class],
     version = AppDatabase.VERSION,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun cabinetDao(): CabinetDao
+
     abstract fun profileDao(): ProfileDao
 
     abstract fun medicationDao(): MedicationDao
@@ -62,7 +73,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun watchActionReceiptDao(): WatchActionReceiptDao
 
     companion object {
-        const val VERSION = 5
+        const val VERSION = 6
+
+        val MIGRATION_5_6 = CABINET_MIGRATION
 
         val MIGRATION_4_5 =
             object : Migration(4, 5) {

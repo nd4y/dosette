@@ -52,6 +52,18 @@ class WatchSnapshotsTest {
         )
 
     @Test
+    fun `phone publishes cabinet-aware schema with an echoable source`() {
+        val input = state.copy(doses = state.doses.map { it.copy(cabinetId = "travel", cabinetName = "Travel") })
+        val snapshot = buildWatchSnapshot(input, emptySet(), null)
+        assertThat(snapshot.schema).isEqualTo(2)
+        assertThat(snapshot.doses.last().cabinetId).isEqualTo("travel")
+        assertThat(
+            icu.nd4y.dosette.link.WatchJson
+                .encode(snapshot),
+        ).contains("\"schema\":2")
+    }
+
+    @Test
     fun `carryover comes first and is flagged, doses keep their order`() {
         val snapshot = buildWatchSnapshot(state, activeReminders = emptySet(), profileName = null)
 

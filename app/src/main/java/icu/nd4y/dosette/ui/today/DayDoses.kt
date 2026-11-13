@@ -89,6 +89,7 @@ private fun plannedDoses(
         .filter { it.key in planned || it.key in logByKey }
         .map { occurrence ->
             val log = logByKey[occurrence.key]
+            val sourceLog = log?.takeIf { it.status == DoseStatus.TAKEN && it.cabinetId != null }
             TodayDose(
                 medicationId = med.medication.id,
                 date = date,
@@ -104,6 +105,8 @@ private fun plannedDoses(
                 scheduleId = occurrence.scheduleId,
                 oneOff = schedulesById[occurrence.scheduleId]?.oneOff == true,
                 reminderActive = occurrence.key in activeReminders,
+                cabinetId = sourceLog?.cabinetId ?: med.defaultVariant?.cabinetId,
+                cabinetName = if (sourceLog != null) sourceLog.cabinetName else med.defaultVariant?.cabinetName,
             )
         }
 }
@@ -125,6 +128,7 @@ private fun historyDoses(
         .filter { it.medicationId == med.medication.id && it !in plannedKeys }
         .map { key ->
             val log = logByKey.getValue(key)
+            val sourceLog = log.takeIf { it.status == DoseStatus.TAKEN && it.cabinetId != null }
             TodayDose(
                 medicationId = med.medication.id,
                 date = date,
@@ -139,6 +143,8 @@ private fun historyDoses(
                 actedTime = log.actedAt?.atZone(zone)?.toLocalTime(),
                 scheduleId = log.scheduleId,
                 oneOff = false,
+                cabinetId = sourceLog?.cabinetId ?: med.defaultVariant?.cabinetId,
+                cabinetName = if (sourceLog != null) sourceLog.cabinetName else med.defaultVariant?.cabinetName,
             )
         }
 }

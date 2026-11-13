@@ -223,6 +223,14 @@ fun SettingsScreen(
                 }
         },
         modifier = modifier,
+        soundSetup = {
+            icu.nd4y.dosette.ui.common
+                .ReminderSoundSetup()
+        },
+        installHelp = {
+            icu.nd4y.dosette.ui.common
+                .InstallHelp()
+        },
     )
 }
 
@@ -254,6 +262,8 @@ fun SettingsContent(
     onRequestExemption: () -> Unit,
     onOpenWatch: () -> Unit = {},
     modifier: Modifier = Modifier,
+    soundSetup: @Composable () -> Unit = {},
+    installHelp: @Composable () -> Unit = {},
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -358,6 +368,9 @@ fun SettingsContent(
                 onSelect = onLanguage,
             )
         }
+
+        soundSetup()
+        installHelp()
 
         PlacesSection(
             settings = settings,

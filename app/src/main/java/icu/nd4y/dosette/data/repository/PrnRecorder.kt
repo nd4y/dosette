@@ -39,12 +39,13 @@ class PrnRecorder
             actedAt: Instant = clock.instant(),
             logId: String = UUID.randomUUID().toString(),
             deliveryId: String? = null,
+            cabinetId: String? = null,
         ): PrnIntake? =
             db.withTransaction {
                 val now = clock.instant()
                 val intakeAt = actedAt.coerceAtMost(now)
                 val date = intakeAt.atZone(clock.zone).toLocalDate()
-                val med = medicationRepository.getDetails(medicationId)
+                val med = medicationRepository.getDetails(medicationId, cabinetId)
                 val schedule = med?.schedulesActiveOn(date)?.firstOrNull { it.type == ScheduleType.AS_NEEDED }
                 if (med == null || schedule == null) return@withTransaction null
                 val variant = med.defaultVariant
@@ -67,7 +68,9 @@ class PrnRecorder
                             status = DoseStatus.TAKEN,
                             actedAt = intakeAt,
                             amount = amount,
-                            variantId = variant?.id,
+                            variantId = variant?.takeIf { it.trackingEnabled }?.id,
+                            cabinetId = variant?.cabinetId,
+                            cabinetName = variant?.cabinetName,
                             consumedUnits = consumed,
                             note = null,
                             updatedAt = now,

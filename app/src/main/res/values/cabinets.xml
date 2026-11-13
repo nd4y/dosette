@@ -1,0 +1,19 @@
+<resources>
+    <string name="cabinets_main">Main</string>
+    <string name="cabinets_source">Stock: %1$s ▾</string>
+    <string name="cabinets_manage">Manage</string>
+    <string name="cabinets_title">Medicine cabinets</string>
+    <string name="cabinets_explanation">Regimens and intake history are shared. Taking a dose uses the selected cabinet. New cabinets start empty. Archive is allowed only for an empty cabinet; history is kept.</string>
+    <string name="cabinets_rename">Rename</string>
+    <string name="cabinets_archive">Archive</string>
+    <string name="cabinets_restore">Restore</string>
+    <string name="cabinets_add">Add cabinet</string>
+    <string name="cabinets_done">Done</string>
+    <string name="cabinets_save">Save</string>
+    <string name="cabinets_cancel">Cancel</string>
+    <string name="cabinets_name">Name, e.g. Home or Travel</string>
+    <string name="cabinets_error">Cannot change this cabinet. To archive it, recount its stock to zero first and keep at least one active cabinet.</string>
+    <string name="cabinets_stock_hint">Stock belongs to the cabinet selected when this screen opened. Package strengths and regimens are shared.</string>
+    <string name="cabinets_variant_conflict">This package still has stock in another cabinet. Keep the package, or recount its stock there to zero before removing it.</string>
+    <string name="cabinets_balance_source">Cabinet: %1$s</string>
+</resources>

@@ -234,6 +234,70 @@ class ReminderEngineTest {
         }
     }
 
+    @Test
+    fun `scheduled take and undo use the captured source after selection changes`() =
+        runTest {
+            val cabinets = db.cabinetDao()
+            cabinets.upsert(
+                icu.nd4y.dosette.data.db.entity
+                    .CabinetEntity("travel", "p1", "Travel", 1, doseInstant),
+            )
+            db.medicationVariantDao().setStock("v75", 0.5, "travel")
+            engine.onUserAction(key, UserDoseAction.TAKE, "travel")
+            val log = requireNotNull(doseLogRepository.getScheduled(key))
+            assertThat(log.cabinetId).isEqualTo("travel")
+            assertThat(log.consumedUnits).isEqualTo(0.5)
+            assertThat(db.medicationVariantDao().getAt("v75", "main:p1")?.currentStock).isEqualTo(10.0)
+            cabinets.select("p1", "main:p1")
+            engine.undoDose(key)
+            assertThat(db.medicationVariantDao().getAt("v75", "travel")?.currentStock).isEqualTo(0.5)
+            assertThat(db.medicationVariantDao().getAt("v75", "main:p1")?.currentStock).isEqualTo(10.0)
+        }
+
+    @Test
+    fun `old watch without a source uses migrated default and new watch captures its source once`() =
+        runTest {
+            db.cabinetDao().upsert(
+                icu.nd4y.dosette.data.db.entity
+                    .CabinetEntity("travel", "p1", "Travel", 1, doseInstant),
+            )
+            db.medicationVariantDao().setStock("v75", 7.0, "travel")
+            db.cabinetDao().select("p1", "travel")
+            engine.onWatchAction(key, UserDoseAction.TAKE, clock.instant(), "legacy")
+            assertThat(db.medicationVariantDao().getAt("v75", "main:p1")?.currentStock).isEqualTo(8.0)
+            assertThat(db.medicationVariantDao().getAt("v75", "travel")?.currentStock).isEqualTo(7.0)
+            engine.undoDose(key)
+            clock.advance(Duration.ofSeconds(1))
+            engine.onWatchAction(key, UserDoseAction.TAKE, clock.instant(), "modern", "travel")
+            engine.onWatchAction(key, UserDoseAction.TAKE, clock.instant(), "modern", "travel")
+            assertThat(db.medicationVariantDao().getAt("v75", "main:p1")?.currentStock).isEqualTo(10.0)
+            assertThat(db.medicationVariantDao().getAt("v75", "travel")?.currentStock).isEqualTo(5.0)
+        }
+
+    @Test
+    fun `unknown cabinet source is ignored without taking from the selected cabinet`() =
+        runTest {
+            engine.onWatchAction(key, UserDoseAction.TAKE, clock.instant(), "invalid-source", "missing")
+            assertThat(doseLogRepository.getScheduled(key)).isNull()
+            assertThat(db.medicationVariantDao().getById("v75")?.currentStock).isEqualTo(10.0)
+        }
+
+    @Test
+    fun `take to skip flip restores the actual source before a new source take`() =
+        runTest {
+            db.cabinetDao().upsert(
+                icu.nd4y.dosette.data.db.entity
+                    .CabinetEntity("travel", "p1", "Travel", 1, doseInstant),
+            )
+            db.medicationVariantDao().setStock("v75", 8.0, "travel")
+            engine.onUserAction(key, UserDoseAction.TAKE, "travel")
+            engine.onUserAction(key, UserDoseAction.SKIP)
+            assertThat(db.medicationVariantDao().getAt("v75", "travel")?.currentStock).isEqualTo(8.0)
+            engine.onUserAction(key, UserDoseAction.TAKE, "main:p1")
+            assertThat(db.medicationVariantDao().getAt("v75", "main:p1")?.currentStock).isEqualTo(8.0)
+            assertThat(doseLogRepository.getScheduled(key)?.cabinetId).isEqualTo("main:p1")
+        }
+
     @After
     fun tearDown() {
         db.close()

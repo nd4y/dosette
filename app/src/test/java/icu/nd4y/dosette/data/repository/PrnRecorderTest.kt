@@ -59,13 +59,17 @@ class PrnRecorderTest {
                     original.copy(
                         medications = original.medications.map { it.copy(defaultVariantId = "v2") },
                         variants = listOf(variantEntity(id = "v2", currentStock = 20.0)),
+                        stocks = original.stocks.map { it.copy(variantId = "v2", currentStock = 20.0) },
                     )
                 val parametersRead = CompletableDeferred<Unit>()
                 val allowRecording = CompletableDeferred<Unit>()
                 val gatedMedications =
                     object : MedicationRepository by medications {
-                        override suspend fun getDetails(medicationId: String): MedicationDetails? {
-                            val details = medications.getDetails(medicationId)
+                        override suspend fun getDetails(
+                            medicationId: String,
+                            cabinetId: String?,
+                        ): MedicationDetails? {
+                            val details = medications.getDetails(medicationId, cabinetId)
                             parametersRead.complete(Unit)
                             allowRecording.await()
                             return details

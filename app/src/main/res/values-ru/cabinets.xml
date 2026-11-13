@@ -1,0 +1,19 @@
+<resources>
+    <string name="cabinets_main">Основная</string>
+    <string name="cabinets_source">Списывать из: %1$s ▾</string>
+    <string name="cabinets_manage">Управление</string>
+    <string name="cabinets_title">Аптечки</string>
+    <string name="cabinets_explanation">Назначения и история приёма общие. Приём списывает лекарство из выбранной аптечки. Новая аптечка пустая. Архивировать можно только пустую аптечку; история сохраняется.</string>
+    <string name="cabinets_rename">Переименовать</string>
+    <string name="cabinets_archive">В архив</string>
+    <string name="cabinets_restore">Вернуть</string>
+    <string name="cabinets_add">Добавить аптечку</string>
+    <string name="cabinets_done">Готово</string>
+    <string name="cabinets_save">Сохранить</string>
+    <string name="cabinets_cancel">Отмена</string>
+    <string name="cabinets_name">Название, например Дом или Дача</string>
+    <string name="cabinets_error">Не удалось изменить аптечку. Для архива сначала обнулите её остатки через пересчёт и оставьте хотя бы одну активную аптечку.</string>
+    <string name="cabinets_stock_hint">Остатки относятся к аптечке, выбранной при открытии экрана. Дозировки упаковок и назначения общие.</string>
+    <string name="cabinets_variant_conflict">У этой упаковки остались лекарства в другой аптечке. Оставьте упаковку или сначала обнулите её остатки там через пересчёт.</string>
+    <string name="cabinets_balance_source">Аптечка: %1$s</string>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sound_setup_title">Звук напоминаний</string>
+    <string name="sound_setup_status_notifications_disabled">Уведомления отключены</string>
+    <string name="sound_setup_status_silent">Звук: без звука</string>
+    <string name="sound_setup_status_sound">Звук: %1$s</string>
+    <string name="sound_setup_status_sound_unknown">Звук: выбран</string>
+    <string name="sound_setup_dnd_note">Режим «Не беспокоить» и беззвучный режим также могут заглушить звук.</string>
+    <string name="sound_setup_open_settings">Настройки канала</string>
+    <string name="sound_setup_test">Проверить звук</string>
+    <string name="sound_setup_test_failed">Не удалось воспроизвести звук. Проверьте разрешение на уведомления и не включён ли беззвучный режим телефона или канала.</string>
+</resources>

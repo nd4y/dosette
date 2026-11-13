@@ -1,0 +1,10 @@
+<resources>
+    <string name="sound_test_title">Dosette sound test</string>
+    <string name="sound_test_text">This is how a medication reminder sounds. No intake was recorded.</string>
+    <string name="install_help_title">Install and update</string>
+    <string name="install_help_text">Download the phone APK named dosette-vX.Y.Z.apk. It already includes the watch app. Install updates over the existing app to keep data. Optional automatic updates: Obtainium, GitHub source nd4y/dosette, APK filter dosette-v[0-9].*[.]apk$.</string>
+    <string name="install_help_latest">Open latest version</string>
+    <string name="install_help_guide">Step-by-step installation guide</string>
+    <string name="install_help_share">Share installation instructions</string>
+    <string name="install_help_share_text">Install Dosette for Android from %1$s (phone APK dosette-vX.Y.Z.apk includes Wear OS). Guide: %2$s</string>
+</resources>

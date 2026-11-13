@@ -138,6 +138,47 @@ class WatchInboxTest {
         }
 
     @Test
+    fun `legacy PRN watch uses main while modern offline action retains its explicit source once`() =
+        runTest {
+            harness.db.cabinetDao().upsert(
+                icu.nd4y.dosette.data.db.entity
+                    .CabinetEntity("travel", "p1", "Travel", 1, testInstant),
+            )
+            harness.db.medicationVariantDao().setStock("v1", 7.0, "travel")
+            harness.db.cabinetDao().select("p1", "travel")
+            val legacy =
+                WatchAction(
+                    id = "legacy-prn",
+                    kind = WatchActionKind.TAKE_PRN,
+                    medicationId = "m1",
+                    actedAt = testInstant.toEpochMilli(),
+                )
+            inbox.receive(listOf(item(legacy)))
+            assertThat(
+                harness.db
+                    .medicationVariantDao()
+                    .getAt("v1", "main:p1")
+                    ?.currentStock,
+            ).isEqualTo(9.0)
+            harness.db.cabinetDao().select("p1", "main:p1")
+            val modern = legacy.copy(id = "modern-prn", cabinetId = "travel")
+            inbox.receive(listOf(item(modern)))
+            inbox.receive(listOf(item(modern)))
+            assertThat(
+                harness.db
+                    .medicationVariantDao()
+                    .getAt("v1", "travel")
+                    ?.currentStock,
+            ).isEqualTo(6.0)
+            assertThat(
+                harness.db
+                    .medicationVariantDao()
+                    .getAt("v1", "main:p1")
+                    ?.currentStock,
+            ).isEqualTo(9.0)
+        }
+
+    @Test
     fun `malformed and unknown items are acknowledged without effect`() =
         runTest {
             val unknownDose = WatchAction(id = "a4", kind = WatchActionKind.TAKE, doseId = "nope", actedAt = 1L)

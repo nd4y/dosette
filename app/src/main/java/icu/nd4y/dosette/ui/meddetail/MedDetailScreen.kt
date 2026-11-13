@@ -85,6 +85,12 @@ fun MedDetailScreen(
         onUnarchive = viewModel::unarchive,
         onDelete = viewModel::delete,
         onRefill = viewModel::refill,
+        onRefillFrom = viewModel::refillFrom,
+        onSetStockFrom = viewModel::setStockFrom,
+        cabinetPicker = {
+            icu.nd4y.dosette.ui.cabinet
+                .CabinetPicker(profileId = state.details?.medication?.profileId)
+        },
         onSetStock = viewModel::setStock,
         modifier = modifier,
     )
@@ -103,6 +109,9 @@ fun MedDetailContent(
     onRefill: (String, Double) -> Unit,
     onSetStock: (String, Double) -> Unit,
     modifier: Modifier = Modifier,
+    onRefillFrom: ((MedicationVariant, Double) -> Unit)? = null,
+    onSetStockFrom: ((MedicationVariant, Double) -> Unit)? = null,
+    cabinetPicker: @Composable () -> Unit = {},
 ) {
     var refillFor by remember { mutableStateOf<MedicationVariant?>(null) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -130,6 +139,7 @@ fun MedDetailContent(
 
         DetailHero(state)
         ScheduleBlock(med)
+        cabinetPicker()
         StockBlock(med.variants.filter { it.trackingEnabled }, onRefillRequest = { refillFor = it })
         AdherenceBlock(state)
     }
@@ -137,8 +147,8 @@ fun MedDetailContent(
     refillFor?.let { variant ->
         RefillDialog(
             variant = variant,
-            onRefill = onRefill,
-            onSetStock = onSetStock,
+            onRefill = { id, units -> onRefillFrom?.invoke(variant, units) ?: onRefill(id, units) },
+            onSetStock = { id, units -> onSetStockFrom?.invoke(variant, units) ?: onSetStock(id, units) },
             onDismiss = { refillFor = null },
         )
     }
@@ -387,6 +397,12 @@ private fun RefillDialog(
         title = { Text(stringResource(R.string.refill_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    stringResource(
+                        R.string.cabinets_balance_source,
+                        variant.cabinetName ?: stringResource(R.string.cabinets_main),
+                    ),
+                )
                 Text(
                     text = stringResource(R.string.stock_left, formatAmount(variant.currentStock)),
                     style = MaterialTheme.typography.bodyMedium,

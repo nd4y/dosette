@@ -623,7 +623,10 @@ private fun PrnRow(prn: PrnMed) {
                     .cornerRadius(9.dp)
                     .clickable(
                         actionRunCallback<TakePrnAction>(
-                            actionParametersOf(prnMedicationParam to prn.medicationId),
+                            actionParametersOf(
+                                prnMedicationParam to prn.medicationId,
+                                cabinetParam to prn.cabinetId.orEmpty(),
+                            ),
                         ),
                     ),
             contentAlignment = Alignment.Center,
@@ -712,7 +715,12 @@ private fun takeAction(dose: TodayDose) =
     if (dose.preview) {
         actionStartActivity<icu.nd4y.dosette.MainActivity>()
     } else {
-        actionRunCallback<TakeDoseAction>(actionParametersOf(doseKeyParam to dose.key.encode()))
+        actionRunCallback<TakeDoseAction>(
+            actionParametersOf(
+                doseKeyParam to dose.key.encode(),
+                cabinetParam to dose.cabinetId.orEmpty(),
+            ),
+        )
     }
 
 @Composable
