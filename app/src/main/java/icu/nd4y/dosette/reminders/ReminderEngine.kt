@@ -239,10 +239,16 @@ class ReminderEngine
             }
 
         /** deleteIntent fired: the user swiped the ongoing reminder away. */
-        suspend fun onDismissed(key: OccurrenceKey): Unit =
+        suspend fun onDismissed(key: OccurrenceKey?): Unit =
             mutex.withLock {
                 val world = loadWorld()
-                applyEvent(world, key, NagEvent.Dismissed)
+                if (key != null) applyEvent(world, key, NagEvent.Dismissed)
+                notifier.syncReminders(
+                    world.stateByKey.values
+                        .filter { it.phase == ReminderPhase.ACTIVE }
+                        .map { payloadFor(world, it.occurrenceKey) },
+                    world.alertKeys,
+                )
                 // No replan: a dismiss changes nothing about future obligations.
             }
 
@@ -254,7 +260,7 @@ class ReminderEngine
                     .filter { it.phase == ReminderPhase.ACTIVE }
                     .forEach { state ->
                         // Silent restore: any due nag tick right below re-alerts audibly.
-                        notifier.postReminder(payloadFor(world, state.occurrenceKey), alert = false)
+                        notifier.stageReminder(payloadFor(world, state.occurrenceKey), alert = false)
                     }
                 processDueLocked(world)
             }
@@ -355,6 +361,7 @@ class ReminderEngine
             slackEnd: Instant,
         ) {
             for (state in world.states) {
+                val nagSettings = world.settingsFor(state.occurrenceKey)
                 // Orphaned state: its medication is gone (profile removal,
                 // med deletion, import) or archived, or a schedule edit dropped
                 // its slot — cancel it instead of nagging forever (with a raw
@@ -375,11 +382,11 @@ class ReminderEngine
                         // a pass triggered by anything else must not deliver
                         // the tick that would finalize the dose early.
                         val tickDue =
-                            world.settings.nagIntervalMin > 0 &&
-                                world.settings.nagAllowed(state.nagCount) &&
+                            nagSettings.nagIntervalMin > 0 &&
+                                nagSettings.nagAllowed(state.nagCount) &&
                                 !state.lastAlertAt
-                                    .plus(Duration.ofMinutes(world.settings.nagIntervalMin.toLong()))
-                                    .isAfter(slackEnd)
+                                    .plus(Duration.ofMinutes(nagSettings.nagIntervalMin.toLong()))
+                                    .isAfter(now)
                         when {
                             now.isAfter(graceEnd) -> applyEvent(world, state.occurrenceKey, NagEvent.GraceExpired)
                             tickDue -> applyEvent(world, state.occurrenceKey, NagEvent.NagTick)
@@ -441,7 +448,7 @@ class ReminderEngine
         ) {
             val now = clock.instant()
             val state = world.stateByKey[key] ?: reminderStateRepository.get(key)
-            val transition = NagStateMachine.reduce(state, event, now, world.settings)
+            val transition = NagStateMachine.reduce(state, event, now, world.settingsFor(key))
 
             if (transition.state != null) {
                 reminderStateRepository.upsert(transition.state)
@@ -476,7 +483,8 @@ class ReminderEngine
         ) {
             when (effect) {
                 is NagEffect.PostReminder -> {
-                    notifier.postReminder(payloadFor(world, key), effect.alert)
+                    if (effect.alert) world.alertKeys += key
+                    notifier.stageReminder(payloadFor(world, key), effect.alert)
                 }
 
                 NagEffect.CancelReminder -> {
@@ -558,6 +566,12 @@ class ReminderEngine
         }
 
         private suspend fun rescheduleLocked(world: World) {
+            notifier.syncReminders(
+                world.stateByKey.values
+                    .filter { it.phase == ReminderPhase.ACTIVE }
+                    .map { payloadFor(world, it.occurrenceKey) },
+                world.alertKeys,
+            )
             val settings = world.settings
             val schedules =
                 medicationRepository
@@ -571,7 +585,14 @@ class ReminderEngine
                 AlarmPlanner.nextAlarm(
                     clock.instant(),
                     clock.zone,
-                    AlarmObligations(schedules, states, appointments),
+                    AlarmObligations(
+                        schedules,
+                        states,
+                        appointments,
+                        world.medicationById.mapValues { (_, med) ->
+                            world.settingsFor(OccurrenceKey(med.medication.id, today, java.time.LocalTime.MIDNIGHT))
+                        },
+                    ),
                     settings,
                 )
             // Housekeeping and place polls wake nobody: an exact while-idle
@@ -656,7 +677,13 @@ class ReminderEngine
             val appointments: List<icu.nd4y.dosette.domain.model.Appointment>,
             val profileNames: Map<String, String>,
             val multiProfile: Boolean,
-        )
+            val alertKeys: MutableSet<OccurrenceKey> = mutableSetOf(),
+        ) {
+            fun settingsFor(key: OccurrenceKey): NagSettings {
+                val interval = medicationById[key.medicationId]?.medication?.nagIntervalMin
+                return settings.copy(nagIntervalMin = interval ?: settings.nagIntervalMin)
+            }
+        }
 
         private companion object {
             val SLACK: Duration = Duration.ofSeconds(30)

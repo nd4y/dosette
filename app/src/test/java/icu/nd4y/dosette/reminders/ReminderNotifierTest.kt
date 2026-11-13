@@ -93,4 +93,45 @@ class ReminderNotifierTest {
         assertThat(notification.flags and android.app.Notification.FLAG_ONGOING_EVENT).isEqualTo(0)
         assertThat(notification.flags and android.app.Notification.FLAG_AUTO_CANCEL).isNotEqualTo(0)
     }
+
+    @Test
+    fun `one slot becomes one notification then only the remaining medication`() {
+        val second = payload.copy(key = key.copy(medicationId = "m2"), title = "Second medicine")
+        val manager = context.getSystemService(NotificationManager::class.java)
+        notifier.stageReminder(payload, true)
+        notifier.stageReminder(second, true)
+        assertThat(shadowOf(manager).allNotifications).isEmpty()
+        notifier.syncReminders(listOf(payload, second), setOf(key, second.key))
+        assertThat(shadowOf(manager).allNotifications).hasSize(1)
+        assertThat(
+            shadowOf(manager)
+                .allNotifications
+                .single()
+                .extras
+                .getString(android.app.Notification.EXTRA_TEXT),
+        ).contains("Second medicine")
+        // Recreate notifier to prove this reconciliation is not just an in-memory map.
+        AndroidReminderNotifier(context).syncReminders(listOf(second), emptySet())
+        assertThat(shadowOf(manager).allNotifications).hasSize(1)
+        assertThat(
+            shadowOf(manager)
+                .allNotifications
+                .single()
+                .extras
+                .getString(android.app.Notification.EXTRA_TITLE),
+        ).isEqualTo("Second medicine")
+        notifier.syncReminders(emptyList(), emptySet())
+        assertThat(shadowOf(manager).allNotifications).isEmpty()
+    }
+
+    @Test
+    fun `different dates with identical clock times stay separate and legacy notices are retired`() {
+        notifier.postReminder(payload, true)
+        val tomorrow = payload.copy(key = key.copy(date = key.date.plusDays(1)))
+        notifier.syncReminders(listOf(payload, tomorrow), emptySet())
+        val manager = context.getSystemService(NotificationManager::class.java)
+        assertThat(shadowOf(manager).allNotifications).hasSize(2)
+        notifier.syncReminders(listOf(tomorrow), emptySet())
+        assertThat(shadowOf(manager).allNotifications).hasSize(1)
+    }
 }

@@ -611,6 +611,8 @@ private fun TimesStep(
         Text(stringResource(R.string.times_add))
     }
 
+    MedicationRepeatSettings(state.nagIntervalMin) { minutes -> update { it.copy(nagIntervalMin = minutes) } }
+
     pickerFor?.let { index ->
         TimePickerDialog(
             initial = state.times.getOrNull(index)?.time ?: LocalTime.of(8, 0),
@@ -837,6 +839,8 @@ private fun ReviewStep(state: MedEditUiState) {
         }
     }
 
+    RepeatReview(state)
+
     if (state.trackStock) {
         ReviewBlock(title = stringResource(R.string.review_stock)) {
             state.variants.forEach { draft ->
@@ -850,6 +854,23 @@ private fun ReviewStep(state: MedEditUiState) {
                         ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RepeatReview(state: MedEditUiState) {
+    if (WizardStep.TIMES in state.visibleSteps) {
+        state.nagIntervalMin?.let { minutes ->
+            ReviewBlock(title = stringResource(R.string.med_repeat_title)) {
+                Text(
+                    if (minutes == 0) {
+                        stringResource(R.string.med_repeat_off)
+                    } else {
+                        stringResource(R.string.med_repeat_minutes, minutes)
+                    },
                 )
             }
         }

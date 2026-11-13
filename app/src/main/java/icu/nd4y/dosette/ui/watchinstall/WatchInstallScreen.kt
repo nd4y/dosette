@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import icu.nd4y.dosette.R
 import icu.nd4y.dosette.ui.designsystem.ScreenHeader
@@ -42,6 +43,10 @@ fun WatchInstallScreen(
     viewModel: WatchInstallViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LifecycleStartEffect(viewModel) {
+        viewModel.visible(true)
+        onStopOrDispose { viewModel.visible(false) }
+    }
     BackHandler(enabled = state.busy) { viewModel.cancel() }
     val view = LocalView.current
     DisposableEffect(state.busy, view) {
@@ -162,6 +167,7 @@ private fun PairWatch(
     var code by remember { mutableStateOf("") }
     Text(stringResource(R.string.watch_install_pair), style = MaterialTheme.typography.titleLarge)
     Text(stringResource(R.string.watch_install_pair_hint))
+    DiscoveryChoices(state, onAddress)
     AddressField(state.host) { onAddress(it, state.pairingPort, state.connectionPort) }
     PortField(state.pairingPort, R.string.watch_install_pair_port) { onAddress(state.host, it, state.connectionPort) }
     OutlinedTextField(
@@ -192,6 +198,7 @@ private fun ConnectWatch(
 ) {
     Text(stringResource(R.string.watch_install_connect), style = MaterialTheme.typography.titleLarge)
     Text(stringResource(R.string.watch_install_connect_hint))
+    DiscoveryChoices(state, onAddress)
     AddressField(state.host) { onAddress(it, state.pairingPort, state.connectionPort) }
     PortField(
         state.connectionPort,

@@ -23,6 +23,7 @@ data class AlarmObligations(
     val schedules: List<Schedule>,
     val states: List<ReminderState>,
     val appointments: List<Appointment>,
+    val medicationSettings: Map<String, NagSettings> = emptyMap(),
 )
 
 /**
@@ -32,7 +33,7 @@ data class AlarmObligations(
  */
 object AlarmPlanner {
     /** Housekeeping runs nightly to finalize missed doses of the previous day. */
-    private val HOUSEKEEPING_TIME: LocalTime = LocalTime.of(0, 5)
+    private val HOUSEKEEPING_TIME: LocalTime = LocalTime.MIDNIGHT
 
     /** Wi-Fi fallback cadence while any reminder waits for a place. */
     private const val PLACE_POLL_MINUTES = 15L
@@ -46,7 +47,9 @@ object AlarmPlanner {
         val candidates = mutableListOf<AlarmPlan>()
 
         nextDose(obligations.schedules, now, zone)?.let(candidates::add)
-        obligations.states.forEach { state -> candidates += stateCandidates(state, settings, now) }
+        obligations.states.forEach { state ->
+            candidates += stateCandidates(state, obligations.medicationSettings[state.medicationId] ?: settings, now)
+        }
         candidates += appointmentCandidates(obligations.appointments, now, zone)
         candidates += housekeeping(now, zone)
 

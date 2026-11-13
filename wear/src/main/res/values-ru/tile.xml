@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tile_title">Dosette</string>
+    <string name="tile_description">Ближайший приём и оставшиеся лекарства</string>
+    <string name="tile_no_data">Откройте Dosette на телефоне для синхронизации</string>
+    <string name="tile_stale">Сохранённый день: %1$s</string>
+    <string name="tile_open">Открыть Dosette</string>
+    <string name="tile_yesterday">Вчера</string>
+    <string name="tile_remaining">Осталось: %1$d</string>
+    <string name="tile_done">Нет ожидающих приёмов</string>
+    <string name="tile_offline">Телефон недоступен · сохранённые данные</string>
+</resources>

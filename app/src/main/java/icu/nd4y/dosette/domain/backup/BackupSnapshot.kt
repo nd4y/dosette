@@ -52,6 +52,7 @@ data class ProfileBackup(
 
 @Serializable
 data class MedicationBackup(
+    @SerialName("nag_interval_min") val nagIntervalMin: Int? = null,
     val id: String,
     val name: String,
     val form: String,

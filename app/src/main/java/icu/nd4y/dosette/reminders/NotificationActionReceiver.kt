@@ -30,17 +30,18 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 .getStringExtra(EXTRA_OCCURRENCE_KEY)
                 ?.let { encoded -> runCatching { OccurrenceKey.decode(encoded) }.getOrNull() }
         val action = intent.action
-        if (key == null || action == null) return
+        if (action == null || (key == null && action != ACTION_REFRESH)) return
 
         val result = goAsync()
         CoroutineScope(ioDispatcher).launch {
             try {
                 runCatching {
                     when (action) {
-                        ACTION_TAKE -> engine.onUserAction(key, UserDoseAction.TAKE)
-                        ACTION_SKIP -> engine.onUserAction(key, UserDoseAction.SKIP)
-                        ACTION_SNOOZE -> engine.onUserAction(key, UserDoseAction.SNOOZE)
-                        ACTION_DISMISSED -> engine.onDismissed(key)
+                        ACTION_REFRESH -> engine.onDismissed(null)
+                        ACTION_TAKE -> engine.onUserAction(requireNotNull(key), UserDoseAction.TAKE)
+                        ACTION_SKIP -> engine.onUserAction(requireNotNull(key), UserDoseAction.SKIP)
+                        ACTION_SNOOZE -> engine.onUserAction(requireNotNull(key), UserDoseAction.SNOOZE)
+                        ACTION_DISMISSED -> engine.onDismissed(requireNotNull(key))
                     }
                 }.onFailure { Log.e("NotificationAction", "engine pass failed", it) }
             } finally {
@@ -50,6 +51,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     }
 
     companion object {
+        const val ACTION_REFRESH = "icu.nd4y.dosette.action.REFRESH"
         const val ACTION_TAKE = "icu.nd4y.dosette.action.TAKE"
         const val ACTION_SKIP = "icu.nd4y.dosette.action.SKIP"
         const val ACTION_SNOOZE = "icu.nd4y.dosette.action.SNOOZE"

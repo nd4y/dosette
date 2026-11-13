@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="watch_discovery_title">Поиск часов</string>
+    <string name="watch_discovery_hint">Ищем устройства с беспроводным ADB в Wi-Fi. Откройте «Подключить новое устройство» на часах. Если найдено несколько устройств, выберите часы. Вручную нужен только код сопряжения.</string>
+    <string name="watch_discovery_unavailable">Поиск недоступен или заблокирован сетью. Проверьте Wi-Fi и отладку; адрес можно ввести ниже.</string>
+    <string name="watch_discovery_empty">Подходящая служба ADB пока не найдена. Оставьте экран отладки на часах открытым.</string>
+    <string name="watch_discovery_device">%1$s · %2$s:%3$d</string>
+</resources>

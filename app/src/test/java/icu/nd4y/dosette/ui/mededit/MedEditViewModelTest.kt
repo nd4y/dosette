@@ -232,4 +232,16 @@ class MedEditViewModelTest {
             assertThat(schedules.map { it.id }).containsExactly("s1")
             assertThat(schedules.single().endDate).isNull()
         }
+
+    @Test fun `repeat interval survives save and reload without changing dose schedule`() =
+        runTest {
+            seedScheduled(start = today.minusDays(10))
+            val vm = viewModel("m1")
+            vm.update { it.copy(nagIntervalMin = 2) }
+            vm.saveThroughWizard()
+            val saved = requireNotNull(harness.medicationRepository.getDetails("m1"))
+            assertThat(saved.medication.nagIntervalMin).isEqualTo(2)
+            assertThat(prefillFrom(saved).nagIntervalMin).isEqualTo(2)
+            assertThat(saved.schedules).hasSize(1)
+        }
 }

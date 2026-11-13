@@ -140,6 +140,7 @@ object BackupMapper {
             check(it in profileIds) { "active_profile_id $it points to a missing profile" }
         }
         for (med in data.medications) {
+            check(med.nagIntervalMin == null || med.nagIntervalMin in 0..1440) { "Invalid medication repeat interval" }
             // The id opens every reminder-state key ("id|date|time").
             check(med.id.isNotBlank() && '|' !in med.id) {
                 "medication id '${med.id}' must be non-empty and must not contain '|'"

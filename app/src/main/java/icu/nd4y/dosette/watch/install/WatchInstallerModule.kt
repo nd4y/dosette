@@ -9,5 +9,8 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 abstract class WatchInstallerModule {
     @Binds
+    abstract fun discovery(implementation: AndroidWatchDiscovery): WatchDiscovery
+
+    @Binds
     abstract fun installer(implementation: LocalWatchInstaller): WatchInstaller
 }

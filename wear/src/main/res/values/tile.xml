@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tile_title">Dosette</string>
+    <string name="tile_description">Next dose and remaining medications</string>
+    <string name="tile_no_data">Open Dosette on your phone to sync</string>
+    <string name="tile_stale">Saved day: %1$s</string>
+    <string name="tile_open">Open Dosette</string>
+    <string name="tile_yesterday">Yesterday</string>
+    <string name="tile_remaining">Remaining: %1$d</string>
+    <string name="tile_done">No doses waiting</string>
+    <string name="tile_offline">Phone offline · saved data</string>
+</resources>

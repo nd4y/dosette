@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import icu.nd4y.dosette.watch.install.AdbEndpoint
+import icu.nd4y.dosette.watch.install.DiscoveredAdbService
 import icu.nd4y.dosette.watch.install.InstallFailure
+import icu.nd4y.dosette.watch.install.NoWatchDiscovery
+import icu.nd4y.dosette.watch.install.WatchDiscovery
+import icu.nd4y.dosette.watch.install.WatchDiscoveryState
 import icu.nd4y.dosette.watch.install.WatchInstallException
 import icu.nd4y.dosette.watch.install.WatchInstallPlan
 import icu.nd4y.dosette.watch.install.WatchInstaller
@@ -13,6 +17,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,6 +37,8 @@ data class WatchWizardState(
     val progress: Int = 0,
     val error: InstallFailure? = null,
     val plan: WatchInstallPlan? = null,
+    val discovery: WatchDiscoveryState = WatchDiscoveryState(),
+    val selectedService: DiscoveredAdbService? = null,
 )
 
 @HiltViewModel
@@ -35,12 +46,37 @@ class WatchInstallViewModel
     @Inject
     constructor(
         private val installer: WatchInstaller,
+        private val discovery: WatchDiscovery = NoWatchDiscovery,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(WatchWizardState())
         val state = mutableState.asStateFlow()
         private var work: Job? = null
+        private val visible = MutableStateFlow(false)
+
+        fun visible(value: Boolean) {
+            visible.value = value
+        }
 
         @Volatile private var generation = 0L
+
+        init {
+            observeDiscovery()
+        }
+
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        private fun observeDiscovery() =
+            viewModelScope.launch {
+                val scanning =
+                    combine(visible, state.map { it.step }.distinctUntilChanged()) { shown, step ->
+                        shown && (step == WatchInstallStep.PAIR || step == WatchInstallStep.CONNECT)
+                    }.distinctUntilChanged().flatMapLatest { enabled ->
+                        if (enabled) discovery.observe() else flowOf(WatchDiscoveryState())
+                    }
+                // Changing PAIR to CONNECT reuses the same scan, including its resolved
+                // services, instead of racing an older Android resolver with a new scan.
+                combine(scanning, state.map { it.step to it.busy }.distinctUntilChanged()) { found, _ -> found }
+                    .collect { found -> mutableState.update { current -> current.withDiscovery(found) } }
+            }
 
         fun step(step: WatchInstallStep) {
             if (!state.value.busy) mutableState.update { it.copy(step = step, error = null, plan = null) }
@@ -54,6 +90,7 @@ class WatchInstallViewModel
             if (!state.value.busy) {
                 mutableState.update {
                     it.copy(
+                        selectedService = null,
                         host = host.take(15),
                         pairingPort = pairingPort.take(5),
                         connectionPort = connectionPort.take(5),

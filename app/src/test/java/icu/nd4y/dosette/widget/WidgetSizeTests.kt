@@ -245,4 +245,34 @@ class WidgetSizeTests {
                 assertThat(texts).contains("6/6")
             }
     }
+
+    @Test
+    fun `yesterdays missed dose keeps its day and take button after midnight`() {
+        val missed =
+            midday.doses.first().copy(
+                date = day.minusDays(1),
+                time = LocalTime.of(23, 50),
+                status = DoseUiStatus.MISSED,
+                actedTime = null,
+            )
+        val state = WidgetState(day, carryover = listOf(missed), minutesToNext = -15)
+        val texts = shoot("midnight_yesterday", state, DpSize(307.dp, 322.dp))
+        assertThat(texts).containsAtLeast("Вчера", "Метформин", "Принял")
+        assertThat(texts.any { it.contains("23:50") }).isTrue()
+        assertThat(state.planned).isEqualTo(0)
+    }
+
+    @Test
+    fun `tomorrows preview shows its day and opens the app without taking early`() {
+        val preview =
+            midday.doses[2].copy(
+                date = day.plusDays(1),
+                time = LocalTime.MIDNIGHT,
+                preview = true,
+            )
+        val state = WidgetState(day, upcoming = listOf(preview), minutesToNext = 10)
+        val texts = shoot("midnight_tomorrow", state, DpSize(146.dp, 211.dp))
+        assertThat(texts).containsAtLeast("Завтра", "00:00", "Витамин D", "Открыть")
+        assertThat(texts).doesNotContain("Принял")
+    }
 }

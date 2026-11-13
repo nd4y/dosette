@@ -20,8 +20,12 @@ object DatabaseModule {
     ): AppDatabase =
         Room
             .databaseBuilder(context, AppDatabase::class.java, AppDatabase.NAME)
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
-            .build()
+            .addMigrations(
+                AppDatabase.MIGRATION_1_2,
+                AppDatabase.MIGRATION_2_3,
+                AppDatabase.MIGRATION_3_4,
+                AppDatabase.MIGRATION_4_5,
+            ).build()
 
     @Provides
     fun provideProfileDao(db: AppDatabase) = db.profileDao()

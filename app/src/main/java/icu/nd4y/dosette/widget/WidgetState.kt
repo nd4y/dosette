@@ -7,6 +7,7 @@ import icu.nd4y.dosette.data.settings.AppLanguage
 import icu.nd4y.dosette.data.settings.SettingsRepository
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.ScheduleType
+import icu.nd4y.dosette.ui.common.dayTicker
 import icu.nd4y.dosette.ui.common.strengthLabel
 import icu.nd4y.dosette.ui.today.DoseUiStatus
 import icu.nd4y.dosette.ui.today.PrnMed
@@ -37,6 +38,7 @@ data class WidgetState(
     val minutesToNext: Long? = null,
     /** In-app language: the widget renders outside any activity and must apply it itself. */
     val language: AppLanguage = AppLanguage.SYSTEM,
+    val upcoming: List<TodayDose> = emptyList(),
 ) {
     /** The ring stays a picture of TODAY; carryover is listed, not counted. */
     val taken: Int get() = doses.count { it.status == DoseUiStatus.TAKEN }
@@ -45,7 +47,9 @@ data class WidgetState(
     /** Earliest pending doses, all sharing the same day and time slot. */
     val nextSlotDoses: List<TodayDose>
         get() {
-            val pending = carryover + doses.filter { it.status == DoseUiStatus.PENDING }
+            val pending =
+                carryover + doses.filter { it.status == DoseUiStatus.PENDING || it.status == DoseUiStatus.MISSED } +
+                    upcoming
             val next =
                 pending.minWithOrNull(compareBy({ it.date }, { it.time })) ?: return emptyList()
             return pending.filter { it.date == next.date && it.time == next.time }
@@ -69,14 +73,15 @@ class WidgetStateLoader
         private val clock: Clock,
     ) {
         fun observe(): Flow<WidgetState> =
-            settingsRepository.settings
-                .map { it.activeProfileId to it.language }
+            combine(
+                settingsRepository.settings,
+                dayTicker(clock),
+            ) { settings, date -> Triple(settings.activeProfileId, settings.language, date) }
                 .distinctUntilChanged()
-                .flatMapLatest { (profileId, language) ->
+                .flatMapLatest { (profileId, language, date) ->
                     // The same date for the log query and the render: mixing a
                     // captured date with a re-read one around midnight would
                     // pair the new day's doses with the old day's logs.
-                    val date = today()
                     if (profileId == null) {
                         flowOf(WidgetState(date, language = language))
                     } else {
@@ -84,14 +89,59 @@ class WidgetStateLoader
                             medicationRepository.observeByProfile(profileId),
                             // Yesterday too: a dose snoozed across midnight is
                             // still the most urgent thing the widget can show.
-                            doseLogRepository.observeRange(profileId, date.minusDays(1), date),
+                            doseLogRepository.observeRange(profileId, date.minusDays(1), date.plusDays(1)),
                         ) { meds, logs -> build(date, meds, logs, language) }
                     }
                 }
 
-        suspend fun load(): WidgetState = observe().first()
+        private fun nextDayPreview(
+            date: LocalDate,
+            meds: List<MedicationDetails>,
+            logs: List<DoseLog>,
+            hasOutstanding: Boolean,
+            now: java.time.Instant,
+        ): List<TodayDose> {
+            val tomorrow =
+                buildDayDoses(date.plusDays(1), meds, logs, clock.zone)
+                    .filter { it.status == DoseUiStatus.PENDING }
+            val nearby =
+                tomorrow.filter {
+                    val at =
+                        it.date
+                            .atTime(it.time)
+                            .atZone(clock.zone)
+                            .toInstant()
+                    !at.isAfter(now.plus(Duration.ofHours(6)))
+                }
+            val preview =
+                if (nearby.isNotEmpty() || hasOutstanding) {
+                    nearby
+                } else {
+                    tomorrow.takeWhile { it.time == tomorrow.firstOrNull()?.time }
+                }
+            return preview.map { it.copy(preview = true) }
+        }
 
-        private fun today() = clock.instant().atZone(clock.zone).toLocalDate()
+        private fun buildPrn(meds: List<MedicationDetails>): List<PrnMed> =
+            meds
+                .filter { details -> !details.medication.isArchived }
+                .filter { details ->
+                    details.schedules.any { it.endDate == null && it.type == ScheduleType.AS_NEEDED }
+                }.map { details ->
+                    PrnMed(
+                        medicationId = details.medication.id,
+                        name = details.medication.name,
+                        strengthText =
+                            strengthLabel(
+                                details.medication.strengthValue,
+                                details.medication.strengthUnit,
+                            ),
+                        form = details.medication.form,
+                        colorSeed = details.medication.colorSeed,
+                    )
+                }
+
+        suspend fun load(): WidgetState = observe().first()
 
         private fun build(
             date: LocalDate,
@@ -103,30 +153,30 @@ class WidgetStateLoader
             val doses = buildDayDoses(date, meds, logs, clock.zone)
             val carryover =
                 buildDayDoses(date.minusDays(1), meds, logs, clock.zone)
-                    .filter { it.status == DoseUiStatus.PENDING }
-
-            val prn =
-                meds
-                    .filter { details -> !details.medication.isArchived }
-                    .filter { details ->
-                        details.schedules.any { it.endDate == null && it.type == ScheduleType.AS_NEEDED }
-                    }.map { details ->
-                        PrnMed(
-                            medicationId = details.medication.id,
-                            name = details.medication.name,
-                            strengthText =
-                                strengthLabel(
-                                    details.medication.strengthValue,
-                                    details.medication.strengthUnit,
-                                ),
-                            form = details.medication.form,
-                            colorSeed = details.medication.colorSeed,
-                        )
+                    .filter {
+                        it.status == DoseUiStatus.PENDING ||
+                            (
+                                it.status == DoseUiStatus.MISSED &&
+                                    !it.date
+                                        .atTime(
+                                            it.time,
+                                        ).atZone(clock.zone)
+                                        .toInstant()
+                                        .isBefore(now.minus(Duration.ofHours(6)))
+                            )
                     }
+            val hasOutstanding =
+                carryover.isNotEmpty() ||
+                    doses.any { it.status == DoseUiStatus.PENDING || it.status == DoseUiStatus.MISSED }
+            val upcoming = nextDayPreview(date, meds, logs, hasOutstanding, now)
+
+            val prn = buildPrn(meds)
 
             val next =
-                (carryover + doses.filter { it.status == DoseUiStatus.PENDING })
-                    .minWithOrNull(compareBy({ it.date }, { it.time }))
+                (
+                    carryover + doses.filter { it.status == DoseUiStatus.PENDING || it.status == DoseUiStatus.MISSED } +
+                        upcoming
+                ).minWithOrNull(compareBy({ it.date }, { it.time }))
             val minutesToNext =
                 next?.let {
                     Duration
@@ -146,6 +196,7 @@ class WidgetStateLoader
                 prn = prn,
                 minutesToNext = minutesToNext,
                 language = language,
+                upcoming = upcoming,
             )
         }
     }

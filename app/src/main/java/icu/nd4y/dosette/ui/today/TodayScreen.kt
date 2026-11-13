@@ -662,7 +662,7 @@ private fun PlannedDoseRow(dose: TodayDose) {
 }
 
 @Composable
-private fun ActedDoseRow(
+internal fun ActedDoseRow(
     dose: TodayDose,
     onTake: (IntakeTime) -> Unit,
     onSkip: () -> Unit,
@@ -696,6 +696,9 @@ private fun ActedDoseRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (dose.status == DoseUiStatus.MISSED) {
+                TextButton(onClick = { onTake(IntakeTime.Now) }) { Text(stringResource(R.string.action_take)) }
             }
             StatusCircle(dose.status)
         }

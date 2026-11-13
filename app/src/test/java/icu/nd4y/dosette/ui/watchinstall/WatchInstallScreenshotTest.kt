@@ -8,8 +8,12 @@ import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import icu.nd4y.dosette.ui.theme.DosetteTheme
+import icu.nd4y.dosette.watch.install.AdbEndpoint
+import icu.nd4y.dosette.watch.install.AdbServiceKind
+import icu.nd4y.dosette.watch.install.DiscoveredAdbService
 import icu.nd4y.dosette.watch.install.InstallFailure
 import icu.nd4y.dosette.watch.install.WATCH_PACKAGE
+import icu.nd4y.dosette.watch.install.WatchDiscoveryState
 import icu.nd4y.dosette.watch.install.WatchInstallPlan
 import icu.nd4y.dosette.watch.install.WearApkIdentity
 import org.junit.Rule
@@ -67,5 +71,25 @@ class WatchInstallScreenshotTest {
                 WatchInstallContent(state, PaddingValues(), {}, {}, { _, _, _ -> }, {}, {}, onInstall, {})
             }
         }
+    }
+
+    @Test
+    fun discoveredPairingEndpoint() {
+        val service =
+            DiscoveredAdbService(
+                "Watch",
+                AdbServiceKind.PAIRING,
+                AdbEndpoint("192.168.1.20", 12345),
+            )
+        content(
+            WatchWizardState(
+                step = WatchInstallStep.PAIR,
+                host = service.endpoint.host,
+                pairingPort = "12345",
+                discovery = WatchDiscoveryState(listOf(service)),
+                selectedService = service,
+            ),
+        )
+        compose.onRoot().captureRoboImage("src/test/screenshots/watch-install-discovery-ru.png")
     }
 }

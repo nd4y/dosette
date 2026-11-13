@@ -177,4 +177,57 @@ class WidgetStateLoaderTest {
             assertThat(state.nextSlotDoses).isEmpty()
             assertThat(state.minutesToNext).isNull()
         }
+
+    private fun loaderAt(at: Instant) =
+        WidgetStateLoader(
+            MedicationRepositoryImpl(db.medicationDao(), db.scheduleDao(), db.medicationVariantDao()),
+            DoseLogRepositoryImpl(db, db.doseLogDao(), db.medicationVariantDao()),
+            FixedSettingsRepository(),
+            Clock.fixed(at, zone),
+        )
+
+    @Test fun `midnight keeps yesterday missed dose actionable without inflating todays ring`() =
+        runTest {
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s-late", startDate = LocalDate.parse("2026-08-28")),
+                listOf(scheduleTimeEntity(id = "t-late", scheduleId = "s-late", timeMinutes = 1430)),
+            )
+            db.doseLogDao().insert(doseLogEntity(id = "late-missed", timeMinutes = 1430, status = "MISSED"))
+            val at =
+                LocalDate
+                    .parse("2026-08-30")
+                    .atTime(0, 1)
+                    .atZone(zone)
+                    .toInstant()
+            val state = loaderAt(at).load()
+            assertThat(
+                state.carryover.any {
+                    it.status == DoseUiStatus.MISSED && it.date == LocalDate.parse("2026-08-29")
+                },
+            ).isTrue()
+            assertThat(state.planned).isEqualTo(3)
+            assertThat(state.taken).isEqualTo(0)
+        }
+
+    @Test fun `before midnight tomorrow is visible with preview and a distinct occurrence date`() =
+        runTest {
+            db.scheduleDao().insertWithTimes(
+                scheduleEntity(id = "s-early", startDate = LocalDate.parse("2026-08-29")),
+                listOf(scheduleTimeEntity(id = "t-early", scheduleId = "s-early", timeMinutes = 10)),
+            )
+            val at =
+                LocalDate
+                    .parse("2026-08-29")
+                    .atTime(23, 55)
+                    .atZone(zone)
+                    .toInstant()
+            val state = loaderAt(at).load()
+            assertThat(state.upcoming.single().date).isEqualTo(LocalDate.parse("2026-08-30"))
+            assertThat(state.upcoming.single().preview).isTrue()
+            assertThat(
+                state.upcoming
+                    .single()
+                    .key.date,
+            ).isEqualTo(LocalDate.parse("2026-08-30"))
+        }
 }

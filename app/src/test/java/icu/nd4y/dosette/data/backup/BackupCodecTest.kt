@@ -435,6 +435,37 @@ class BackupCodecTest {
             BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
         }
     }
+
+    @Test fun `individual repeat intervals survive YAML while old backups inherit global settings`() {
+        val data =
+            fullData.copy(
+                medications =
+                    fullData.medications.mapIndexed { i, med ->
+                        med.copy(
+                            nagIntervalMin =
+                                if (i ==
+                                    0
+                                ) {
+                                    2
+                                } else {
+                                    0
+                                },
+                        )
+                    },
+            )
+        val yaml = BackupCodec.encode(BackupMapper.toSnapshot(data, instant))
+        val restored = BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
+        assertThat(restored.medications.map { it.nagIntervalMin }).containsExactly(2, 0).inOrder()
+        val legacy = BackupMapper.fromSnapshot(BackupCodec.decode(GOLDEN_V1_YAML))
+        assertThat(legacy.medications.all { it.nagIntervalMin == null }).isTrue()
+    }
+
+    @Test fun `invalid medication repeat intervals fail before importing`() {
+        val broken = fullData.copy(medications = fullData.medications.map { it.copy(nagIntervalMin = -1) })
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(BackupMapper.toSnapshot(broken, instant))
+        }
+    }
 }
 
 private val GOLDEN_V1_YAML =

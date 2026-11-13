@@ -97,6 +97,7 @@ internal fun Medication.toBackup(data: BackupData): MedicationBackup =
         colorSeed = colorSeed,
         iconKey = iconKey,
         defaultVariantId = defaultVariantId,
+        nagIntervalMin = nagIntervalMin,
         archivedAt = archivedAt?.toString(),
         createdAt = createdAt.toString(),
         variants =
@@ -121,6 +122,7 @@ internal fun MedicationBackup.toDomain(profileId: String): Medication =
         colorSeed = colorSeed,
         iconKey = iconKey,
         defaultVariantId = defaultVariantId,
+        nagIntervalMin = nagIntervalMin,
         archivedAt = archivedAt?.let { parseInstant(it, "medication.archived_at") },
         createdAt = parseInstant(createdAt, "medication.created_at"),
     )

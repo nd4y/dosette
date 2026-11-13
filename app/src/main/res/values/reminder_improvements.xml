@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_slot_title">%1$s · %2$d medications</string>
+    <string name="notification_open_doses">Review medications</string>
+    <string name="med_repeat_title">Repeat reminders</string>
+    <string name="med_repeat_hint">Repeat until you respond, within the reminder window. Snooze pauses repeats. General repeat limit still applies.</string>
+    <string name="med_repeat_global">Use general settings</string>
+    <string name="med_repeat_off">Do not repeat</string>
+    <string name="med_repeat_minutes">Every %1$d min</string>
+    <string name="tile_preview_open">Open</string>
+</resources>

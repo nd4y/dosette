@@ -62,7 +62,14 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun watchActionReceiptDao(): WatchActionReceiptDao
 
     companion object {
-        const val VERSION = 4
+        const val VERSION = 5
+
+        val MIGRATION_4_5 =
+            object : Migration(4, 5) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE medications ADD COLUMN nagIntervalMin INTEGER")
+                }
+            }
         const val NAME = "dosette.db"
 
         /** v4: transport receipts have no profile FK, so undo/import cannot resurrect a watch tap. */

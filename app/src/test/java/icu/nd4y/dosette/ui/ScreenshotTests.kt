@@ -253,6 +253,19 @@ class ScreenshotTests {
         composeRule.onRoot().captureRoboImage("$SHOTS/wizard_schedule_light.png", roborazziOptions = SHOT_OPTIONS)
     }
 
+    @Test
+    @Config(qualifiers = RU_PIXEL7)
+    fun wizardRepeatInterval() {
+        wizard(
+            MedEditUiState(
+                step = WizardStep.TIMES,
+                name = "Метформин",
+                nagIntervalMin = 2,
+            ),
+        )
+        composeRule.onRoot().captureRoboImage("$SHOTS/wizard_repeat_light.png", roborazziOptions = SHOT_OPTIONS)
+    }
+
     private fun todayDose(
         medicationId: String,
         name: String,

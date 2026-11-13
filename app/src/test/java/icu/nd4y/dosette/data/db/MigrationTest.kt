@@ -102,6 +102,7 @@ class MigrationTest {
             AppDatabase.MIGRATION_1_2,
             AppDatabase.MIGRATION_2_3,
             AppDatabase.MIGRATION_3_4,
+            AppDatabase.MIGRATION_4_5,
         )
     }
 
@@ -139,6 +140,31 @@ class MigrationTest {
             assertThat(cursor.moveToFirst()).isTrue()
             assertThat(cursor.getString(0)).isEqualTo("m1|2026-08-29|11:00")
             assertThat(cursor.getLong(1)).isEqualTo(1000)
+        }
+    }
+
+    @Test
+    fun `4 to 5 keeps existing medicine fields and defaults repeats to inherited`() {
+        helper.createDatabase(dbPath, 4).use { db ->
+            db.withoutForeignKeys {
+                execSQL(
+                    """
+                    INSERT INTO medications
+                        (id, profileId, name, form, strengthValue, strengthUnit, instructions,
+                         colorSeed, iconKey, defaultVariantId, archivedAt, createdAt)
+                    VALUES ('med', 'profile', 'Existing', 'TABLET', NULL, NULL, NULL,
+                            0, 'tablet', NULL, NULL, 1234)
+                    """.trimIndent(),
+                )
+            }
+        }
+        helper.runMigrationsAndValidate(dbPath, 5, true, AppDatabase.MIGRATION_4_5).use { db ->
+            db.query("SELECT name, createdAt, nagIntervalMin FROM medications WHERE id='med'").use { row ->
+                assertThat(row.moveToFirst()).isTrue()
+                assertThat(row.getString(0)).isEqualTo("Existing")
+                assertThat(row.getLong(1)).isEqualTo(1234)
+                assertThat(row.isNull(2)).isTrue()
+            }
         }
     }
 }

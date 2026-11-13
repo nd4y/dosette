@@ -73,6 +73,8 @@ data class TodayDose(
     val oneOff: Boolean = false,
     /** A reminder is currently ringing for it — the only time a snooze means anything. */
     val reminderActive: Boolean = false,
+    /** Widget preview of a future date: navigation only, never records an early intake. */
+    val preview: Boolean = false,
 ) {
     val key: OccurrenceKey get() = OccurrenceKey(medicationId, date, time)
     val slot: DaySlot

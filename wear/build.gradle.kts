@@ -81,6 +81,9 @@ detekt {
 
 dependencies {
     implementation(project(":link"))
+    implementation("androidx.wear.tiles:tiles:1.6.2")
+    implementation("androidx.wear.protolayout:protolayout:1.4.2")
+    implementation("androidx.wear.protolayout:protolayout-material3:1.4.2")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

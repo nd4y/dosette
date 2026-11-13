@@ -4,13 +4,22 @@ import com.google.common.truth.Truth.assertThat
 import icu.nd4y.dosette.testing.MainDispatcherRule
 import icu.nd4y.dosette.testing.clearForTest
 import icu.nd4y.dosette.watch.install.AdbEndpoint
+import icu.nd4y.dosette.watch.install.AdbServiceKind
+import icu.nd4y.dosette.watch.install.DiscoveredAdbService
 import icu.nd4y.dosette.watch.install.InstallFailure
 import icu.nd4y.dosette.watch.install.WATCH_PACKAGE
+import icu.nd4y.dosette.watch.install.WatchDiscovery
+import icu.nd4y.dosette.watch.install.WatchDiscoveryState
 import icu.nd4y.dosette.watch.install.WatchInstallException
 import icu.nd4y.dosette.watch.install.WatchInstallPlan
 import icu.nd4y.dosette.watch.install.WatchInstaller
 import icu.nd4y.dosette.watch.install.WearApkIdentity
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -101,5 +110,96 @@ class WatchInstallViewModelTest {
             installs++
             return plan.copy(installed = plan.candidate)
         }
+    }
+
+    @Test fun `discovery fills pairing endpoint then matches connection on same device`() =
+        runTest {
+            val advertisements = MutableStateFlow(WatchDiscoveryState())
+            val discovery =
+                object : WatchDiscovery {
+                    override fun observe() = advertisements
+                }
+            val vm = WatchInstallViewModel(Installer(), discovery)
+            vm.visible(true)
+            vm.step(WatchInstallStep.PAIR)
+            runCurrent()
+            advertisements.value =
+                WatchDiscoveryState(
+                    listOf(
+                        DiscoveredAdbService("watch", AdbServiceKind.PAIRING, AdbEndpoint("192.168.1.20", 12345)),
+                        DiscoveredAdbService("watch", AdbServiceKind.CONNECTION, AdbEndpoint("192.168.1.20", 23456)),
+                        DiscoveredAdbService("other", AdbServiceKind.CONNECTION, AdbEndpoint("192.168.1.30", 34567)),
+                    ),
+                )
+            runCurrent()
+            assertThat(vm.state.value.host).isEqualTo("192.168.1.20")
+            assertThat(vm.state.value.pairingPort).isEqualTo("12345")
+            vm.pair("123456")
+            runCurrent()
+            assertThat(vm.state.value.connectionPort).isEqualTo("23456")
+            assertThat(vm.state.value.host).isEqualTo("192.168.1.20")
+            vm.clearForTest()
+        }
+
+    @Test
+    fun `multiple pairing advertisements require explicit choice`() =
+        runTest {
+            val services =
+                listOf(
+                    DiscoveredAdbService("a", AdbServiceKind.PAIRING, AdbEndpoint("192.168.1.20", 12345)),
+                    DiscoveredAdbService("b", AdbServiceKind.PAIRING, AdbEndpoint("192.168.1.21", 12346)),
+                )
+            val discovery =
+                object : WatchDiscovery {
+                    override fun observe() = flowOf(WatchDiscoveryState(services))
+                }
+            val vm = WatchInstallViewModel(Installer(), discovery)
+            vm.visible(true)
+            vm.step(WatchInstallStep.PAIR)
+            runCurrent()
+            assertThat(vm.state.value.host).isEmpty()
+            vm.clearForTest()
+        }
+
+    @Test fun `one scan survives step transition and closes when wizard is hidden`() =
+        runTest {
+            var starts = 0
+            var stops = 0
+            val discovery =
+                object : WatchDiscovery {
+                    override fun observe(): Flow<WatchDiscoveryState> =
+                        callbackFlow {
+                            starts++
+                            trySend(WatchDiscoveryState())
+                            awaitClose { stops++ }
+                        }
+                }
+            val vm = WatchInstallViewModel(Installer(), discovery)
+            vm.visible(true)
+            vm.step(WatchInstallStep.PAIR)
+            runCurrent()
+            vm.step(WatchInstallStep.CONNECT)
+            runCurrent()
+            assertThat(starts).isEqualTo(1)
+            vm.visible(false)
+            runCurrent()
+            assertThat(stops).isEqualTo(1)
+            vm.clearForTest()
+        }
+
+    @Test fun `lost automatic connection port is cleared but manual address survives`() {
+        val service = DiscoveredAdbService("watch", AdbServiceKind.CONNECTION, AdbEndpoint("192.168.1.20", 23456))
+        val selected =
+            WatchWizardState(
+                step = WatchInstallStep.CONNECT,
+                host = service.endpoint.host,
+                connectionPort = "23456",
+                selectedService = service,
+            )
+        val lost = selected.withDiscovery(WatchDiscoveryState())
+        assertThat(lost.connectionPort).isEmpty()
+        assertThat(lost.host).isEqualTo(service.endpoint.host)
+        val manual = selected.copy(selectedService = null).withDiscovery(WatchDiscoveryState())
+        assertThat(manual.connectionPort).isEqualTo("23456")
     }
 }

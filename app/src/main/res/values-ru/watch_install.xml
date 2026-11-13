@@ -9,14 +9,14 @@
     <string name="watch_install_phone_old">Для установки с телефона нужен Android 10 или новее.</string>
     <string name="watch_install_continue">Часы готовы</string>
     <string name="watch_install_pair">Сопряжение с телефоном</string>
-    <string name="watch_install_pair_hint">На часах откройте «Беспроводная отладка → Подключить новое устройство». Введите IPv4-адрес, порт сопряжения и шестизначный код из этого окна. Оставьте окно открытым. Сопряжение с компьютером не заменяет сопряжение с Dosette.</string>
+    <string name="watch_install_pair_hint">На часах откройте «Беспроводная отладка → Подключить новое устройство». Dosette автоматически ищет адрес и порт сопряжения. Введите шестизначный код и оставьте окно открытым. Если найдено несколько устройств, выберите часы. Сопряжение с компьютером не заменяет сопряжение с Dosette.</string>
     <string name="watch_install_address">IPv4-адрес часов</string>
     <string name="watch_install_pair_port">Порт сопряжения</string>
     <string name="watch_install_code">Шестизначный код сопряжения</string>
     <string name="watch_install_pair_action">Выполнить сопряжение</string>
     <string name="watch_install_already_paired">Уже сопряжено с Dosette на этом телефоне</string>
     <string name="watch_install_connect">Подключение к часам</string>
-    <string name="watch_install_connect_hint">Вернитесь на основной экран «Беспроводная отладка» на часах. Введите порт подключения оттуда. Обычно он отличается от порта сопряжения и может меняться при повторном включении отладки.</string>
+    <string name="watch_install_connect_hint">Вернитесь на основной экран «Беспроводная отладка» на часах. Dosette отдельно находит порт подключения. При необходимости выберите часы. Если сеть блокирует поиск, адрес можно указать вручную ниже.</string>
     <string name="watch_install_connection_port">Порт подключения</string>
     <string name="watch_install_check">Подключиться и проверить</string>
     <string name="watch_install_pair_again">Вернуться к сопряжению</string>
@@ -37,7 +37,7 @@
     <string name="watch_install_done">Dosette %1$s установлено</string>
     <string name="watch_install_finish_hint">Подпись установленного APK и версия проверены. Откройте Dosette на часах и проверьте синхронизацию с телефоном. Затем выключите отладку ADB и беспроводную отладку на часах.</string>
     <string name="watch_install_finish">Готово</string>
-    <string name="watch_install_error_address">Введите корректный IPv4-адрес и порт от 1 до 65535.</string>
+    <string name="watch_install_error_address">Выберите найденное устройство. Если поиск недоступен, укажите корректный IPv4-адрес и порт от 1 до 65535.</string>
     <string name="watch_install_error_pairing">Сопряжение не выполнено. Заново откройте подключение нового устройства на часах и проверьте текущий код, порт сопряжения и Wi-Fi.</string>
     <string name="watch_install_error_connection">Не удалось подключиться. Проверьте Wi-Fi, беспроводную отладку и текущий порт подключения. При необходимости повторите сопряжение.</string>
     <string name="watch_install_error_not_watch">Это устройство не является совместимыми часами Wear OS. Установка не выполнялась.</string>

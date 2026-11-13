@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="watch_discovery_title">Find your watch</string>
+    <string name="watch_discovery_hint">Searching for wireless ADB devices on Wi-Fi. Open Pair new device on the watch. If several devices appear, select the watch. Only the pairing code is entered manually.</string>
+    <string name="watch_discovery_unavailable">Discovery is unavailable or blocked by this network. Check Wi-Fi and debugging; you can enter the address below.</string>
+    <string name="watch_discovery_empty">No matching ADB service found yet. Keep the debugging screen open on the watch.</string>
+    <string name="watch_discovery_device">%1$s · %2$s:%3$d</string>
+</resources>

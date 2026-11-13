@@ -9,14 +9,14 @@
     <string name="watch_install_phone_old">This installer requires Android 10 or newer on the phone.</string>
     <string name="watch_install_continue">Watch is ready</string>
     <string name="watch_install_pair">Pair with this phone</string>
-    <string name="watch_install_pair_hint">On the watch, open Wireless debugging → Pair new device. Enter its IPv4 address, pairing port and six-digit code. Keep that window open. Pairing previously done with a computer does not pair this app.</string>
+    <string name="watch_install_pair_hint">On the watch, open Wireless debugging → Pair new device. Dosette searches for the address and pairing port automatically. Enter the six-digit code and keep that window open. If several devices appear, select the watch. Pairing with a computer does not pair this app.</string>
     <string name="watch_install_address">Watch IPv4 address</string>
     <string name="watch_install_pair_port">Pairing port</string>
     <string name="watch_install_code">Six-digit pairing code</string>
     <string name="watch_install_pair_action">Pair</string>
     <string name="watch_install_already_paired">Already paired with Dosette on this phone</string>
     <string name="watch_install_connect">Connect to the watch</string>
-    <string name="watch_install_connect_hint">Return to the main Wireless debugging screen on the watch. Enter the connection port shown there. It is usually different from the pairing port and can change when debugging restarts.</string>
+    <string name="watch_install_connect_hint">Return to the main Wireless debugging screen on the watch. Dosette finds the connection port separately from the pairing port. Select the watch if needed. If this network blocks discovery, enter the address manually below.</string>
     <string name="watch_install_connection_port">Connection port</string>
     <string name="watch_install_check">Connect and check</string>
     <string name="watch_install_pair_again">Back to pairing</string>
@@ -37,7 +37,7 @@
     <string name="watch_install_done">Dosette %1$s installed</string>
     <string name="watch_install_finish_hint">The installed APK signature and version have been verified. Open Dosette on the watch to check synchronization with the phone. Then turn off ADB and wireless debugging on the watch.</string>
     <string name="watch_install_finish">Done</string>
-    <string name="watch_install_error_address">Enter a valid numeric IPv4 address and a port from 1 to 65535.</string>
+    <string name="watch_install_error_address">Select a discovered device, or enter a valid IPv4 address and port (1 to 65535) if discovery is unavailable.</string>
     <string name="watch_install_error_pairing">Pairing failed. Reopen Pair new device on the watch and check its current code, pairing port and Wi-Fi connection.</string>
     <string name="watch_install_error_connection">Cannot connect. Check Wi-Fi, wireless debugging and the current connection port. If needed, return to pairing.</string>
     <string name="watch_install_error_not_watch">This device is not a compatible Wear OS watch. Nothing was installed.</string>
