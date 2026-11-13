@@ -43,4 +43,6 @@ data class DoseLogEntity(
     val consumedUnits: Double?,
     val note: String?,
     val updatedAt: Instant,
+    val cabinetId: String? = null,
+    val cabinetName: String? = null,
 )

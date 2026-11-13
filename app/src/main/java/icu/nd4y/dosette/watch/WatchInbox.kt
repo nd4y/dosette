@@ -77,7 +77,13 @@ class WatchInbox
                             else -> UserDoseAction.SNOOZE
                         }
                     if (key != null) {
-                        engine.onWatchAction(key, userAction, Instant.ofEpochMilli(action.actedAt), deliveryId)
+                        engine.onWatchAction(
+                            key,
+                            userAction,
+                            Instant.ofEpochMilli(action.actedAt),
+                            deliveryId,
+                            action.cabinetId,
+                        )
                     }
                 }
 
@@ -85,7 +91,7 @@ class WatchInbox
                     action.medicationId?.let {
                         // Persist delivery identity with the log and stock change,
                         // even if acknowledgement fails after the transaction.
-                        prnIntakes.take(it, Instant.ofEpochMilli(action.actedAt), deliveryId, deliveryId = deliveryId)
+                        prnIntakes.takeFromWatch(it, Instant.ofEpochMilli(action.actedAt), deliveryId, action.cabinetId)
                     }
                 }
             }

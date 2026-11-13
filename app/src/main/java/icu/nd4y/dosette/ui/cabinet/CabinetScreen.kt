@@ -62,6 +62,7 @@ fun CabinetScreen(
         onAddMedication = onAddMedication,
         onOpenMedication = onOpenMedication,
         modifier = modifier,
+        cabinetPicker = { CabinetPicker() },
     )
 }
 
@@ -73,6 +74,7 @@ fun CabinetContent(
     onAddMedication: () -> Unit,
     onOpenMedication: (String) -> Unit,
     modifier: Modifier = Modifier,
+    cabinetPicker: @Composable () -> Unit = {},
 ) {
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -95,6 +97,7 @@ fun CabinetContent(
                 if (!searchOpen) query = ""
             },
         )
+        cabinetPicker()
         CabinetBody(
             state = shownState,
             bottomPadding = contentPadding.calculateBottomPadding(),

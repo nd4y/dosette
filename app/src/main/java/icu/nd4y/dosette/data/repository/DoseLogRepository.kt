@@ -95,6 +95,8 @@ class DoseLogRepositoryImpl
                         status = entity.status,
                         actedAt = entity.actedAt,
                         variantId = entity.variantId,
+                        cabinetId = entity.cabinetId,
+                        cabinetName = entity.cabinetName,
                         consumedUnits = entity.consumedUnits,
                         updatedAt = entity.updatedAt,
                     ),
@@ -114,10 +116,21 @@ class DoseLogRepositoryImpl
                 if (deliveryId != null && receipts.contains(deliveryId)) return@withTransaction false
                 val isNew = doseLogDao.getById(log.id) == null
                 if (isNew) {
-                    doseLogDao.insert(log.toEntity())
-                    if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
-                        variantDao.decrement(log.variantId, log.consumedUnits)
-                    }
+                    val change =
+                        if (log.status == DoseStatus.TAKEN && log.variantId != null &&
+                            log.consumedUnits != null
+                        ) {
+                            variantDao.consume(log.variantId, log.consumedUnits, log.cabinetId)
+                        } else {
+                            null
+                        }
+                    doseLogDao.insert(
+                        log
+                            .copy(
+                                consumedUnits = change?.let { it.before - it.after },
+                                cabinetId = change?.cabinetId ?: log.cabinetId,
+                            ).toEntity(),
+                    )
                 }
                 if (deliveryId != null) receipts.insert(WatchActionReceiptEntity(deliveryId))
                 isNew
@@ -128,7 +141,7 @@ class DoseLogRepositoryImpl
                 val log = getById(logId) ?: return@withTransaction
                 if (log.kind != DoseKind.PRN) return@withTransaction
                 if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
-                    variantDao.increment(log.variantId, log.consumedUnits)
+                    variantDao.increment(log.variantId, log.consumedUnits, log.cabinetId ?: "main:" + log.profileId)
                 }
                 doseLogDao.delete(logId)
             }

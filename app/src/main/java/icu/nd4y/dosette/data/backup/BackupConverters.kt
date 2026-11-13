@@ -226,6 +226,8 @@ internal fun DoseLog.toBackup(): DoseLogBackup =
         consumedUnits = consumedUnits,
         note = note,
         updatedAt = updatedAt.toString(),
+        cabinetId = cabinetId,
+        cabinetName = cabinetName,
     )
 
 internal fun DoseLogBackup.toDomain(profileId: String): DoseLog =
@@ -245,6 +247,8 @@ internal fun DoseLogBackup.toDomain(profileId: String): DoseLog =
         consumedUnits = consumedUnits,
         note = note,
         updatedAt = parseInstant(updatedAt, "dose_log.updated_at"),
+        cabinetId = cabinetId ?: variantId?.let { "main:$profileId" },
+        cabinetName = cabinetName,
     )
 
 internal fun Appointment.toBackup(): AppointmentBackup =

@@ -138,6 +138,19 @@ class TodayViewModel
             doseId: String? = null,
             medicationId: String? = null,
         ) {
+            val source =
+                doseId?.let {
+                    uiState.value
+                        .dose(it)
+                        ?.dose
+                        ?.cabinetId
+                }
+                    ?: medicationId?.let { id ->
+                        uiState.value.prn
+                            .firstOrNull { it.prn.medicationId == id }
+                            ?.prn
+                            ?.cabinetId
+                    }
             viewModelScope.launch {
                 val action =
                     WatchAction(
@@ -146,6 +159,7 @@ class TodayViewModel
                         doseId = doseId,
                         medicationId = medicationId,
                         actedAt = clock.millis(),
+                        cabinetId = source,
                     )
                 val accepted = link.send(action)
                 val phone = if (accepted) link.phoneReachable().also { reachable.value = it } else false

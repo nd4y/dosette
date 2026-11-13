@@ -17,8 +17,8 @@ data class BackupSnapshot(
     val profiles: List<ProfileBackup> = emptyList(),
 ) {
     companion object {
-        /** 2: anchor_date and one_off on schedules — both optional, so version 1 files still import. */
-        const val CURRENT_SCHEMA_VERSION = 2
+        /** 3: cabinet ledgers and intake sources. Schemas 1 and 2 still import into the default cabinet. */
+        const val CURRENT_SCHEMA_VERSION = 3
     }
 }
 
@@ -48,6 +48,9 @@ data class ProfileBackup(
     val medications: List<MedicationBackup> = emptyList(),
     @SerialName("dose_logs") val doseLogs: List<DoseLogBackup> = emptyList(),
     val appointments: List<AppointmentBackup> = emptyList(),
+    val cabinets: List<CabinetBackup> = emptyList(),
+    @SerialName("active_cabinet_id") val activeCabinetId: String? = null,
+    val stocks: List<CabinetStockBackup> = emptyList(),
 )
 
 @Serializable
@@ -128,6 +131,8 @@ data class DoseLogBackup(
     @SerialName("consumed_units") val consumedUnits: Double? = null,
     val note: String? = null,
     @SerialName("updated_at") val updatedAt: String,
+    @SerialName("cabinet_id") val cabinetId: String? = null,
+    @SerialName("cabinet_name") val cabinetName: String? = null,
 )
 
 @Serializable
@@ -141,4 +146,21 @@ data class AppointmentBackup(
     val notes: String? = null,
     @SerialName("reminder_offsets_min") val reminderOffsetsMin: List<Int> = emptyList(),
     @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class CabinetBackup(
+    val id: String,
+    val name: String? = null,
+    @SerialName("sort_order") val sortOrder: Int,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("archived_at") val archivedAt: String? = null,
+)
+
+@Serializable
+data class CabinetStockBackup(
+    @SerialName("variant_id") val variantId: String,
+    @SerialName("cabinet_id") val cabinetId: String,
+    @SerialName("current_stock") val currentStock: Double,
+    @SerialName("last_refill_at") val lastRefillAt: String? = null,
 )

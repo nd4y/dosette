@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Nothing in the code references the Wear capability array: Play services
-     reads it by name. The release resource shrinker dropped it in v0.13.0,
-     so the watch could never see a reachable phone. -->
+<!-- Play services and the notification service resolve these resources by name. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@array/android_wear_capabilities" />
+    tools:keep="@array/android_wear_capabilities,@raw/dose_chime" />

@@ -135,6 +135,10 @@ fun TodayScreen(
             onShowMonth = viewModel::showMonth,
             onAddOneOff = viewModel::addOneOff,
             reselectTick = reselectTick,
+            cabinetPicker = {
+                icu.nd4y.dosette.ui.cabinet
+                    .CabinetPicker()
+            },
         )
         SnackbarHost(
             hostState = snackbarHost,
@@ -169,6 +173,7 @@ fun TodayContent(
     modifier: Modifier = Modifier,
     reselectTick: Int = 0,
     calendarExpandedInitially: Boolean = false,
+    cabinetPicker: @Composable () -> Unit = {},
 ) {
     var calendarExpanded by rememberSaveable { mutableStateOf(calendarExpandedInitially) }
     var addDialogOpen by remember { mutableStateOf(false) }
@@ -195,6 +200,7 @@ fun TodayContent(
             onGoToday = onGoToday,
         )
         ProfileChips(state, onSelectProfile)
+        cabinetPicker()
         AnimatedVisibility(
             visible = calendarExpanded,
             enter = expandVertically() + fadeIn(),

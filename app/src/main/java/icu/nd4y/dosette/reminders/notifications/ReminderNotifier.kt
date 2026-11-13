@@ -27,6 +27,8 @@ data class ReminderPayload(
     val instructions: String?,
     /** Shown only when more than one profile exists. */
     val profileName: String?,
+    val cabinetId: String? = null,
+    val cabinetName: String? = null,
 )
 
 /** Side-effect boundary of the reminder engine; faked in tests. */
@@ -113,6 +115,7 @@ class AndroidReminderNotifier
                     add(localized.getString(R.string.notification_dose_text, payload.key.time.format(TIME_FORMAT)))
                     payload.amountText?.let { add(localized.getString(R.string.unit_pieces, it)) }
                     payload.instructions?.let(::add)
+                    payload.cabinetName?.let(::add)
                     payload.profileName?.let { add(localized.getString(R.string.notification_profile, it)) }
                 }.joinToString(" · ")
             // Always the alerting channel: the silent swipe-repost is muted with
@@ -149,7 +152,7 @@ class AndroidReminderNotifier
                     ).addAction(
                         R.drawable.ic_widget_check,
                         localized.getString(R.string.action_take),
-                        actionIntent(payload.key, NotificationActionReceiver.ACTION_TAKE, id, 1),
+                        actionIntent(payload.key, NotificationActionReceiver.ACTION_TAKE, id, 1, payload.cabinetId),
                     ).build()
             notifyIfAllowed(id, notification)
         }
@@ -279,11 +282,13 @@ class AndroidReminderNotifier
             action: String,
             notificationId: Int,
             actionOrdinal: Int,
+            cabinetId: String? = null,
         ): PendingIntent {
             val intent =
                 Intent(context, NotificationActionReceiver::class.java)
                     .setAction(action)
                     .putExtra(NotificationActionReceiver.EXTRA_OCCURRENCE_KEY, key.encode())
+                    .putExtra(NotificationActionReceiver.EXTRA_CABINET_ID, cabinetId)
             return PendingIntent.getBroadcast(
                 context,
                 notificationId * 10 + actionOrdinal,

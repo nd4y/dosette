@@ -45,7 +45,10 @@ interface MedicationRepository {
     /** Archived ones included. */
     suspend fun getAll(): List<MedicationDetails>
 
-    suspend fun getDetails(medicationId: String): MedicationDetails?
+    suspend fun getDetails(
+        medicationId: String,
+        cabinetId: String? = null,
+    ): MedicationDetails?
 
     suspend fun upsert(medication: Medication)
 
@@ -75,7 +78,15 @@ interface MedicationRepository {
         updateStock: Boolean,
     )
 
-    suspend fun getVariant(variantId: String): MedicationVariant?
+    suspend fun getVariant(
+        variantId: String,
+        cabinetId: String? = null,
+    ): MedicationVariant?
+
+    suspend fun hasOtherCabinetStock(
+        variantId: String,
+        cabinetId: String,
+    ): Boolean
 
     suspend fun deleteVariant(variantId: String)
 
@@ -83,30 +94,35 @@ interface MedicationRepository {
     suspend fun decrementStock(
         variantId: String,
         units: Double,
+        cabinetId: String? = null,
     )
 
     /** Undo path: restores the variant's stock. */
     suspend fun incrementStock(
         variantId: String,
         units: Double,
+        cabinetId: String? = null,
     )
 
     /** Correction path: overwrites the counter with a recount, atomically. */
     suspend fun setStock(
         variantId: String,
         units: Double,
+        cabinetId: String? = null,
     )
 
     /** Atomic decrement reporting the stock before and after; null when untracked or gone. */
     suspend fun consumeStock(
         variantId: String,
         units: Double,
+        cabinetId: String? = null,
     ): StockChange?
 
     suspend fun refill(
         variantId: String,
         units: Double,
         at: Instant,
+        cabinetId: String? = null,
     )
 
     suspend fun archive(
@@ -140,13 +156,29 @@ class MedicationRepositoryImpl
         override suspend fun getAll(): List<MedicationDetails> =
             medicationDao.getAllWithDetails().map { it.toDetails() }
 
-        override suspend fun getDetails(medicationId: String): MedicationDetails? {
+        override suspend fun getDetails(
+            medicationId: String,
+            cabinetId: String?,
+        ): MedicationDetails? {
             val medication = medicationDao.getById(medicationId) ?: return null
-            return MedicationDetails(
-                medication = medication.toDomain(),
-                schedules = scheduleDao.getByMedication(medicationId).map { it.toDomain() },
-                variants = variantDao.getByMedication(medicationId).map { it.toDomain() },
-            )
+            return if (cabinetId != null &&
+                !variantDao.cabinetMatches(medicationId, cabinetId)
+            ) {
+                null
+            } else {
+                MedicationDetails(
+                    medication = medication.toDomain(),
+                    schedules = scheduleDao.getByMedication(medicationId).map { it.toDomain() },
+                    variants =
+                        (
+                            if (cabinetId == null) {
+                                variantDao.getByMedication(medicationId)
+                            } else {
+                                variantDao.getByMedicationAt(medicationId, cabinetId)
+                            }
+                        ).map { it.toDomain() },
+                )
+            }
         }
 
         override suspend fun upsert(medication: Medication) = medicationDao.upsert(medication.toEntity())
@@ -179,36 +211,57 @@ class MedicationRepositoryImpl
             updateStock: Boolean,
         ) = variantDao.upsertFromEditor(variant.toEntity(), updateStock)
 
-        override suspend fun getVariant(variantId: String): MedicationVariant? =
-            variantDao.getById(variantId)?.toDomain()
+        override suspend fun getVariant(
+            variantId: String,
+            cabinetId: String?,
+        ): MedicationVariant? =
+            (
+                if (cabinetId ==
+                    null
+                ) {
+                    variantDao.getById(variantId)
+                } else {
+                    variantDao.getAt(variantId, cabinetId)
+                }
+            )?.toDomain()
+
+        override suspend fun hasOtherCabinetStock(
+            variantId: String,
+            cabinetId: String,
+        ): Boolean = variantDao.hasOtherStock(variantId, cabinetId)
 
         override suspend fun deleteVariant(variantId: String) = variantDao.delete(variantId)
 
         override suspend fun decrementStock(
             variantId: String,
             units: Double,
-        ) = variantDao.decrement(variantId, units)
+            cabinetId: String?,
+        ) = variantDao.decrement(variantId, units, cabinetId)
 
         override suspend fun incrementStock(
             variantId: String,
             units: Double,
-        ) = variantDao.increment(variantId, units)
+            cabinetId: String?,
+        ) = variantDao.increment(variantId, units, cabinetId)
 
         override suspend fun setStock(
             variantId: String,
             units: Double,
-        ) = variantDao.setStock(variantId, units)
+            cabinetId: String?,
+        ) = variantDao.setStock(variantId, units, cabinetId)
 
         override suspend fun consumeStock(
             variantId: String,
             units: Double,
-        ): StockChange? = variantDao.consume(variantId, units)
+            cabinetId: String?,
+        ): StockChange? = variantDao.consume(variantId, units, cabinetId)
 
         override suspend fun refill(
             variantId: String,
             units: Double,
             at: Instant,
-        ) = variantDao.refill(variantId, units, at)
+            cabinetId: String?,
+        ) = variantDao.refill(variantId, units, at, cabinetId)
 
         override suspend fun archive(
             medicationId: String,

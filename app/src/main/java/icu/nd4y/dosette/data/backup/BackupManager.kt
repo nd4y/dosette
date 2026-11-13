@@ -7,6 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import icu.nd4y.dosette.data.db.AppDatabase
 import icu.nd4y.dosette.data.db.dao.BackupDao
 import icu.nd4y.dosette.data.db.dao.BackupEntities
+import icu.nd4y.dosette.data.db.entity.CabinetSelectionEntity
 import icu.nd4y.dosette.data.db.entity.DoseActionCursorEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleWithTimes
 import icu.nd4y.dosette.data.db.timeEntities
@@ -104,6 +105,9 @@ class BackupManager
                             scheduleTimes = data.schedules.flatMap { it.timeEntities() },
                             doseLogs = data.doseLogs.map { it.toEntity() },
                             appointments = data.appointments.map { it.toEntity() },
+                            cabinets = data.cabinets.map { it.toEntity() },
+                            stocks = data.stocks.map { it.toEntity() },
+                            selections = data.cabinetSelections.map { CabinetSelectionEntity(it.key, it.value) },
                         ),
                     )
                     markImportedIntents(data)
@@ -136,13 +140,16 @@ class BackupManager
                 settings = settingsRepository.settings.first(),
                 profiles = entities.profiles.map { it.toDomain() },
                 medications = entities.medications.map { it.toDomain() },
-                variants = entities.variants.map { it.toDomain() },
+                variants = entities.variants.map { it.toDomain().copy(cabinetId = null, cabinetName = null) },
                 schedules =
                     entities.schedules.map { schedule ->
                         ScheduleWithTimes(schedule, times[schedule.id].orEmpty()).toDomain()
                     },
                 doseLogs = entities.doseLogs.map { it.toDomain() },
                 appointments = entities.appointments.map { it.toDomain() },
+                cabinets = entities.cabinets.map { it.toDomain() },
+                stocks = entities.stocks.map { it.toDomain() },
+                cabinetSelections = entities.selections.associate { it.profileId to it.cabinetId },
             )
         }
 

@@ -138,6 +138,8 @@ class WidgetStateLoader
                             ),
                         form = details.medication.form,
                         colorSeed = details.medication.colorSeed,
+                        cabinetId = details.defaultVariant?.cabinetId,
+                        cabinetName = details.defaultVariant?.cabinetName,
                     )
                 }
 

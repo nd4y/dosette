@@ -1,0 +1,10 @@
+<resources>
+    <string name="sound_test_title">Проверка звука Dosette</string>
+    <string name="sound_test_text">Так звучит напоминание о лекарстве. Приём не записан.</string>
+    <string name="install_help_title">Установка и обновление</string>
+    <string name="install_help_text">Скачайте APK для телефона с именем dosette-vX.Y.Z.apk. Приложение для часов уже внутри. Обновляйте поверх установленной версии, чтобы сохранить данные. Для автоматических обновлений можно использовать Obtainium: источник GitHub nd4y/dosette, фильтр APK dosette-v[0-9].*[.]apk$.</string>
+    <string name="install_help_latest">Открыть последнюю версию</string>
+    <string name="install_help_guide">Пошаговая инструкция</string>
+    <string name="install_help_share">Поделиться инструкцией</string>
+    <string name="install_help_share_text">Установка Dosette для Android: %1$s (APK для телефона dosette-vX.Y.Z.apk уже содержит Wear OS). Инструкция: %2$s</string>
+</resources>

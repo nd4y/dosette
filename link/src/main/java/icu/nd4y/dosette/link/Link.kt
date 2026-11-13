@@ -50,6 +50,7 @@ data class WatchDose(
     val carryover: Boolean = false,
     /** A reminder is ringing for it right now — the only time a snooze means anything. */
     val reminderActive: Boolean = false,
+    val cabinetId: String? = null,
 )
 
 /** An as-needed medication the watch can record an intake for. */
@@ -57,6 +58,7 @@ data class WatchDose(
 data class WatchPrn(
     val medicationId: String,
     val title: String,
+    val cabinetId: String? = null,
 )
 
 /** The day as the phone sees it for the active profile: the same picture as the widget. */
@@ -87,6 +89,7 @@ data class WatchAction(
     val medicationId: String? = null,
     /** Epoch millis of the tap: a delivery hours late must not pretend the dose was taken just now. */
     val actedAt: Long,
+    val cabinetId: String? = null,
 )
 
 /** The one JSON configuration both apps use; malformed input decodes to null, never throws. */

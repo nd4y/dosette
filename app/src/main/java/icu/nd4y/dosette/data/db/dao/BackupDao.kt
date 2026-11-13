@@ -5,12 +5,18 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import icu.nd4y.dosette.data.db.entity.AppointmentEntity
+import icu.nd4y.dosette.data.db.entity.CabinetEntity
+import icu.nd4y.dosette.data.db.entity.CabinetSelectionEntity
+import icu.nd4y.dosette.data.db.entity.CabinetStockEntity
 import icu.nd4y.dosette.data.db.entity.DoseLogEntity
 import icu.nd4y.dosette.data.db.entity.MedicationEntity
 import icu.nd4y.dosette.data.db.entity.MedicationVariantEntity
+import icu.nd4y.dosette.data.db.entity.MedicationVariantRecord
 import icu.nd4y.dosette.data.db.entity.ProfileEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleEntity
 import icu.nd4y.dosette.data.db.entity.ScheduleTimeEntity
+import icu.nd4y.dosette.data.db.entity.VARIANT_MAIN_SQL
+import icu.nd4y.dosette.data.db.entity.toRecord
 
 /** One import's worth of rows, in insert order (parents before children). */
 data class BackupEntities(
@@ -21,6 +27,9 @@ data class BackupEntities(
     val scheduleTimes: List<ScheduleTimeEntity>,
     val doseLogs: List<DoseLogEntity>,
     val appointments: List<AppointmentEntity>,
+    val cabinets: List<CabinetEntity> = emptyList(),
+    val stocks: List<CabinetStockEntity> = emptyList(),
+    val selections: List<CabinetSelectionEntity> = emptyList(),
 )
 
 /** Full-table access for backup export and the wipe+insert import. */
@@ -32,7 +41,7 @@ interface BackupDao {
     @Query("SELECT * FROM medications ORDER BY createdAt")
     suspend fun medications(): List<MedicationEntity>
 
-    @Query("SELECT * FROM medication_variants ORDER BY sortOrder")
+    @Query(VARIANT_MAIN_SQL + " ORDER BY v.sortOrder")
     suspend fun variants(): List<MedicationVariantEntity>
 
     @Query("SELECT * FROM schedules ORDER BY createdAt")
@@ -47,6 +56,15 @@ interface BackupDao {
     @Query("SELECT * FROM appointments ORDER BY date, timeMinutes")
     suspend fun appointments(): List<AppointmentEntity>
 
+    @Query("SELECT * FROM cabinets ORDER BY profileId, sortOrder, id")
+    suspend fun cabinets(): List<CabinetEntity>
+
+    @Query("SELECT * FROM cabinet_stocks ORDER BY cabinetId, variantId")
+    suspend fun stocks(): List<CabinetStockEntity>
+
+    @Query("SELECT * FROM cabinet_selections")
+    suspend fun selections(): List<CabinetSelectionEntity>
+
     /** A consistent view even if a medication, profile or dose changes while the export runs. */
     @Transaction
     suspend fun snapshot(): BackupEntities =
@@ -58,6 +76,9 @@ interface BackupDao {
             scheduleTimes = scheduleTimes(),
             doseLogs = doseLogs(),
             appointments = appointments(),
+            cabinets = cabinets(),
+            stocks = stocks(),
+            selections = selections(),
         )
 
     @Query("DELETE FROM profiles")
@@ -73,7 +94,16 @@ interface BackupDao {
     suspend fun insertMedications(items: List<MedicationEntity>)
 
     @Insert
-    suspend fun insertVariants(items: List<MedicationVariantEntity>)
+    suspend fun insertVariantRecords(items: List<MedicationVariantRecord>)
+
+    @Insert
+    suspend fun insertCabinets(items: List<CabinetEntity>)
+
+    @Insert
+    suspend fun insertStocks(items: List<CabinetStockEntity>)
+
+    @Insert
+    suspend fun insertSelections(items: List<CabinetSelectionEntity>)
 
     @Insert
     suspend fun insertSchedules(items: List<ScheduleEntity>)
@@ -98,7 +128,32 @@ interface BackupDao {
         wipeReminderStates()
         insertProfiles(entities.profiles)
         insertMedications(entities.medications)
-        insertVariants(entities.variants)
+        insertVariantRecords(entities.variants.map { it.toRecord() })
+        val cabinets =
+            entities.cabinets.ifEmpty {
+                entities.profiles.map { CabinetEntity("main:${it.id}", it.id, null, 0, it.createdAt) }
+            }
+        insertCabinets(cabinets)
+        insertSelections(
+            entities.selections.ifEmpty {
+                entities.profiles.map { CabinetSelectionEntity(it.id, "main:${it.id}") }
+            },
+        )
+        insertStocks(
+            if (entities.cabinets.isEmpty()) {
+                val profileByMed = entities.medications.associate { it.id to it.profileId }
+                entities.variants.map {
+                    CabinetStockEntity(
+                        it.id,
+                        "main:${profileByMed.getValue(it.medicationId)}",
+                        it.currentStock,
+                        it.lastRefillAt,
+                    )
+                }
+            } else {
+                entities.stocks
+            },
+        )
         insertSchedules(entities.schedules)
         insertScheduleTimes(entities.scheduleTimes)
         insertDoseLogs(entities.doseLogs)

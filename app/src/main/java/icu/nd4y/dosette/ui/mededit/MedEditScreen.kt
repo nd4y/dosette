@@ -147,12 +147,36 @@ fun MedEditContent(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
                 )
+                if (state.cabinetConflict) {
+                    Text(stringResource(R.string.cabinets_variant_conflict), color = MaterialTheme.colorScheme.error)
+                }
                 when (step) {
-                    WizardStep.BASICS -> BasicsStep(state, onUpdate)
-                    WizardStep.SCHEDULE -> ScheduleStep(state, onUpdate)
-                    WizardStep.TIMES -> TimesStep(state, onUpdate)
-                    WizardStep.STOCK -> StockStep(state, onUpdate)
-                    WizardStep.REVIEW -> ReviewStep(state)
+                    WizardStep.BASICS -> {
+                        BasicsStep(state, onUpdate)
+                    }
+
+                    WizardStep.SCHEDULE -> {
+                        ScheduleStep(state, onUpdate)
+                    }
+
+                    WizardStep.TIMES -> {
+                        TimesStep(state, onUpdate)
+                    }
+
+                    WizardStep.STOCK -> {
+                        Text(
+                            stringResource(
+                                R.string.cabinets_balance_source,
+                                state.stockCabinetName ?: stringResource(R.string.cabinets_main),
+                            ),
+                        )
+                        Text(stringResource(R.string.cabinets_stock_hint), style = MaterialTheme.typography.bodySmall)
+                        StockStep(state, onUpdate)
+                    }
+
+                    WizardStep.REVIEW -> {
+                        ReviewStep(state)
+                    }
                 }
             }
         }

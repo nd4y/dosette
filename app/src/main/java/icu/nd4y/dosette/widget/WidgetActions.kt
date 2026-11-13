@@ -29,6 +29,8 @@ internal interface WidgetEntryPoint {
 internal fun widgetEntryPoint(context: Context): WidgetEntryPoint =
     EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
 
+internal val cabinetParam = ActionParameters.Key<String>("cabinetId")
+
 internal val doseKeyParam = ActionParameters.Key<String>("occurrenceKey")
 internal val prnMedicationParam = ActionParameters.Key<String>("prnMedicationId")
 
@@ -44,7 +46,13 @@ internal class TakeDoseAction : ActionCallback {
                 runCatching { OccurrenceKey.decode(encoded) }.getOrNull()
             }
         if (key != null && !key.date.isAfter(java.time.LocalDate.now())) {
-            widgetEntryPoint(context).engine().onUserAction(key, UserDoseAction.TAKE)
+            widgetEntryPoint(context).engine().onUserAction(
+                key,
+                UserDoseAction.TAKE,
+                parameters[cabinetParam]?.takeIf {
+                    it.isNotBlank()
+                },
+            )
         }
     }
 }
@@ -58,6 +66,12 @@ internal class TakePrnAction : ActionCallback {
     ) {
         val medicationId = parameters[prnMedicationParam] ?: return
         // The shared path adds the low-stock check and the widget refresh.
-        widgetEntryPoint(context).prnIntakes().take(medicationId)
+        widgetEntryPoint(context).prnIntakes().take(
+            medicationId,
+            cabinetId =
+                parameters[cabinetParam]?.takeIf {
+                    it.isNotBlank()
+                },
+        )
     }
 }

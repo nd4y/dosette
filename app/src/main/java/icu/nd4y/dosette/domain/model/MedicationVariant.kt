@@ -15,4 +15,6 @@ data class MedicationVariant(
     val lowStockThreshold: Double?,
     val defaultRefillAmount: Double?,
     val lastRefillAt: Instant?,
+    val cabinetId: String? = null,
+    val cabinetName: String? = null,
 )

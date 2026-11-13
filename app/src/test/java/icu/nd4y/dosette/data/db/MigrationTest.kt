@@ -103,6 +103,7 @@ class MigrationTest {
             AppDatabase.MIGRATION_2_3,
             AppDatabase.MIGRATION_3_4,
             AppDatabase.MIGRATION_4_5,
+            AppDatabase.MIGRATION_5_6,
         )
     }
 
@@ -110,6 +111,64 @@ class MigrationTest {
         execSQL("PRAGMA foreign_keys = OFF")
         block()
         execSQL("PRAGMA foreign_keys = ON")
+    }
+
+    @Test
+    fun `5 to 6 preserves balances refill dates regimens logs and watch receipts in default cabinets`() {
+        helper.createDatabase(dbPath, 5).use { db ->
+            db.execSQL(
+                "INSERT INTO profiles VALUES ('p1', 'Test', 0, NULL, 0, 1000), ('p2', 'Other', 1, NULL, 1, 2000)",
+            )
+            db.execSQL(
+                """
+                INSERT INTO medications (id, profileId, name, form, colorSeed, iconKey, createdAt, nagIntervalMin)
+                VALUES ('m1', 'p1', 'Test med', 'TABLET', 0, 'tablet', 1000, 5)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO medication_variants (id, medicationId, sortOrder, trackingEnabled, currentStock, lastRefillAt)
+                VALUES ('v1', 'm1', 0, 1, 12.5, 9876)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO schedules (id, medicationId, type, startDate, weekdaysMask, oneOff, defaultDoseAmount, remindersEnabled, createdAt)
+                VALUES ('s1', 'm1', 'FIXED_TIMES', '2026-11-13', 0, 0, 1, 1, 1000)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO dose_logs (id, profileId, medicationId, kind, date, timeMinutes, status, amount, variantId, consumedUnits, updatedAt)
+                VALUES ('l1', 'p1', 'm1', 'SCHEDULED', '2026-11-13', 480, 'TAKEN', 1, 'v1', 1, 1000)
+                """.trimIndent(),
+            )
+            db.execSQL("INSERT INTO watch_action_receipts VALUES ('already-applied')")
+        }
+        helper.runMigrationsAndValidate(dbPath, 6, true, AppDatabase.MIGRATION_5_6).use { db ->
+            db.query("SELECT currentStock, lastRefillAt, cabinetId FROM variant_inventory WHERE id='v1'").use {
+                assertThat(it.moveToFirst()).isTrue()
+                assertThat(it.getDouble(0)).isEqualTo(12.5)
+                assertThat(it.getLong(1)).isEqualTo(9876)
+                assertThat(it.getString(2)).isEqualTo("main:p1")
+            }
+            db.query("SELECT cabinetId, consumedUnits FROM dose_logs WHERE id='l1'").use {
+                assertThat(it.moveToFirst()).isTrue()
+                assertThat(it.getString(0)).isEqualTo("main:p1")
+                assertThat(it.getDouble(1)).isEqualTo(1.0)
+            }
+            for (table in listOf("schedules", "watch_action_receipts")) {
+                db.query("SELECT COUNT(*) FROM $table").use {
+                    assertThat(it.moveToFirst()).isTrue()
+                    assertThat(it.getInt(0)).isEqualTo(1)
+                }
+            }
+            db.query("SELECT COUNT(*) FROM cabinets").use {
+                assertThat(it.moveToFirst()).isTrue()
+                assertThat(it.getInt(0)).isEqualTo(2)
+            }
+            db.query("PRAGMA foreign_key_check").use { assertThat(it.count).isEqualTo(0) }
+        }
     }
 
     private companion object {

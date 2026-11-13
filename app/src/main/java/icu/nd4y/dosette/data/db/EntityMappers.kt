@@ -134,6 +134,8 @@ fun DoseLogEntity.toDomain(): DoseLog =
         consumedUnits = consumedUnits,
         note = note,
         updatedAt = updatedAt,
+        cabinetId = cabinetId,
+        cabinetName = cabinetName,
     )
 
 fun DoseLog.toEntity(): DoseLogEntity =
@@ -153,6 +155,8 @@ fun DoseLog.toEntity(): DoseLogEntity =
         consumedUnits = consumedUnits,
         note = note,
         updatedAt = updatedAt,
+        cabinetId = cabinetId,
+        cabinetName = cabinetName,
     )
 
 fun MedicationVariantEntity.toDomain(): MedicationVariant =
@@ -168,6 +172,8 @@ fun MedicationVariantEntity.toDomain(): MedicationVariant =
         lowStockThreshold = lowStockThreshold,
         defaultRefillAmount = defaultRefillAmount,
         lastRefillAt = lastRefillAt,
+        cabinetId = cabinetId,
+        cabinetName = cabinetName,
     )
 
 fun MedicationVariant.toEntity(): MedicationVariantEntity =
@@ -183,6 +189,8 @@ fun MedicationVariant.toEntity(): MedicationVariantEntity =
         lowStockThreshold = lowStockThreshold,
         defaultRefillAmount = defaultRefillAmount,
         lastRefillAt = lastRefillAt,
+        cabinetId = cabinetId,
+        cabinetName = cabinetName,
     )
 
 fun AppointmentEntity.toDomain(): Appointment =
@@ -242,3 +250,19 @@ fun ReminderState.toEntity(): ReminderStateEntity =
         firstNotifiedAt = firstNotifiedAt,
         lastAlertAt = lastAlertAt,
     )
+
+fun icu.nd4y.dosette.data.db.entity.CabinetEntity.toDomain() =
+    icu.nd4y.dosette.domain.model
+        .Cabinet(id, profileId, name, sortOrder, createdAt, archivedAt)
+
+fun icu.nd4y.dosette.domain.model.Cabinet.toEntity() =
+    icu.nd4y.dosette.data.db.entity
+        .CabinetEntity(id, profileId, name, sortOrder, createdAt, archivedAt)
+
+fun icu.nd4y.dosette.data.db.entity.CabinetStockEntity.toDomain() =
+    icu.nd4y.dosette.domain.model
+        .CabinetStock(variantId, cabinetId, currentStock, lastRefillAt)
+
+fun icu.nd4y.dosette.domain.model.CabinetStock.toEntity() =
+    icu.nd4y.dosette.data.db.entity
+        .CabinetStockEntity(variantId, cabinetId, currentStock, lastRefillAt)

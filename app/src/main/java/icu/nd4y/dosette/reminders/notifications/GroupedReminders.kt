@@ -31,7 +31,7 @@ internal class GroupedReminders(
         manager.activeNotifications
             .filter {
                 it.notification.channelId == Channels.DOSE_ALERTS &&
-                    it.id != NotificationIds.LOCKED_NOTICE && it.id !in desired
+                    it.id != NotificationIds.LOCKED_NOTICE && it.id != NotificationIds.SOUND_TEST && it.id !in desired
             }.forEach { manager.cancel(it.tag, it.id) }
         groups.values.forEach { doses ->
             val alert = doses.any { it.key in alertKeys }

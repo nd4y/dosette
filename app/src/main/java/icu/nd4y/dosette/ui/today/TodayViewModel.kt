@@ -75,6 +75,8 @@ data class TodayDose(
     val reminderActive: Boolean = false,
     /** Widget preview of a future date: navigation only, never records an early intake. */
     val preview: Boolean = false,
+    val cabinetId: String? = null,
+    val cabinetName: String? = null,
 ) {
     val key: OccurrenceKey get() = OccurrenceKey(medicationId, date, time)
     val slot: DaySlot
@@ -93,6 +95,8 @@ data class PrnMed(
     val strengthText: String?,
     val form: MedicationForm,
     val colorSeed: Int,
+    val cabinetId: String? = null,
+    val cabinetName: String? = null,
 )
 
 data class ProfileChip(
@@ -238,6 +242,8 @@ class TodayViewModel
                             strengthText = strengthLabel(med.medication.strengthValue, med.medication.strengthUnit),
                             form = med.medication.form,
                             colorSeed = med.medication.colorSeed,
+                            cabinetId = med.defaultVariant?.cabinetId,
+                            cabinetName = med.defaultVariant?.cabinetName,
                         )
                     }
 
@@ -370,8 +376,8 @@ class TodayViewModel
         ) {
             viewModelScope.launch {
                 when (val at = intake.resolve(dose.key, clock.zone)) {
-                    null -> engine.onUserAction(dose.key, UserDoseAction.TAKE)
-                    else -> engine.takeAt(dose.key, at)
+                    null -> engine.onUserAction(dose.key, UserDoseAction.TAKE, dose.cabinetId)
+                    else -> engine.takeAt(dose.key, at, dose.cabinetId)
                 }
             }
         }
@@ -388,7 +394,7 @@ class TodayViewModel
         fun takePrn(prnMed: PrnMed) {
             viewModelScope.launch {
                 // The shared path adds the low-stock check and widget refresh.
-                val intake = prnIntakes.take(prnMed.medicationId) ?: return@launch
+                val intake = prnIntakes.take(prnMed.medicationId, cabinetId = prnMed.cabinetId) ?: return@launch
                 _prnTaken.tryEmit(PrnTaken(logId = intake.logId, medicationName = intake.medicationName))
             }
         }

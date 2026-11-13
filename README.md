@@ -36,43 +36,29 @@ condition. Consult a healthcare professional for medical advice, diagnosis, or t
 
 ## Install
 
-Grab the APK from [Releases](https://github.com/nd4y/dosette/releases), or add the repo to
-[Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates:
+Requires Android 8.0+. From the [latest release](https://github.com/nd4y/dosette/releases/latest),
+download the phone APK `dosette-vX.Y.Z.apk` - not the Wear APK and not the `.aab`. One phone APK
+includes the matching Wear app. Install updates over the existing app to keep your data.
 
-1. Obtainium → **Add App**.
-2. App source URL: `https://github.com/nd4y/dosette`.
+1. Open the APK and allow installs from the browser or file manager only if Android asks.
+2. Allow notifications, exact-alarm access and the battery-optimization exemption when asked.
+   Denial has honest limits: without notifications there is no alert, without exact-alarm access
+   reminders may arrive late, and battery optimization can delay them.
+3. On the phone, open **More > Settings > Watch > Install or update** to install the watch app
+   (Android 10+ for this phone-side installer). Enable wireless debugging on the watch manually;
+   the pairing code is entered by hand.
 
-Requires Android 8.0+. For reminders to arrive on time, allow notifications and grant the
-exact-alarm access and the battery-optimization exemption when the app asks during onboarding. If exact-alarm access is denied, reminders fall back to inexact scheduling and may arrive late.
+Optional automatic updates: add `https://github.com/nd4y/dosette` to
+[Obtainium](https://github.com/ImranR98/Obtainium) and set the APK filter to `dosette-v[0-9].*[.]apk$` so it
+offers only the phone APK.
 
-### Watch app
-
-From the phone, open **More > Settings > Watch > Install or update**. The
-[step-by-step ADB wizard](docs/watch-adb-install.md) pairs with the watch, checks
-APK signatures and updates without clearing app data. Android 10+ is required
-for this phone-side installer. Enable wireless debugging on the watch manually.
-
-Every release also carries `dosette-wear-vX.Y.Z.apk` for a Wear OS 3+ watch (Pixel Watch 3 is the
-reference device). It is a companion: it needs the phone app on the paired phone and has no data of
-its own. Install it over adb - on the watch enable developer options (Settings → System → About →
-tap the build number seven times), then *Developer options → ADB debugging* and *Wireless debugging*,
-pair and install:
-
-```bash
-adb pair <watch-ip>:<pairing-port>
-adb connect <watch-ip>:<port>
-adb -s <watch-ip>:<port> install -r dosette-wear-vX.Y.Z.apk
-```
-
-Both APKs share the package name and the signing key (the Data Layer links them by that), so keep
-them apart: in Obtainium set the app's *Filter APKs by regular expression* to `^dosette-v` - without it Obtainium asks
-which of the two APKs to install on every update. Notifications are mirrored to the watch as long as
-the Pixel Watch app allows them for Dosette (they are, by default).
+Beginner guide with permissions, data-preserving updates and notification sound:
+[docs/install.md](docs/install.md).
 
 ## Backup format
 
-The backup is a single YAML file, schema version 2 (version 1 files import unchanged): `settings`, then `profiles[]`, each with nested
-`medications[]` (variants, schedules with times), `dose_logs[]` and `appointments[]`. Dates are ISO
+The backup is a single YAML file, schema version 3 (versions 1 and 2 still import): `settings`, then `profiles[]`, each with nested
+`medications[]` (variants, schedules with times), `dose_logs[]`, `appointments[]`, `cabinets[]`, `stocks[]` and `active_cabinet_id`. One profile shares its regimens and history across cabinets; each cabinet has independent balances. Dose logs retain the stock source and actual consumed units for undo. Dates are ISO
 (`2026-08-29`), times are `HH:mm`, timestamps are ISO-8601 instants. Import is strict: unknown keys,
 unknown enum values, dangling references and out-of-range values (a zero interval, a negative grace)
 are rejected before anything is written. The schedule and variant ids inside dose logs are history,

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sound_setup_title">Reminder sound</string>
+    <string name="sound_setup_status_notifications_disabled">Notifications are disabled</string>
+    <string name="sound_setup_status_silent">Sound: Silent</string>
+    <string name="sound_setup_status_sound">Sound: %1$s</string>
+    <string name="sound_setup_status_sound_unknown">Sound: selected</string>
+    <string name="sound_setup_dnd_note">Do Not Disturb and silent mode can also suppress the sound.</string>
+    <string name="sound_setup_open_settings">Channel settings</string>
+    <string name="sound_setup_test">Test sound</string>
+    <string name="sound_setup_test_failed">The test could not play a sound. Check notification permission and whether the phone or channel is muted.</string>
+</resources>

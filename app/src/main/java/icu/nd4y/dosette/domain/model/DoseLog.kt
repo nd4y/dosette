@@ -25,6 +25,8 @@ data class DoseLog(
     val consumedUnits: Double?,
     val note: String?,
     val updatedAt: Instant,
+    val cabinetId: String? = null,
+    val cabinetName: String? = null,
 )
 
 enum class DoseStatus {

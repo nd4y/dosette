@@ -83,9 +83,10 @@ class ReminderEngine
         suspend fun onUserAction(
             key: OccurrenceKey,
             action: UserDoseAction,
+            cabinetId: String? = null,
         ): Unit =
             mutex.withLock {
-                val world = loadWorld()
+                val world = loadWorld().withSource(medicationRepository, key, cabinetId) ?: return@withLock
                 val event =
                     when (action) {
                         UserDoseAction.TAKE -> {
@@ -115,9 +116,16 @@ class ReminderEngine
             action: UserDoseAction,
             actedAt: Instant,
             deliveryId: String,
+            cabinetId: String? = null,
         ): Unit =
             mutex.withLock {
-                val world = loadWorld()
+                val loaded = loadWorld()
+                val source =
+                    cabinetId ?: loaded.medicationById[key.medicationId]
+                        ?.medication
+                        ?.profileId
+                        ?.let { "main:$it" }
+                val world = loaded.withSource(medicationRepository, key, source) ?: return@withLock
                 val intentAt = actedAt.coerceAtMost(clock.instant())
                 watchActions.applyOnce(deliveryId, key, intentAt) {
                     val event =
@@ -152,9 +160,10 @@ class ReminderEngine
         suspend fun takeAt(
             key: OccurrenceKey,
             actedAt: Instant,
+            cabinetId: String? = null,
         ): Unit =
             mutex.withLock {
-                val world = loadWorld()
+                val world = loadWorld().withSource(medicationRepository, key, cabinetId) ?: return@withLock
                 watchActions.applyLocal(key, clock.instant()) { applyEvent(world, key, NagEvent.Take(actedAt)) }
                 syncGeofences(world)
                 rescheduleLocked(world)
@@ -557,11 +566,24 @@ class ReminderEngine
                 InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, variant.strengthValue)
             // Before and after come from one transaction: an as-needed take
             // or a recount landing in between must not fake or hide the crossing.
-            val change = medicationRepository.consumeStock(variant.id, units) ?: return
+            val change = medicationRepository.consumeStock(variant.id, units, variant.cabinetId) ?: return
+            doseLogRepository.getScheduled(key)?.let { log ->
+                doseLogRepository.finalizeScheduled(
+                    log.copy(
+                        consumedUnits = change.before - change.after,
+                        cabinetId = change.cabinetId,
+                        cabinetName = variant.cabinetName,
+                    ),
+                )
+            }
             if (world.lowStockNotifyEnabled &&
                 InventoryPolicy.crossedLowThreshold(change.before, change.after, variant.lowStockThreshold)
             ) {
-                notifier.postLowStock(med.medication.id, medicationTitle(med), formatUnits(change.after))
+                notifier.postLowStock(
+                    med.medication.id,
+                    listOfNotNull(medicationTitle(med), variant.cabinetName).joinToString(" · "),
+                    formatUnits(change.after),
+                )
             }
         }
 
@@ -615,6 +637,8 @@ class ReminderEngine
                 title = med?.let(::medicationTitle) ?: key.medicationId,
                 amountText = med?.let { occurrenceFor(it, key)?.amount }?.let(::formatUnits),
                 instructions = med?.medication?.instructions,
+                cabinetId = med?.defaultVariant?.cabinetId,
+                cabinetName = med?.defaultVariant?.cabinetName,
                 profileName =
                     if (world.multiProfile) {
                         world.profileNames[med?.medication?.profileId]
@@ -679,6 +703,19 @@ class ReminderEngine
             val multiProfile: Boolean,
             val alertKeys: MutableSet<OccurrenceKey> = mutableSetOf(),
         ) {
+            suspend fun withSource(
+                repository: MedicationRepository,
+                key: OccurrenceKey,
+                cabinetId: String?,
+            ): World? =
+                if (cabinetId == null) {
+                    this
+                } else {
+                    repository.getDetails(key.medicationId, cabinetId)?.let { med ->
+                        copy(medicationById = medicationById + (key.medicationId to med))
+                    }
+                }
+
             fun settingsFor(key: OccurrenceKey): NagSettings {
                 val interval = medicationById[key.medicationId]?.medication?.nagIntervalMin
                 return settings.copy(nagIntervalMin = interval ?: settings.nagIntervalMin)
@@ -699,7 +736,7 @@ private fun Occurrence.toScheduledLog(
     actedAt: Instant?,
     updatedAt: Instant,
 ): DoseLog {
-    val variant = if (status == DoseStatus.TAKEN) med.defaultVariant else null
+    val variant = if (status == DoseStatus.TAKEN) med.defaultVariant?.takeIf { it.trackingEnabled } else null
     val consumed =
         variant?.let {
             InventoryPolicy.unitsForDose(amount, med.medication.strengthValue, it.strengthValue)
@@ -717,6 +754,8 @@ private fun Occurrence.toScheduledLog(
         actedAt = actedAt,
         amount = amount,
         variantId = variant?.id,
+        cabinetId = variant?.cabinetId,
+        cabinetName = variant?.cabinetName,
         consumedUnits = consumed,
         note = null,
         updatedAt = updatedAt,
@@ -726,7 +765,7 @@ private fun Occurrence.toScheduledLog(
 /** Returns the stock a taken dose's log consumed (no-op for other logs). */
 private suspend fun MedicationRepository.restoreStockOf(log: DoseLog) {
     if (log.status == DoseStatus.TAKEN && log.variantId != null && log.consumedUnits != null) {
-        incrementStock(log.variantId, log.consumedUnits)
+        incrementStock(log.variantId, log.consumedUnits, log.cabinetId ?: "main:" + log.profileId)
     }
 }
 

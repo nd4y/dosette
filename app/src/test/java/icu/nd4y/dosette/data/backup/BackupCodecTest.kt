@@ -6,6 +6,8 @@ import icu.nd4y.dosette.data.settings.AppSettings
 import icu.nd4y.dosette.data.settings.ThemeMode
 import icu.nd4y.dosette.domain.backup.BackupSnapshot
 import icu.nd4y.dosette.domain.model.Appointment
+import icu.nd4y.dosette.domain.model.Cabinet
+import icu.nd4y.dosette.domain.model.CabinetStock
 import icu.nd4y.dosette.domain.model.DoseKind
 import icu.nd4y.dosette.domain.model.DoseLog
 import icu.nd4y.dosette.domain.model.DoseStatus
@@ -41,6 +43,9 @@ class BackupCodecTest {
                     lowStockNotifyEnabled = false,
                     onboardingDone = true,
                 ),
+            cabinets = listOf(Cabinet("main:p1", "p1", null, 0, instant), Cabinet("main:p2", "p2", null, 0, instant)),
+            stocks = listOf(CabinetStock("v150", "main:p1", 10.0, instant), CabinetStock("v75", "main:p1", 20.0)),
+            cabinetSelections = mapOf("p1" to "main:p1", "p2" to "main:p2"),
             profiles =
                 listOf(
                     Profile("p1", "Андрей", 0, null, 0, instant),
@@ -134,6 +139,7 @@ class BackupCodecTest {
                         actedAt = instant,
                         amount = 1.0,
                         variantId = "v75",
+                        cabinetId = "main:p1",
                         consumedUnits = 2.0,
                         note = "запил водой",
                         updatedAt = instant,
@@ -178,6 +184,107 @@ class BackupCodecTest {
         val yaml = BackupCodec.encode(BackupMapper.toSnapshot(fullData, instant))
         val restored = BackupMapper.fromSnapshot(BackupCodec.decode(yaml))
         assertThat(restored).isEqualTo(fullData)
+    }
+
+    @Test
+    fun `schema 3 keeps independent cabinets selection archive and intake source`() {
+        val data =
+            fullData.copy(
+                cabinets =
+                    listOf(
+                        fullData.cabinets.first(),
+                        Cabinet("travel", "p1", "Travel", 1, instant, instant),
+                        fullData.cabinets.last(),
+                    ),
+                stocks = fullData.stocks + CabinetStock("v150", "travel", 3.5, instant),
+                doseLogs =
+                    fullData.doseLogs.map {
+                        if (it.variantId !=
+                            null
+                        ) {
+                            it.copy(cabinetId = "travel", cabinetName = "Travel")
+                        } else {
+                            it
+                        }
+                    },
+            )
+        val encoded = BackupCodec.encode(BackupMapper.toSnapshot(data, instant))
+        assertThat(BackupMapper.fromSnapshot(BackupCodec.decode(encoded))).isEqualTo(data)
+    }
+
+    @Test
+    fun `legacy schema 2 imports existing quantities into default cabinets`() {
+        val snapshot =
+            BackupMapper.toSnapshot(fullData, instant).let { backup ->
+                backup.copy(
+                    schemaVersion = 2,
+                    profiles =
+                        backup.profiles.map {
+                            it.copy(cabinets = emptyList(), stocks = emptyList(), activeCabinetId = null)
+                        },
+                )
+            }
+        val data = BackupMapper.fromSnapshot(snapshot)
+        assertThat(data.cabinetSelections).containsEntry("p1", "main:p1")
+        assertThat(data.stocks.first { it.variantId == "v150" }.currentStock).isEqualTo(10.0)
+    }
+
+    @Test
+    fun `cross profile stock and foreign selection are rejected before import`() {
+        val snapshot = BackupMapper.toSnapshot(fullData, instant)
+        val p1 = snapshot.profiles.first()
+        val foreignStock = p1.stocks.first().copy(cabinetId = "main:p2")
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(
+                snapshot.copy(
+                    profiles =
+                        listOf(p1.copy(stocks = listOf(foreignStock))) + snapshot.profiles.drop(1),
+                ),
+            )
+        }
+        assertThrows(BackupFormatException::class.java) {
+            BackupMapper.fromSnapshot(
+                snapshot.copy(
+                    profiles =
+                        listOf(p1.copy(activeCabinetId = "main:p2")) + snapshot.profiles.drop(1),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `duplicate and nonfinite stock quantities are rejected`() {
+        val snapshot = BackupMapper.toSnapshot(fullData, instant)
+        val p1 = snapshot.profiles.first()
+        for (stocks in listOf(
+            p1.stocks + p1.stocks.first(),
+            listOf(p1.stocks.first().copy(currentStock = Double.NaN)),
+        )) {
+            assertThrows(BackupFormatException::class.java) {
+                BackupMapper.fromSnapshot(
+                    snapshot.copy(
+                        profiles =
+                            listOf(p1.copy(stocks = stocks)) + snapshot.profiles.drop(1),
+                    ),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `schema three rejects ambiguous projected quantities instead of silently changing inventory`() {
+        val snapshot = BackupMapper.toSnapshot(fullData, instant)
+        val p1 = snapshot.profiles.first()
+        for (stocks in listOf(emptyList(), p1.stocks.map { it.copy(currentStock = it.currentStock + 1.0) })) {
+            assertThrows(BackupFormatException::class.java) {
+                BackupMapper.fromSnapshot(
+                    snapshot.copy(
+                        profiles =
+                            listOf(p1.copy(stocks = stocks)) + snapshot.profiles.drop(1),
+                    ),
+                )
+            }
+        }
     }
 
     @Test
