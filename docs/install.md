@@ -59,6 +59,8 @@ and is not required.
 
 ### 5. Watch app (Wear OS 3+)
 
+Update both apps when using multiple cabinets. After a phone update, use the phone wizard below to install the matching watch version. Older watch versions cannot send a cabinet choice and cannot display the new cabinet-aware snapshots.
+
 The normal install needs no computer. The phone-side installer requires Android 10 or
 newer on the phone.
 
@@ -153,6 +155,8 @@ Obtainium предлагает только APK телефона, а не Wear A
 инструмент, и без него можно обойтись.
 
 ### 5. Приложение для часов (Wear OS 3+)
+
+Для нескольких аптечек обновляйте оба приложения. После обновления телефона установите соответствующую версию на часы через мастер ниже. Старые версии часов не передают выбор аптечки и не поддерживают новые данные.
 
 Для обычной установки компьютер не нужен. Встроенный установщик на телефоне требует
 Android 10 или новее.

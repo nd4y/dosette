@@ -39,6 +39,20 @@ class WatchJsonTest {
     }
 
     @Test
+    fun `cabinet snapshot version is explicit so legacy clients cannot silently drop the source`() {
+        val current =
+            snapshot.copy(
+                schema = WatchSnapshot.CURRENT_SCHEMA,
+                doses = listOf(snapshot.doses.first().copy(cabinetId = "travel")),
+            )
+        val text = WatchJson.encode(current)
+        // Version 0.16 accepts only schema 1. Keeping constructor default 1 makes schema 2 explicit on the wire.
+        assertThat(text).contains("\"schema\":2")
+        assertThat(WatchJson.decodeSnapshot(text)).isEqualTo(current)
+        assertThat(WatchJson.decodeSnapshot(WatchJson.encode(snapshot))?.schema).isEqualTo(1)
+    }
+
+    @Test
     fun `action survives a round trip`() {
         val action =
             WatchAction(
@@ -84,7 +98,7 @@ class WatchJsonTest {
         val dose = snapshot.doses.first()
         val invalid =
             listOf(
-                snapshot.copy(schema = 2),
+                snapshot.copy(schema = WatchSnapshot.CURRENT_SCHEMA + 1),
                 snapshot.copy(date = "not-a-date"),
                 snapshot.copy(doses = listOf(dose.copy(timeMinutes = -1))),
                 snapshot.copy(doses = listOf(dose.copy(timeMinutes = 24 * 60))),

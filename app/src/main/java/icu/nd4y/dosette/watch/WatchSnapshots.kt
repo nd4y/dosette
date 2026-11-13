@@ -20,6 +20,7 @@ fun buildWatchSnapshot(
     profileName: String?,
 ): WatchSnapshot =
     WatchSnapshot(
+        schema = WatchSnapshot.CURRENT_SCHEMA,
         date = state.date.toString(),
         profileName = profileName,
         doses =

@@ -39,6 +39,7 @@ condition. Consult a healthcare professional for medical advice, diagnosis, or t
 Requires Android 8.0+. From the [latest release](https://github.com/nd4y/dosette/releases/latest),
 download the phone APK `dosette-vX.Y.Z.apk` - not the Wear APK and not the `.aab`. One phone APK
 includes the matching Wear app. Install updates over the existing app to keep your data.
+Update the watch app too when using multiple cabinets; older watch versions cannot carry a stock source.
 
 1. Open the APK and allow installs from the browser or file manager only if Android asks.
 2. Allow notifications, exact-alarm access and the battery-optimization exemption when asked.
